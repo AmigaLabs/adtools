@@ -14,8 +14,7 @@ REAL_SRC_DIR=$(realpath $(SRC_DIR))
 
 all: cross
 
-.PHONY: cross
-cross:
+cross-2.23.2:
 	mkdir -p $(CROSS_BUILD_DIR)
 	cd $(CROSS_BUILD_DIR); CFLAGS="-Wno-switch -Wno-unused" $(REAL_SRC_DIR)/configure \
 									--enable-plugins \
@@ -23,7 +22,18 @@ cross:
 									--prefix=$(PREFIX)
 	make -C $(CROSS_BUILD_DIR)
 
-native:
+cross-2.40:
+	mkdir -p $(CROSS_BUILD_DIR)
+	cd $(CROSS_BUILD_DIR); CFLAGS="-Wno-sign-compare" $(REAL_SRC_DIR)/configure \
+											--disable-plugins \
+											--disable-gdb \
+											--disable-sim \
+											--target=ppc-amigaos \
+											--prefix=$(PREFIX)
+	make -C $(CROSS_BUILD_DIR)
+
+
+native-2.23.2:
 	mkdir -p $(NATIVE_BUILD_DIR)
 	cd $(NATIVE_BUILD_DIR);  LDFLAGS="-lunix" CFLAGS="-Wno-switch -Wno-unused" $(REAL_SRC_DIR)/configure \
 											--target=ppc-amigaos \
@@ -32,3 +42,20 @@ native:
 											--prefix=/gcc
 	make -C $(NATIVE_BUILD_DIR)
 
+native-2.40:
+	mkdir -p $(NATIVE_BUILD_DIR)
+	cd $(NATIVE_BUILD_DIR);  LDFLAGS="-mcrt=clib4" CFLAGS="-mcrt=clib4 -Wno-sign-compare" $(REAL_SRC_DIR)/configure \
+											--target=ppc-amigaos \
+											--host=ppc-amigaos \
+											--disable-plugins \
+											--disable-gdb \
+											--disable-sim \
+											--disable-nls \
+											--prefix=/gcc
+	make -C $(NATIVE_BUILD_DIR)
+
+.PHONY: cross
+cross: cross-$(VERSION)
+
+.PHONY: native
+native: native-$(VERSION)

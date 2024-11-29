@@ -1,0 +1,4922 @@
+From 063184c10762d5b798671bb49a55cf2308b3c134 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Fri, 29 Nov 2024 19:58:52 +0000
+Subject: [PATCH] Changes for compiling for AmigaOS 4 using clib4
+
+---
+ .gitignore                            |   10 +
+ bfd/Makefile.am                       |    4 +-
+ bfd/Makefile.in                       |    5 +-
+ bfd/bfd-in2.h                         |    6 +
+ bfd/config.bfd                        |    4 +
+ bfd/configure                         |    3 +-
+ bfd/configure.ac                      |    1 +
+ bfd/{cpu-bfin.c => elf-amigaos.c}     |   44 +-
+ bfd/{elf-nacl.h => elf-amigaos.h}     |   11 +-
+ bfd/elf-bfd.h                         |    3 +-
+ bfd/elf32-ppc.c                       |  247 +++++-
+ bfd/elflink.c                         |    2 +
+ bfd/libbfd.h                          |    4 +
+ bfd/po/SRC-POTFILES.in                |    2 +
+ bfd/reloc.c                           |   10 +-
+ bfd/targets.c                         |    2 +
+ binutils/elfcomm.c                    |   12 +
+ binutils/objcopy.c                    |   79 +-
+ binutils/readelf.c                    |    4 +
+ binutils/version.c                    |   13 +
+ config.sub                            |   10 +-
+ elfcpp/powerpc.h                      |    6 +
+ gas/Makefile.am                       |    1 +
+ gas/Makefile.in                       |    1 +
+ gas/config/tc-ppc.c                   |   26 +-
+ gas/config/te-amigaos.h               |   14 +
+ gas/configure.tgt                     |    1 +
+ gas/doc/.dirstamp                     |    0
+ gas/po/POTFILES.in                    |    1 +
+ gdb/Makefile.in                       |    2 +
+ gdb/auto-load.c                       |    5 +
+ gdb/configure.host                    |    1 +
+ gdb/configure.nat                     |    8 +
+ gdb/configure.tgt                     |    7 +
+ gdb/defs.h                            |    3 +
+ gdb/dwarf2/read.c                     |   16 +-
+ gdb/filesystem.c                      |   11 +-
+ gdb/filesystem.h                      |    4 +
+ gdb/gdbarch-gen.h                     |    7 +
+ gdb/gdbarch.c                         |   26 +
+ gdb/osabi.c                           |   21 +
+ gdb/osabi.h                           |    1 +
+ gdb/ppc-amigaos-nat.c                 | 1122 +++++++++++++++++++++++++
+ gdb/ppc-amigaos-nat.h                 |   81 ++
+ gdb/ppc-amigaos-tdep.c                |  153 ++++
+ gdb/source.c                          |    6 +-
+ gdbsupport/common-defs.h              |    1 +
+ gdbsupport/common-inferior.cc         |    5 +
+ gdbsupport/host-defs.h                |    7 +
+ gdbsupport/pathstuff.cc               |   19 +-
+ gnulib/configure                      |    4 +
+ gnulib/import/m4/getcwd-path-max.m4   |    2 +
+ gnulib/import/m4/getcwd.m4            |    2 +
+ gnulib/import/sys_time.in.h           |    2 +
+ include/elf/amigaos.h                 |   27 +
+ include/elf/ppc.h                     |    6 +
+ include/filenames.h                   |   18 +
+ include/libiberty.h                   |    5 +
+ ld/Makefile.am                        |    2 +
+ ld/Makefile.in                        |    2 +
+ ld/configure.tgt                      |    8 +
+ ld/emulparams/amigaos.sh              |   31 +
+ ld/ldctor.c                           |   23 +-
+ ld/ldlang.c                           |    7 +
+ ld/ldmain.c                           |    7 +-
+ ld/po/BLD-POTFILES.in                 |    2 +
+ ld/scripttempl/{elf.sc => amigaos.sc} |    4 +-
+ libiberty/Makefile.in                 |   14 +-
+ libiberty/configure                   |    1 +
+ libiberty/configure.ac                |    1 +
+ libiberty/fnmatch.c                   |    6 +-
+ libiberty/lbasename.c                 |   20 +
+ libiberty/make-temp-file.c            |    2 +
+ libiberty/pex-amigaos.c               |  325 +++++++
+ readline/readline/bind.c              |   10 +-
+ readline/readline/input.c             |    6 +-
+ readline/readline/readline.c          |   11 +
+ readline/readline/rldefs.h            |    9 +-
+ readline/readline/rltty.h             |    7 +-
+ readline/readline/shell.c             |   13 +-
+ readline/readline/terminal.c          |   10 +-
+ readline/readline/text.c              |    6 +-
+ 82 files changed, 2536 insertions(+), 89 deletions(-)
+ copy bfd/{cpu-bfin.c => elf-amigaos.c} (51%)
+ copy bfd/{elf-nacl.h => elf-amigaos.h} (73%)
+ create mode 100644 gas/config/te-amigaos.h
+ delete mode 100644 gas/doc/.dirstamp
+ create mode 100644 gdb/ppc-amigaos-nat.c
+ create mode 100644 gdb/ppc-amigaos-nat.h
+ create mode 100644 gdb/ppc-amigaos-tdep.c
+ create mode 100644 include/elf/amigaos.h
+ create mode 100644 ld/emulparams/amigaos.sh
+ copy ld/scripttempl/{elf.sc => amigaos.sc} (99%)
+ create mode 100644 libiberty/pex-amigaos.c
+
+diff --git a/.gitignore b/.gitignore
+index d44f60295d079e2481c5949aeede221f5c731ccd..d1fafcda72d24b7ae658866cae8ff4689bba224d 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,11 +1,18 @@
++**/.DS_Store
+ *.diff
+ *.patch
+ *.orig
+ *.rej
+ 
++cross-build/
++native-build/
++dist/
++dist-newlib/
++dist-clib4/
++
+ *~
+ .#*
+ *#
+ 
+ *.flt
+ *.gmo
+@@ -69,6 +76,9 @@ stamp-*
+ 
+ # ignore in-tree prerequisites
+ /mpfr*
+ /mpc*
+ /gmp*
+ /isl*
++
++.vscode
++.idea
+diff --git a/bfd/Makefile.am b/bfd/Makefile.am
+index e1692e7f8aa8475c8d9fb41f5b35a342752c3987..a884108ff983528b8d3f13f440b3b1e04cb9e260 100644
+--- a/bfd/Makefile.am
++++ b/bfd/Makefile.am
+@@ -289,12 +289,13 @@ BFD32_BACKENDS = \
+ 	elf-sframe.lo \
+ 	elf-ifunc.lo \
+ 	elf-m10200.lo \
+ 	elf-m10300.lo \
+ 	elf-nacl.lo \
+ 	elf-strtab.lo \
++	elf-amigaos.lo \
+ 	elf-vxworks.lo \
+ 	elf.lo \
+ 	elf32-am33lin.lo \
+ 	elf32-arc.lo \
+ 	elf32-arm.lo \
+ 	elf32-avr.lo \
+@@ -424,12 +425,13 @@ BFD32_BACKENDS_CFILES = \
+ 	elf-sframe.c \
+ 	elf-ifunc.c \
+ 	elf-m10200.c \
+ 	elf-m10300.c \
+ 	elf-nacl.c \
+ 	elf-strtab.c \
++	elf-amigaos.c \
+ 	elf-vxworks.c \
+ 	elf.c \
+ 	elf32-am33lin.c \
+ 	elf32-arc.c \
+ 	elf32-arm.c \
+ 	elf32-avr.c \
+@@ -703,13 +705,13 @@ SOURCE_HFILES = \
+ 	elf32-dlx.h elf32-hppa.h elf32-m68hc1x.h elf32-m68k.h \
+ 	elf32-metag.h elf32-nds32.h elf32-nios2.h elf32-ppc.h \
+ 	elf32-rx.h elf32-score.h elf32-sh-relocs.h elf32-spu.h \
+ 	elf32-tic6x.h elf32-tilegx.h elf32-tilepro.h elf32-v850.h \
+ 	elf64-hppa.h elf64-ppc.h elf64-tilegx.h \
+ 	elf-bfd.h elfcode.h elfcore.h elf-hppa.h elf-linker-x86.h \
+-	elf-linux-core.h elf-nacl.h elf-s390.h elf-vxworks.h \
++	elf-linux-core.h elf-nacl.h elf-s390.h elf-amigaos.h elf-vxworks.h \
+ 	elfxx-aarch64.h elfxx-ia64.h elfxx-mips.h elfxx-riscv.h \
+ 	elfxx-sparc.h elfxx-tilegx.h elfxx-x86.h elfxx-loongarch.h \
+ 	genlink.h go32stub.h \
+ 	libaout.h libbfd.h libcoff.h libecoff.h libhppa.h \
+ 	libpei.h libxcoff.h \
+ 	mach-o.h \
+diff --git a/bfd/Makefile.in b/bfd/Makefile.in
+index 80aed6576435a4ce295db37c155928349fa8a9a7..ff4d61b7a3a096611d24edcc8ce2d8712703bdb0 100644
+--- a/bfd/Makefile.in
++++ b/bfd/Makefile.in
+@@ -758,12 +758,13 @@ BFD32_BACKENDS = \
+ 	elf-sframe.lo \
+ 	elf-ifunc.lo \
+ 	elf-m10200.lo \
+ 	elf-m10300.lo \
+ 	elf-nacl.lo \
+ 	elf-strtab.lo \
++	elf-amigaos.lo \
+ 	elf-vxworks.lo \
+ 	elf.lo \
+ 	elf32-am33lin.lo \
+ 	elf32-arc.lo \
+ 	elf32-arm.lo \
+ 	elf32-avr.lo \
+@@ -893,12 +894,13 @@ BFD32_BACKENDS_CFILES = \
+ 	elf-sframe.c \
+ 	elf-ifunc.c \
+ 	elf-m10200.c \
+ 	elf-m10300.c \
+ 	elf-nacl.c \
+ 	elf-strtab.c \
++	elf-amigaos.c \
+ 	elf-vxworks.c \
+ 	elf.c \
+ 	elf32-am33lin.c \
+ 	elf32-arc.c \
+ 	elf32-arm.c \
+ 	elf32-avr.c \
+@@ -1169,13 +1171,13 @@ SOURCE_HFILES = \
+ 	elf32-dlx.h elf32-hppa.h elf32-m68hc1x.h elf32-m68k.h \
+ 	elf32-metag.h elf32-nds32.h elf32-nios2.h elf32-ppc.h \
+ 	elf32-rx.h elf32-score.h elf32-sh-relocs.h elf32-spu.h \
+ 	elf32-tic6x.h elf32-tilegx.h elf32-tilepro.h elf32-v850.h \
+ 	elf64-hppa.h elf64-ppc.h elf64-tilegx.h \
+ 	elf-bfd.h elfcode.h elfcore.h elf-hppa.h elf-linker-x86.h \
+-	elf-linux-core.h elf-nacl.h elf-s390.h elf-vxworks.h \
++	elf-linux-core.h elf-nacl.h elf-s390.h elf-amigaos.h  elf-vxworks.h \
+ 	elfxx-aarch64.h elfxx-ia64.h elfxx-mips.h elfxx-riscv.h \
+ 	elfxx-sparc.h elfxx-tilegx.h elfxx-x86.h elfxx-loongarch.h \
+ 	genlink.h go32stub.h \
+ 	libaout.h libbfd.h libcoff.h libecoff.h libhppa.h \
+ 	libpei.h libxcoff.h \
+ 	mach-o.h \
+@@ -1577,12 +1579,13 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-m10200.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-m10300.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-nacl.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-properties.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-sframe.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-strtab.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-amigaos.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf-vxworks.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-aarch64.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-am33lin.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-arc.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-arm.Plo@am__quote@
+diff --git a/bfd/bfd-in2.h b/bfd/bfd-in2.h
+index eddfb31b6d51c42c970919534af0f05b65f67604..984865277d6acabc543af5693a6afb31a2560cc5 100644
+--- a/bfd/bfd-in2.h
++++ b/bfd/bfd-in2.h
+@@ -2974,12 +2974,18 @@ instruction.  */
+   BFD_RELOC_PPC64_GOT_TLSGD_PCREL34,
+   BFD_RELOC_PPC64_GOT_TLSLD_PCREL34,
+   BFD_RELOC_PPC64_GOT_TPREL_PCREL34,
+   BFD_RELOC_PPC64_GOT_DTPREL_PCREL34,
+   BFD_RELOC_PPC64_TLS_PCREL,
+ 
++/* AmigaOS4 specific relocations */
++  BFD_RELOC_PPC_AMIGAOS_BREL,
++  BFD_RELOC_PPC_AMIGAOS_BREL_LO,
++  BFD_RELOC_PPC_AMIGAOS_BREL_HI,
++  BFD_RELOC_PPC_AMIGAOS_BREL_HA,
++  
+ /* IBM 370/390 relocations  */
+   BFD_RELOC_I370_D12,
+ 
+ /* The type of reloc used to build a constructor table - at the moment
+ probably a 32 bit wide absolute relocation, but the target can choose.
+ It generally does map to one of the other relocation types.  */
+diff --git a/bfd/config.bfd b/bfd/config.bfd
+index 1b0111fd410dcef529bc4d94e2c314678cdd4a2b..8b191314d4653996823189fade3d30a9ecca009a 100644
+--- a/bfd/config.bfd
++++ b/bfd/config.bfd
+@@ -1124,12 +1124,16 @@ case "${targ}" in
+ 	*-*-aix4.[3456789]* | *-*-aix[56789]*)
+ 	want64=true;;
+ 	*)
+ 	targ_cflags=-DSMALL_ARCHIVE;;
+     esac
+     ;;
++  powerpc-*-amiga*)
++    targ_defvec=powerpc_elf32_amigaos_vec
++    targ_selvecs="powerpc_elf32_vec"
++    ;;	
+ #ifdef BFD64
+   powerpc64-*-aix*)
+     targ_defvec=rs6000_xcoff64_vec
+     targ_selvecs=rs6000_xcoff_vec
+     want64=true
+     ;;
+diff --git a/bfd/configure b/bfd/configure
+index e5d464378f872ab643679197f18a2209b7bc4631..a5754abfb0dfe3f238da79d6421c0ab5a1ee5c8e 100755
+--- a/bfd/configure
++++ b/bfd/configure
+@@ -13777,13 +13777,14 @@ do
+     pdp11_aout_vec)		 tb="$tb pdp11.lo" ;;
+     pef_vec)			 tb="$tb pef.lo" ;;
+     pef_xlib_vec)		 tb="$tb pef.lo" ;;
+     pj_elf32_vec)		 tb="$tb elf32-pj.lo elf32.lo $elf" ;;
+     pj_elf32_le_vec)		 tb="$tb elf32-pj.lo elf32.lo $elf" ;;
+     powerpc_boot_vec)		 tb="$tb ppcboot.lo" ;;
+-    powerpc_elf32_vec)		 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
++    powerpc_elf32_amigaos_vec)	tb="$tb elf32-ppc.lo elf-amigaos.lo elf32.lo $elf" ;;
++	powerpc_elf32_vec)		 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf32_le_vec)	 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf32_fbsd_vec)	 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf32_vxworks_vec)	 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf64_vec)		 tb="$tb elf64-ppc.lo elf64-gen.lo elf64.lo $elf"; target_size=64 ;;
+     powerpc_elf64_le_vec)	 tb="$tb elf64-ppc.lo elf64-gen.lo elf64.lo $elf" target_size=64 ;;
+     powerpc_elf64_fbsd_vec)	 tb="$tb elf64-ppc.lo elf64-gen.lo elf64.lo $elf" target_size=64 ;;
+diff --git a/bfd/configure.ac b/bfd/configure.ac
+index 015fd01189321b862b5c2b7777344fb20ead67fe..352be794f65cbc75ce625c2a3d9de4cad302e124 100644
+--- a/bfd/configure.ac
++++ b/bfd/configure.ac
+@@ -567,12 +567,13 @@ do
+     pdp11_aout_vec)		 tb="$tb pdp11.lo" ;;
+     pef_vec)			 tb="$tb pef.lo" ;;
+     pef_xlib_vec)		 tb="$tb pef.lo" ;;
+     pj_elf32_vec)		 tb="$tb elf32-pj.lo elf32.lo $elf" ;;
+     pj_elf32_le_vec)		 tb="$tb elf32-pj.lo elf32.lo $elf" ;;
+     powerpc_boot_vec)		 tb="$tb ppcboot.lo" ;;
++    powerpc_elf32_amigaos_vec)	tb="$tb elf32-ppc.lo elf-amigaos.lo elf32.lo $elf" ;;
+     powerpc_elf32_vec)		 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf32_le_vec)	 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf32_fbsd_vec)	 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf32_vxworks_vec)	 tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+     powerpc_elf64_vec)		 tb="$tb elf64-ppc.lo elf64-gen.lo elf64.lo $elf"; target_size=64 ;;
+     powerpc_elf64_le_vec)	 tb="$tb elf64-ppc.lo elf64-gen.lo elf64.lo $elf" target_size=64 ;;
+diff --git a/bfd/cpu-bfin.c b/bfd/elf-amigaos.c
+similarity index 51%
+copy from bfd/cpu-bfin.c
+copy to bfd/elf-amigaos.c
+index 4d3c1804536147ab0365a6f1167c5a87cc8edac8..06771ecc3121b1f96f0a96437dd7dd2bc7e649f9 100644
+--- a/bfd/cpu-bfin.c
++++ b/bfd/elf-amigaos.c
+@@ -1,8 +1,7 @@
+-/* BFD Support for the ADI Blackfin processor.
+-
++/* VxWorks support for ELF
+    Copyright (C) 2005-2023 Free Software Foundation, Inc.
+ 
+    This file is part of BFD, the Binary File Descriptor library.
+ 
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+@@ -12,31 +11,32 @@
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License
+-   along with this program; if not, write to the Free Software
+-   Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston,
+-   MA 02110-1301, USA.  */
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++
++/* This file provides routines used by all VxWorks targets.  */
+ 
+ #include "sysdep.h"
+ #include "bfd.h"
+ #include "libbfd.h"
++#include "elf-bfd.h"
++#include "elf-amigaos.h"
++#include "elf/amigaos.h"
++
++/* Add dynamic tags
++   AmigaOS: Flag it as a version 2 dynamic binary */  
++
++bool
++_bfd_elf_amigaos_add_dynamic_tags (struct bfd_link_info *info)
++{
++#ifdef DEBUG
++		printf ("Target amigaos-pcc needs addtional marker symbol DT_AMIGAOS_DYNVERSION to mark version used.\n"); 
++#endif
+ 
+-const bfd_arch_info_type bfd_bfin_arch =
+-  {
+-    16,			/* Bits in a word.  */
+-    32,			/* Bits in an address.  */
+-    8,			/* Bits in a byte.  */
+-    bfd_arch_bfin,
+-    0,			/* Only one machine.  */
+-    "bfin",		/* Arch name.  */
+-    "bfin",		/* Arch printable name.  */
+-    4,			/* Section align power.  */
+-    true,		/* The one and only.  */
+-    bfd_default_compatible,
+-    bfd_default_scan,
+-    bfd_arch_default_fill,
+-    NULL,
+-    0 /* Maximum offset of a reloc from the start of an insn.  */
+-  };
++	struct elf_link_hash_table *htab = elf_hash_table (info);
++	
++	return  htab->target_os != is_amigaos || _bfd_elf_add_dynamic_entry (info,DT_AMIGAOS_DYNVERSION, 2);
++}
++ 
+\ No newline at end of file
+diff --git a/bfd/elf-nacl.h b/bfd/elf-amigaos.h
+similarity index 73%
+copy from bfd/elf-nacl.h
+copy to bfd/elf-amigaos.h
+index e921c64589c111bfebe31f61c0d0a982e6479ba6..f7770b1d669e39f2b9fc139471fb6dfac1c1beb5 100644
+--- a/bfd/elf-nacl.h
++++ b/bfd/elf-amigaos.h
+@@ -1,8 +1,8 @@
+-/* Native Client support for ELF
+-   Copyright (C) 2012-2023 Free Software Foundation, Inc.
++/* VxWorks support for ELF
++   Copyright (C) 2005-2023 Free Software Foundation, Inc.
+ 
+    This file is part of BFD, the Binary File Descriptor library.
+ 
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+@@ -13,9 +13,10 @@
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
+-bool nacl_modify_segment_map (bfd *, struct bfd_link_info *);
+-bool nacl_modify_headers (bfd *, struct bfd_link_info *);
+-bool nacl_final_write_processing (bfd *);
++#include "elf/common.h"
++#include "elf/internal.h"
++
++bool _bfd_elf_amigaos_add_dynamic_tags(struct bfd_link_info *);
+diff --git a/bfd/elf-bfd.h b/bfd/elf-bfd.h
+index 2b7c574f540b55bbc8cccb22f5b60b96f730307d..6ee3ba456a209933b317f6ab726171da3926f7ad 100644
+--- a/bfd/elf-bfd.h
++++ b/bfd/elf-bfd.h
+@@ -588,13 +588,14 @@ struct bfd_link_needed_list
+ 
+ enum elf_target_os
+ {
+   is_normal,
+   is_solaris,	/* Solaris.  */
+   is_vxworks,	/* VxWorks.  */
+-  is_nacl	/* Native Client.  */
++  is_nacl, 	/* Native Client.  */
++  is_amigaos    /* AmigaOS */
+ };
+ 
+ /* Used by bfd_sym_from_r_symndx to cache a small number of local
+    symbols.  */
+ #define LOCAL_SYM_CACHE_SIZE 32
+ struct sym_cache
+diff --git a/bfd/elf32-ppc.c b/bfd/elf32-ppc.c
+index a8234f27a8a437b2503cd55c971d5d3acbbf6222..2077aaab94e68bb29bce78598ec82c7e38dba2fe 100644
+--- a/bfd/elf32-ppc.c
++++ b/bfd/elf32-ppc.c
+@@ -19,27 +19,31 @@
+    Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
+    Boston, MA 02110-1301, USA.  */
+ 
+ /* The assembler should generate a full set of section symbols even
+    when they appear unused.  The linux kernel build tool recordmcount
+    needs them.  */
++// ML: TODO: Keep for Amiga?
+ #define TARGET_KEEP_UNUSED_SECTION_SYMBOLS true
+ 
+ #include "sysdep.h"
+ #include <stdarg.h>
+ #include "bfd.h"
+ #include "bfdlink.h"
+ #include "libbfd.h"
+ #include "elf-bfd.h"
+ #include "elf/ppc.h"
++#include "elf/amigaos.h"
+ #include "elf32-ppc.h"
++#include "elf-amigaos.h"
+ #include "elf-vxworks.h"
+ #include "dwarf2.h"
+ #include "opcode/ppc.h"
+ 
+ /* All users of this file have bfd_octets_per_byte (abfd, sec) == 1.  */
++// ML: TODO: Keep for Amiga? Fist for amigao
+ #define OCTETS_PER_BYTE(ABFD, SEC) 1
+ 
+ typedef enum split16_format_type
+ {
+   split16a_type = 0,
+   split16d_type
+@@ -571,12 +575,29 @@ static reloc_howto_type ppc_elf_howto_raw[] = {
+   /* Relocation not handled: R_PPC_EMB_RELSEC16 */
+   /* Relocation not handled: R_PPC_EMB_RELST_LO */
+   /* Relocation not handled: R_PPC_EMB_RELST_HI */
+   /* Relocation not handled: R_PPC_EMB_RELST_HA */
+   /* Relocation not handled: R_PPC_EMB_BIT_FLD */
+ 
++  /* A standard 32 bit base relative relocation.  */
++  HOW (R_PPC_AMIGAOS_BREL, 2, 32, 0xffffffff, 0, false, bitfield,
++  	   bfd_elf_generic_reloc),
++
++  /* A 16 bit base relative relocation without overflow.  */
++  HOW (R_PPC_AMIGAOS_BREL_LO, 1, 16, 0xffff, 0, false, dont,
++  	   bfd_elf_generic_reloc),
++
++  /* The high order 16 bits of a base relative address.  */
++  HOW (R_PPC_AMIGAOS_BREL_HI, 1, 16, 0xffff, 0, false, dont,
++  	   bfd_elf_generic_reloc),
++
++  /* The high order 16 bits of a base relative address, plus 1 if the contents
++     of the low 16 bits, treated as a signed number, is negative.  */
++  HOW (R_PPC_AMIGAOS_BREL_HA, 1, 16, 0xffff, 16, false, dont,
++  	   bfd_elf_generic_reloc),
++
+   /* PC relative relocation against either _SDA_BASE_ or _SDA2_BASE_, filling
+      in the 16 bit signed offset from the appropriate base, and filling in the
+      register field with the appropriate register (0, 2, or 13).  */
+   HOW (R_PPC_EMB_RELSDA, 2, 16, 0xffff, 0, false, signed,
+        ppc_elf_unhandled_reloc),
+ 
+@@ -819,13 +840,17 @@ ppc_elf_reloc_type_lookup (bfd *abfd ATTRIBUTE_UNUSED,
+     case BFD_RELOC_PPC_EMB_RELSEC16:	r = R_PPC_EMB_RELSEC16;		break;
+     case BFD_RELOC_PPC_EMB_RELST_LO:	r = R_PPC_EMB_RELST_LO;		break;
+     case BFD_RELOC_PPC_EMB_RELST_HI:	r = R_PPC_EMB_RELST_HI;		break;
+     case BFD_RELOC_PPC_EMB_RELST_HA:	r = R_PPC_EMB_RELST_HA;		break;
+     case BFD_RELOC_PPC_EMB_BIT_FLD:	r = R_PPC_EMB_BIT_FLD;		break;
+     case BFD_RELOC_PPC_EMB_RELSDA:	r = R_PPC_EMB_RELSDA;		break;
+-    case BFD_RELOC_PPC_VLE_REL8:	r = R_PPC_VLE_REL8;		break;
++	case BFD_RELOC_PPC_AMIGAOS_BREL:	r = R_PPC_AMIGAOS_BREL;		break;
++    case BFD_RELOC_PPC_AMIGAOS_BREL_LO:	r = R_PPC_AMIGAOS_BREL_LO;	break;
++    case BFD_RELOC_PPC_AMIGAOS_BREL_HI:	r = R_PPC_AMIGAOS_BREL_HI;	break;
++    case BFD_RELOC_PPC_AMIGAOS_BREL_HA:	r = R_PPC_AMIGAOS_BREL_HA;	break;
++	case BFD_RELOC_PPC_VLE_REL8:	r = R_PPC_VLE_REL8;		break;
+     case BFD_RELOC_PPC_VLE_REL15:	r = R_PPC_VLE_REL15;		break;
+     case BFD_RELOC_PPC_VLE_REL24:	r = R_PPC_VLE_REL24;		break;
+     case BFD_RELOC_PPC_VLE_LO16A:	r = R_PPC_VLE_LO16A;		break;
+     case BFD_RELOC_PPC_VLE_LO16D:	r = R_PPC_VLE_LO16D;		break;
+     case BFD_RELOC_PPC_VLE_HI16A:	r = R_PPC_VLE_HI16A;		break;
+     case BFD_RELOC_PPC_VLE_HI16D:	r = R_PPC_VLE_HI16D;		break;
+@@ -2332,13 +2357,22 @@ ppc_elf_create_got (bfd *abfd, struct bfd_link_info *info)
+   struct ppc_elf_link_hash_table *htab;
+ 
+   if (!_bfd_elf_create_got_section (abfd, info))
+     return false;
+ 
+   htab = ppc_elf_hash_table (info);
+-  if (htab->elf.target_os != is_vxworks)
++  if (htab->elf.target_os == is_amigaos )
++	{
++	  /* The powerpc .got has a blrl instruction in it.  Mark it
++	 executable.  */
++      flagword flags = (SEC_ALLOC | SEC_LOAD | SEC_HAS_CONTENTS
++			| SEC_IN_MEMORY | SEC_LINKER_CREATED);
++      if (!bfd_set_section_flags (htab->elf.sgot, flags))
++	return false;
++	}
++  else if (htab->elf.target_os != is_vxworks)
+     {
+       /* The powerpc .got has a blrl instruction in it.  Mark it
+ 	 executable.  */
+       flagword flags = (SEC_ALLOC | SEC_LOAD | SEC_CODE | SEC_HAS_CONTENTS
+ 			| SEC_IN_MEMORY | SEC_LINKER_CREATED);
+       if (!bfd_set_section_flags (htab->elf.sgot, flags))
+@@ -2498,12 +2532,14 @@ ppc_elf_create_dynamic_sections (bfd *abfd, struct bfd_link_info *info)
+   if (htab->elf.target_os == is_vxworks
+       && !elf_vxworks_create_dynamic_sections (abfd, info, &htab->srelplt2))
+     return false;
+ 
+   s = htab->elf.splt;
+   flags = SEC_ALLOC | SEC_CODE | SEC_LINKER_CREATED;
++  if (htab->elf.target_os == is_amigaos )
++     flags |= SEC_READONLY;
+   if (htab->plt_type == PLT_VXWORKS)
+     /* The VxWorks PLT is a loaded section with contents.  */
+     flags |= SEC_HAS_CONTENTS | SEC_LOAD | SEC_READONLY;
+   return bfd_set_section_flags (s, flags);
+ }
+ 
+@@ -3153,12 +3189,19 @@ ppc_elf_check_relocs (bfd *abfd,
+ 	    {
+ 	      ppc_elf_hash_entry (h)->has_sda_refs = true;
+ 	      h->non_got_ref = true;
+ 	    }
+ 	  break;
+ 
++	  /* These don't work with a GOT */
++	case R_PPC_AMIGAOS_BREL:
++	case R_PPC_AMIGAOS_BREL_HI:
++	case R_PPC_AMIGAOS_BREL_LO:
++	case R_PPC_AMIGAOS_BREL_HA:
++	  break;
++
+ 	case R_PPC_VLE_REL8:
+ 	case R_PPC_VLE_REL15:
+ 	case R_PPC_VLE_REL24:
+ 	case R_PPC_VLE_LO16A:
+ 	case R_PPC_VLE_LO16D:
+ 	case R_PPC_VLE_HI16A:
+@@ -4907,12 +4950,13 @@ ppc_elf_adjust_dynamic_symbol (struct bfd_link_info *info,
+       doesn't work on VxWorks, where we can not have dynamic
+       relocations (other than copy and jump slot relocations) in an
+       executable.  */
+   if (ELIMINATE_COPY_RELOCS
+       && !ppc_elf_hash_entry (h)->has_sda_refs
+       && htab->elf.target_os != is_vxworks
++	  && htab->elf.target_os != is_amigaos
+       && !h->def_regular
+       && !alias_readonly_dynrelocs (h))
+     return true;
+ 
+   /* We must allocate the symbol in our .dynbss section, which will
+      become part of the .bss section of the executable.  There will be
+@@ -5894,12 +5938,15 @@ ppc_elf_size_dynamic_sections (bfd *output_bfd,
+   _bfd_elf_add_dynamic_entry (info, TAG, VAL)
+ 
+       if (!_bfd_elf_maybe_vxworks_add_dynamic_tags (output_bfd, info,
+ 						    relocs))
+ 	return false;
+ 
++      if (!_bfd_elf_amigaos_add_dynamic_tags (info))
++		return false;
++
+       if (htab->plt_type == PLT_NEW
+ 	  && htab->glink != NULL
+ 	  && htab->glink->size != 0)
+ 	{
+ 	  if (!add_dynamic_entry (DT_PPC_GOT, 0))
+ 	    return false;
+@@ -6977,12 +7024,13 @@ ppc_elf_relocate_section (bfd *output_bfd,
+   struct ppc_elf_link_hash_table *htab;
+   Elf_Internal_Rela *rel;
+   Elf_Internal_Rela *wrel;
+   Elf_Internal_Rela *relend;
+   Elf_Internal_Rela outrel;
+   asection *got2;
++  asection *data_section = NULL;
+   bfd_vma *local_got_offsets;
+   bool ret = true;
+   bfd_vma d_offset = (bfd_big_endian (input_bfd) ? 2 : 0);
+   bool is_vxworks_tls;
+   unsigned int picfixup_size = 0;
+   struct ppc_elf_relax_info *relax_info = NULL;
+@@ -8048,12 +8096,57 @@ ppc_elf_relocate_section (bfd *output_bfd,
+ 	case R_PPC_ADDR16_HI:
+ 	case R_PPC_ADDR16_HA:
+ 	case R_PPC_UADDR32:
+ 	case R_PPC_UADDR16:
+ 	  goto dodyn;
+ 
++	case R_PPC_AMIGAOS_BREL:
++	case R_PPC_AMIGAOS_BREL_HI:
++	case R_PPC_AMIGAOS_BREL_LO:
++	case R_PPC_AMIGAOS_BREL_HA:
++	{
++		if (data_section == NULL)
++			data_section = bfd_get_section_by_name (output_bfd, ".data");
++		if (data_section != NULL)
++		{
++			if (sec)
++			{
++				const char *name = bfd_section_name (sec->output_section);
++				if (strcmp (name, ".sdata") != 0
++					&& strcmp (name, ".sbss") != 0
++					&& strcmp (name, ".data") != 0
++					&& strcmp (name, ".bss") != 0
++					&& strncmp (name, ".ctors", 6) != 0
++					&& strncmp (name, ".dtors", 6) != 0)
++				{
++					_bfd_error_handler
++						/* xgettext:c-format */
++						(_("%pB: the target (%s) of a %s relocation is in the wrong output section (%s)"),
++							input_bfd,
++							sym_name,
++							howto->name,
++							name);
++				}			
++			}
++
++			addend -= data_section->output_section->vma;
++
++			if (r_type == R_PPC_AMIGAOS_BREL_HA)
++			addend += ((relocation + addend) & 0x8000) << 1;
++		}
++		else 
++		{
++			_bfd_error_handler
++				/* xgettext:c-format */
++				(_("%pB: the target (%s) has not '.data' section"),
++					input_bfd,
++					sym_name);
++		}
++	}
++	break;
++
+ 	case R_PPC_VLE_REL8:
+ 	case R_PPC_VLE_REL15:
+ 	case R_PPC_VLE_REL24:
+ 	case R_PPC_REL24:
+ 	case R_PPC_REL14:
+ 	case R_PPC_REL14_BRTAKEN:
+@@ -10433,12 +10526,162 @@ ppc_elf_finish_dynamic_sections (bfd *output_bfd,
+ #define elf_backend_action_discarded		ppc_elf_action_discarded
+ #define elf_backend_init_index_section		_bfd_elf_init_1_index_section
+ #define elf_backend_lookup_section_flags_hook	ppc_elf_lookup_section_flags
+ 
+ #include "elf32-target.h"
+ 
++/* ML: TODO: AmigaOS Target */
++
++#undef  TARGET_LITTLE_SYM
++#undef  TARGET_LITTLE_NAME
++
++#undef  TARGET_BIG_SYM
++#define TARGET_BIG_SYM  powerpc_elf32_amigaos_vec
++#undef  TARGET_BIG_NAME
++#define TARGET_BIG_NAME "elf32-powerpc-amigaos"
++
++#undef ELF_TARGET_OS
++#define ELF_TARGET_OS		is_amigaos
++
++/* The name of the readonly data section.  */
++#define RDATA_SECTION_NAME ".rodata"
++
++/* If we have .rodata section we need to bump the
++programm headers, so that it is in it own segment. */ 
++
++
++static int
++ppc_elf_amigaos_additional_program_headers (
++	bfd *abfd,
++	struct bfd_link_info *info ATTRIBUTE_UNUSED)
++{
++	int ret = ppc_elf_additional_program_headers(abfd,info);
++
++	/* See if we need a RDATA_SECTION_NAME segment.  */
++	if (bfd_get_section_by_name (abfd, RDATA_SECTION_NAME))
++	{
++#ifdef DEBUG
++		printf ("Target amigaos-pcc needs addtional programm header, because .rodata section is present, thus we add 1 to %d\n",ret); 
++#endif
++		++ret;
++	}
++
++	return ret;
++}
++
++static bool
++ppc_elf_amigaos_modify_segment_map (
++	bfd *abfd,
++	struct bfd_link_info *info ATTRIBUTE_UNUSED)
++{
++	/* If there is a .rodata section, we need a own segment for it.  */
++	asection *roSection = bfd_get_section_by_name (abfd, RDATA_SECTION_NAME);
++	if( roSection != NULL ) 
++	{
++#ifdef DEBUG
++		printf ("Target amigaos-pcc needs .rodata section in aseparate segment from .text and .plt\n"); 
++#endif
++		for( struct elf_segment_map *segment = elf_seg_map (abfd);segment != NULL;segment = segment->next ) 
++		{
++			if( segment->p_type == PT_LOAD && segment->count > 1 )
++			{
++				for( unsigned int index = 0;index < segment->count;index++ )
++				{
++					if( segment->sections[index] == roSection ) 
++					{
++#ifdef DEBUG
++						printf ("Segment found for .rodata at index %d of %d sections\n",index,segment->count); 
++#endif
++				
++						if( index + 1 < segment->count )
++						{
++							struct elf_segment_map *nextSegment = bfd_zalloc (abfd,sizeof (struct elf_segment_map) + ( (segment->count - ( index + 2 )) * sizeof ( segment->sections[0]) ) );
++							if( nextSegment == NULL ) 
++								return false;
++						
++							nextSegment->count = segment->count - (index + 1);
++							memcpy (nextSegment->sections, segment->sections + index + 1,nextSegment->count * sizeof (segment->sections[0]));
++							nextSegment->p_type = PT_LOAD;
++							nextSegment->p_flags = PF_R;
++							nextSegment->next = segment->next;
++							segment->next = nextSegment;
++						}
++						
++						segment->count = 1;
++
++						if( index != 0 )
++						{
++							segment->count = index;
++							struct elf_segment_map *nextSegment = bfd_zalloc (abfd,sizeof (struct elf_segment_map));
++							if( nextSegment == NULL )
++								return false;
++
++							nextSegment->p_type = PT_LOAD;
++							nextSegment->p_flags = PF_R;
++							nextSegment->count = 1;
++							nextSegment->sections[0] = roSection;
++							nextSegment->next = segment->next;
++							segment->next = nextSegment;
++						}
++
++						break;
++					} 
++				}		
++			}
++		}
++	}
++
++	return ppc_elf_modify_segment_map( abfd,info );
++}
++
++static bool
++ppc_elf_amigaos_finish_dynamic_symbol(
++	bfd *output_bfd,
++	struct bfd_link_info *info,
++	struct elf_link_hash_entry *hashEntry,
++	Elf_Internal_Sym *sym)
++{
++#ifdef DEBUG
++	printf ("Target amigaos-pcc needs reloc R_PPC_JMP_SLOT/... having none zero value\n"); 
++#endif
++ 
++	if( ! hashEntry->def_regular || ( hashEntry->type == STT_GNU_IFUNC && !bfd_link_pic( info ) ) )
++	{
++		for( struct plt_entry *pltEntry = hashEntry->plt.plist;pltEntry != NULL;pltEntry = pltEntry->next )
++		{
++			if( pltEntry->plt.offset != (bfd_vma)-1 ) 
++			{	
++				if( ! hashEntry->def_regular && ! hashEntry->pointer_equality_needed )
++	    		{
++					/* THF: This is peculiar. The compiler generates a R_PPC_JMP_SLOT for externally referenced
++					 * symbols imported from libc.so. Relocation in elf.library requires the symbol to have it's .plt
++					 * stub value, but the linker specifically clears the value to 0, resulting in run-time
++					 * errors when the binary tries to call libc functions.
++					 */	
++					hashEntry->pointer_equality_needed = 1;
++				}
++			}
++		}
++	}
++
++  return ppc_elf_finish_dynamic_symbol( output_bfd,info,hashEntry,sym );
++}
++#undef elf_backend_additional_program_headers
++#define elf_backend_additional_program_headers	ppc_elf_amigaos_additional_program_headers
++
++#undef elf_backend_modify_segment_map
++#define elf_backend_modify_segment_map			ppc_elf_amigaos_modify_segment_map
++
++#undef elf_backend_finish_dynamic_symbol
++#define elf_backend_finish_dynamic_symbol	ppc_elf_amigaos_finish_dynamic_symbol
++
++#undef elf32_bed
++#define elf32_bed	elf32_powerpc_amigaos_bed
++
++#include "elf32-target.h"
++
+ /* FreeBSD Target */
+ 
+ #undef  TARGET_LITTLE_SYM
+ #undef  TARGET_LITTLE_NAME
+ 
+ #undef  TARGET_BIG_SYM
+diff --git a/bfd/elflink.c b/bfd/elflink.c
+index 7bf337c7d449b8e1f690b5adccf42d590e15b807..370f4173b22857ab84d06b8ec85311c9b1a5225f 100644
+--- a/bfd/elflink.c
++++ b/bfd/elflink.c
+@@ -10530,12 +10530,14 @@ elf_link_output_extsym (struct bfd_hash_entry *bh, void *data)
+   sym.st_other = h->other;
+   switch (h->root.type)
+     {
+     default:
+     case bfd_link_hash_new:
+     case bfd_link_hash_warning:
++	  // ML: TODO: really needed, or just  cosmetic?
++	  (*_bfd_error_handler)(_("Unexpected type (%d) of symbol %s"), h->root.type, h->root.root.string);
+       abort ();
+       return false;
+ 
+     case bfd_link_hash_undefined:
+     case bfd_link_hash_undefweak:
+       input_sec = bfd_und_section_ptr;
+diff --git a/bfd/libbfd.h b/bfd/libbfd.h
+index e75935133acd6e9e5000177bff0eaba3e2f17d78..a406a9dc00d31449ceef3de062655720846d2b06 100644
+--- a/bfd/libbfd.h
++++ b/bfd/libbfd.h
+@@ -1648,12 +1648,16 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
+   "BFD_RELOC_PPC64_DTPREL34",
+   "BFD_RELOC_PPC64_GOT_TLSGD_PCREL34",
+   "BFD_RELOC_PPC64_GOT_TLSLD_PCREL34",
+   "BFD_RELOC_PPC64_GOT_TPREL_PCREL34",
+   "BFD_RELOC_PPC64_GOT_DTPREL_PCREL34",
+   "BFD_RELOC_PPC64_TLS_PCREL",
++  "BFD_RELOC_PPC_AMIGAOS_BREL",
++  "BFD_RELOC_PPC_AMIGAOS_BREL_LO",
++  "BFD_RELOC_PPC_AMIGAOS_BREL_HI",
++  "BFD_RELOC_PPC_AMIGAOS_BREL_HA",
+   "BFD_RELOC_I370_D12",
+   "BFD_RELOC_CTOR",
+   "BFD_RELOC_ARM_PCREL_BRANCH",
+   "BFD_RELOC_ARM_PCREL_BLX",
+   "BFD_RELOC_THUMB_PCREL_BLX",
+   "BFD_RELOC_ARM_PCREL_CALL",
+diff --git a/bfd/po/SRC-POTFILES.in b/bfd/po/SRC-POTFILES.in
+index 08e2901d3baf74b92a48cbcc705c4b13701fec63..c4ff7a793ecbebc8fd5e0124c1eb75e4a6a67678 100644
+--- a/bfd/po/SRC-POTFILES.in
++++ b/bfd/po/SRC-POTFILES.in
+@@ -145,12 +145,14 @@ elf-m10300.c
+ elf-nacl.c
+ elf-nacl.h
+ elf-properties.c
+ elf-s390.h
+ elf-sframe.c
+ elf-strtab.c
++elf-amigaos.c
++elf-amigaos.h
+ elf-vxworks.c
+ elf-vxworks.h
+ elf.c
+ elf32-am33lin.c
+ elf32-arc.c
+ elf32-arm.c
+diff --git a/bfd/reloc.c b/bfd/reloc.c
+index db4f30d36d0065a670df387215d1329fcbaa9039..0f4faa0c5446c295143360e09d023e6d0c05d253 100644
+--- a/bfd/reloc.c
++++ b/bfd/reloc.c
+@@ -3048,15 +3048,21 @@ ENUMX
+ ENUMX
+   BFD_RELOC_PPC64_TLS_PCREL
+ ENUMDOC
+   PowerPC and PowerPC64 thread-local storage relocations.
+ 
+ ENUM
+-  BFD_RELOC_I370_D12
++  BFD_RELOC_PPC_AMIGAOS_BREL
++ENUMX  
++  BFD_RELOC_PPC_AMIGAOS_BREL_LO
++ENUMX  
++  BFD_RELOC_PPC_AMIGAOS_BREL_HI
++ENUMX
++  BFD_RELOC_PPC_AMIGAOS_BREL_HA
+ ENUMDOC
+-  IBM 370/390 relocations
++  AmigaOS PowerPC r2 base relative addressing into data section.
+ 
+ ENUM
+   BFD_RELOC_CTOR
+ ENUMDOC
+   The type of reloc used to build a constructor table - at the moment
+   probably a 32 bit wide absolute relocation, but the target can choose.
+diff --git a/bfd/targets.c b/bfd/targets.c
+index 41294ea4d141c44ff58bac3fb1ce3316c8cde63f..f09f2c337a7dc62f5145e14c01182cd97a737ba2 100644
+--- a/bfd/targets.c
++++ b/bfd/targets.c
+@@ -847,12 +847,13 @@ extern const bfd_target pdp11_aout_vec;
+ extern const bfd_target pef_vec;
+ extern const bfd_target pef_xlib_vec;
+ extern const bfd_target pj_elf32_vec;
+ extern const bfd_target pj_elf32_le_vec;
+ extern const bfd_target plugin_vec;
+ extern const bfd_target powerpc_boot_vec;
++extern const bfd_target powerpc_elf32_amigaos_vec;
+ extern const bfd_target powerpc_elf32_vec;
+ extern const bfd_target powerpc_elf32_le_vec;
+ extern const bfd_target powerpc_elf32_fbsd_vec;
+ extern const bfd_target powerpc_elf32_vxworks_vec;
+ extern const bfd_target powerpc_elf64_vec;
+ extern const bfd_target powerpc_elf64_le_vec;
+@@ -1233,12 +1234,13 @@ static const bfd_target * const _bfd_target_vector[] =
+ 	&pef_xlib_vec,
+ 
+ 	&pj_elf32_vec,
+ 	&pj_elf32_le_vec,
+ 
+ 	&powerpc_boot_vec,
++	&powerpc_elf32_amigaos_vec,
+ 	&powerpc_elf32_vec,
+ 	&powerpc_elf32_le_vec,
+ 	&powerpc_elf32_fbsd_vec,
+ 	&powerpc_elf32_vxworks_vec,
+ #ifdef BFD64
+ 	&powerpc_elf64_vec,
+diff --git a/binutils/elfcomm.c b/binutils/elfcomm.c
+index 71b595a68a9296fdfbe3fb794f4baa8324ea2a4a..b8c0afa8e0d1914a390ef5d0539549663da0fc26 100644
+--- a/binutils/elfcomm.c
++++ b/binutils/elfcomm.c
+@@ -32,12 +32,24 @@
+ #include "aout/ar.h"
+ #include "elfcomm.h"
+ #include <assert.h>
+ 
+ extern char *program_name;
+ 
++/* Restore commit 546cb2d85eddba4f56dfbcb0288db68243e3a0fd for AmigaOS4 with clib clib4 */
++#if defined(__amigaos4__) && defined(__CLIB4__)
++/* FIXME:  This definition really ought to be in ansidecl.h.  */
++#ifndef ATTRIBUTE_WEAK
++#define ATTRIBUTE_WEAK __attribute__((weak))
++#endif
++
++/* Allow the following two functions to be overridden if desired.  */
++void error (const char *, ...) ATTRIBUTE_WEAK;
++void warn (const char *, ...) ATTRIBUTE_WEAK;
++#endif
++
+ void
+ error (const char *message, ...)
+ {
+   va_list args;
+ 
+   /* Try to keep error messages in sync with the program's normal output.  */
+diff --git a/binutils/objcopy.c b/binutils/objcopy.c
+index a6182b48b6c0ebc293ef57f306fa71231f3efbfa..4e85ed7966a56fb86a306c535a051d19166019bb 100644
+--- a/binutils/objcopy.c
++++ b/binutils/objcopy.c
+@@ -119,12 +119,15 @@ enum strip_action
+   STRIP_ALL		/* Strip all symbols.  */
+ };
+ 
+ /* Which symbols to remove.  */
+ static enum strip_action strip_symbols = STRIP_UNDEF;
+ 
++/* Shall we strip unneeded relative relocs? */
++static int strip_unneeded_rel_relocs;
++
+ enum locals_action
+ {
+   LOCALS_UNDEF,
+   LOCALS_START_L,	/* Discard locals starting with L.  */
+   LOCALS_ALL		/* Discard all locals.  */
+ };
+@@ -363,12 +366,13 @@ enum command_line_switch
+   OPTION_SET_SECTION_ALIGNMENT,
+   OPTION_SET_START,
+   OPTION_SREC_FORCES3,
+   OPTION_SREC_LEN,
+   OPTION_STACK,
+   OPTION_STRIP_DWO,
++  OPTION_STRIP_UNNEEED_REL_RELOCS,
+   OPTION_STRIP_SYMBOLS,
+   OPTION_STRIP_UNNEEDED,
+   OPTION_STRIP_UNNEEDED_SYMBOL,
+   OPTION_STRIP_UNNEEDED_SYMBOLS,
+   OPTION_SUBSYSTEM,
+   OPTION_UPDATE_SECTION,
+@@ -406,12 +410,13 @@ static struct option strip_options[] =
+   {"remove-relocations", required_argument, 0, OPTION_REMOVE_RELOCS},
+   {"strip-all", no_argument, 0, 's'},
+   {"strip-debug", no_argument, 0, 'S'},
+   {"strip-dwo", no_argument, 0, OPTION_STRIP_DWO},
+   {"strip-symbol", required_argument, 0, 'N'},
+   {"strip-unneeded", no_argument, 0, OPTION_STRIP_UNNEEDED},
++  {"strip-unneeded-rel-relocs", no_argument, 0, OPTION_STRIP_UNNEEED_REL_RELOCS},
+   {"target", required_argument, 0, 'F'},
+   {"verbose", no_argument, 0, 'v'},
+   {"version", no_argument, 0, 'V'},
+   {"wildcard", no_argument, 0, 'w'},
+   {0, no_argument, 0, 0}
+ };
+@@ -1559,12 +1564,17 @@ filter_symbols (bfd *abfd, bfd *obfd, asymbol **osyms,
+       bool undefined;
+       bool rem_leading_char;
+       bool add_leading_char;
+ 
+       undefined = bfd_is_und_section (bfd_asymbol_section (sym));
+ 
++	  if (strip_symbols == STRIP_ALL && undefined)
++        {
++          add_specific_symbol(name, keep_specific_htab);
++        }
++
+       if (add_sym_list)
+ 	{
+ 	  struct addsym_node *ptr;
+ 
+ 	  if (need_sym_before (&ptr, name))
+ 	    to[dst_count++] = create_new_symbol (ptr, obfd);
+@@ -1642,16 +1652,29 @@ filter_symbols (bfd *abfd, bfd *obfd, asymbol **osyms,
+ 	    }
+ 
+ 	  strcpy (ptr, name);
+ 	  bfd_set_asymbol_name (sym, n);
+ 	  name = n;
+ 	}
+-
+-      if (strip_symbols == STRIP_ALL)
+-	keep = false;
+-      else if ((flags & BSF_KEEP) != 0		/* Used in relocation.  */
++      if(strip_symbols == STRIP_ALL) 
++	  { 		
++		  keep = false;
++		 /* Never, ever, strip everthing on the Amiga, keep global symbols, needed by OS 
++		 	_start: 		Entry point of executable, isn't fixed on ppc-amigaos, so OS needs to knwo where to enter
++			__amigaos4__: 	Maker symbol to identify that ELF file is for ppc-amigaos, because no offcial value has been assigned to ELF heder field OS/ABI for ppc-amigaos
++			_SDA_BASE_:		If small data model ist used, the symbol is needed ....?????
++		 */
++     	 if( (bfd_get_flavour(obfd) == bfd_target_elf_flavour && get_elf_backend_data(obfd)->target_os == is_amigaos))
++		 {
++			//  ML: TODO: _SDA_BASE_ onyl needs to be kept if small data section are present ????
++			if (strcmp(name, "_start") == 0 || strcmp(name, "__amigaos4__") == 0 || strcmp(name, "_SDA_BASE_") == 0) {
++			  keep = true;
++			}
++		 }
++	  }
++	  else if ((flags & BSF_KEEP) != 0		/* Used in relocation.  */
+ 	       || ((flags & BSF_SECTION_SYM) != 0
+ 		   && ((*bfd_asymbol_section (sym)->symbol_ptr_ptr)->flags
+ 		       & BSF_KEEP) != 0))
+ 	{
+ 	  keep = true;
+ 	  used_in_reloc = true;
+@@ -1706,13 +1729,23 @@ filter_symbols (bfd *abfd, bfd *obfd, asymbol **osyms,
+       if (!keep
+ 	  && ((keep_file_symbols && (flags & BSF_FILE))
+ 	      || is_specified_symbol (name, keep_specific_htab)))
+ 	keep = true;
+ 
+       if (keep && is_strip_section (abfd, bfd_asymbol_section (sym)))
+-	keep = false;
++	{
++          /* If the symbol refers to a stripped section, we still want to
++           * keep it, e.g., _SDA_BASE_ TODO: We should perhaps output a
++           * warning or add another option to trigger this behaviour.
++           * FIXME: The section to which symbol refers must be adjusted
++           * as well */
++          if (!is_specified_symbol (name, keep_specific_htab))
++            {
++              keep = false;
++            }
++	}
+ 
+       if (keep)
+ 	{
+ 	  if (((flags & (BSF_GLOBAL | BSF_GNU_UNIQUE))
+ 	       || undefined)
+ 	      && (weaken || is_specified_symbol (name, weaken_specific_htab)))
+@@ -3288,12 +3321,13 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
+ 
+ 	 Note we iterate over the input sections examining their
+ 	 relocations since the relocations for the output sections
+ 	 haven't been set yet.  mark_symbols_used_in_relocations will
+ 	 ignore input sections which have no corresponding output
+ 	 section.  */
++	 // ML: TODO: Really needef for maiga to remove the floowing  fi???
+       if (strip_symbols != STRIP_ALL)
+ 	{
+ 	  bfd_set_error (bfd_error_no_error);
+ 	  bfd_map_over_sections (ibfd,
+ 				 mark_symbols_used_in_relocations,
+ 				 isympp);
+@@ -4371,27 +4405,40 @@ copy_relocations_in_section (bfd *ibfd, sec_ptr isection, void *obfdarg)
+ 	      bfd_nonfatal_message (NULL, ibfd, isection,
+ 				    _("relocation count is negative"));
+ 	      return;
+ 	    }
+ 	}
+ 
+-      if (strip_symbols == STRIP_ALL)
+-	{
++    if (strip_symbols == STRIP_ALL )
++  {
+ 	  /* Remove relocations which are not in
+ 	     keep_strip_specific_list.  */
+ 	  arelent **w_relpp;
+ 	  long i;
+ 
+ 	  for (w_relpp = relpp, i = 0; i < relcount; i++)
+ 	    /* PR 17512: file: 9e907e0c.  */
+ 	    if (relpp[i]->sym_ptr_ptr
+ 		/* PR 20096 */
+-		&& *relpp[i]->sym_ptr_ptr
+-		&& is_specified_symbol (bfd_asymbol_name (*relpp[i]->sym_ptr_ptr),
++		&& *relpp[i]->sym_ptr_ptr ) {
++		asection *sec = (*(relpp[i]->sym_ptr_ptr))->section;
++
++		if( is_specified_symbol (bfd_asymbol_name (*relpp[i]->sym_ptr_ptr),
+ 					keep_specific_htab))
+ 	      *w_relpp++ = relpp[i];
++		/* Never, ever, strip all? reloc data on the Amiga! */
++		else if( bfd_get_flavour(obfd) == bfd_target_elf_flavour && get_elf_backend_data(obfd)->target_os == is_amigaos)
++		{
++			if (!strip_unneeded_rel_relocs || !relpp [i]->howto->pc_relative || sec->index != osection->index)
++			{
++				relpp[i]->addend = bfd_asymbol_value(*relpp [i]->sym_ptr_ptr) - sec->vma + relpp[i]->addend;
++				relpp[i]->sym_ptr_ptr = sec->symbol_ptr_ptr;
++				*w_relpp++ = relpp[i];
++			}
++		}  
++		}
+ 	  relcount = w_relpp - relpp;
+ 	  *w_relpp = 0;
+ 	}
+ 
+       bfd_set_reloc (obfd, osection, relcount == 0 ? NULL : relpp, relcount);
+     }
+@@ -4747,12 +4794,15 @@ strip_main (int argc, char *argv[])
+ 	case OPTION_STRIP_DWO:
+ 	  strip_symbols = STRIP_DWO;
+ 	  break;
+ 	case OPTION_STRIP_UNNEEDED:
+ 	  strip_symbols = STRIP_UNNEEDED;
+ 	  break;
++	case OPTION_STRIP_UNNEEED_REL_RELOCS:
++	  strip_unneeded_rel_relocs = 1;
++	  break;	  
+ 	case 'K':
+ 	  add_specific_symbol (optarg, keep_specific_htab);
+ 	  break;
+ 	case 'M':
+ 	  merge_notes = true;
+ 	  merge_notes_set = true;
+@@ -4832,12 +4882,17 @@ strip_main (int argc, char *argv[])
+ 
+   if (show_version)
+     print_version ("strip");
+ 
+   default_deterministic ();
+ 
++  // ML: TODO: For amiga
++  add_specific_symbol("__amigaos4__", keep_specific_htab);
++  add_specific_symbol("_start", keep_specific_htab);
++  add_specific_symbol("_SDA_BASE_", keep_specific_htab);
++
+   /* Default is to strip all symbols.  */
+   if (strip_symbols == STRIP_UNDEF
+       && discard_locals == LOCALS_UNDEF
+       && htab_elements (strip_specific_htab) == 0)
+     strip_symbols = STRIP_ALL;
+ 
+@@ -5906,12 +5961,18 @@ copy_main (int argc, char *argv[])
+   if (show_version)
+     print_version ("objcopy");
+ 
+   if (interleave && copy_byte == -1)
+     fatal (_("interleave start byte must be set with --byte"));
+ 
++  // ML: TOOD: For akigaSO
++  add_specific_symbol("__amigappc__", keep_specific_htab);
++  add_specific_symbol("__amigaos4__", keep_specific_htab);
++  add_specific_symbol("_start", keep_specific_htab);
++  add_specific_symbol("_SDA_BASE_", keep_specific_htab);
++
+   if (copy_byte >= interleave)
+     fatal (_("byte number must be less than interleave"));
+ 
+   if (copy_width > interleave - copy_byte)
+     fatal (_("interleave width must be less than or equal to interleave - byte`"));
+ 
+diff --git a/binutils/readelf.c b/binutils/readelf.c
+index 3da3db159ccd2ca8bcc22e9b644447c106b7c110..0439e7af16bd78c35d57187d4af414df3e3404ce 100644
+--- a/binutils/readelf.c
++++ b/binutils/readelf.c
+@@ -94,12 +94,13 @@
+ 
+ #define RELOC_MACROS_GEN_FUNC
+ 
+ #include "elf/aarch64.h"
+ #include "elf/alpha.h"
+ #include "elf/amdgpu.h"
++#include "elf/amigaos.h"
+ #include "elf/arc.h"
+ #include "elf/arm.h"
+ #include "elf/avr.h"
+ #include "elf/bfin.h"
+ #include "elf/cr16.h"
+ #include "elf/cris.h"
+@@ -2220,12 +2221,13 @@ static const char *
+ get_ppc_dynamic_type (unsigned long type)
+ {
+   switch (type)
+     {
+     case DT_PPC_GOT:    return "PPC_GOT";
+     case DT_PPC_OPT:    return "PPC_OPT";
++	case DT_AMIGAOS_DYNVERSION: return "AMIGAOS_DYNVERSION";
+     default:
+       return NULL;
+     }
+ }
+ 
+ static const char *
+@@ -2527,12 +2529,14 @@ get_dynamic_type (Filedata * filedata, unsigned long type)
+     case DT_GNU_CONFLICTSZ: return "GNU_CONFLICTSZ";
+     case DT_GNU_LIBLIST: return "GNU_LIBLIST";
+     case DT_GNU_LIBLISTSZ: return "GNU_LIBLISTSZ";
+     case DT_GNU_HASH:	return "GNU_HASH";
+     case DT_GNU_FLAGS_1: return "GNU_FLAGS_1";
+ 
++	case DT_AMIGAOS_DYNVERSION: return get_ppc_dynamic_type (type);
++
+     default:
+       if ((type >= DT_LOPROC) && (type <= DT_HIPROC))
+ 	{
+ 	  const char * result;
+ 
+ 	  switch (filedata->file_header.e_machine)
+diff --git a/binutils/version.c b/binutils/version.c
+index 08035359ad7fca65322249a37bbf20992eaa7ec3..5752fb4cb0a31c6448c7e5d57d039ec3f00330cf 100644
+--- a/binutils/version.c
++++ b/binutils/version.c
+@@ -33,8 +33,21 @@ print_version (const char *name)
+   printf ("GNU %s %s\n", name, BFD_VERSION_STRING);
+   printf (_("Copyright (C) 2023 Free Software Foundation, Inc.\n"));
+   printf (_("\
+ This program is free software; you may redistribute it under the terms of\n\
+ the GNU General Public License version 3 or (at your option) any later version.\n\
+ This program has absolutely no warranty.\n"));
++
++#if defined(__amigaos4__)
++# if defined( __NEWLIB__)
++  printf (_("AmigaOS native (ppc-amigaos,newlib).\n"));
++# elif defined( __CLIB4__)
++  printf (_("AmigaOS native (ppc-amigaos,clib4).\n"));
++# elif defined( __CLIB2__ )
++  printf (_("AmigaOS native (ppc-amigaos,clib2).\n"));
++# else
++ printf (_("AmigaOS native (ppc-amigaos,unknown).\n"));
++# endif
++#endif
++
+   exit (0);
+ }
+diff --git a/config.sub b/config.sub
+index dba16e84c77c7d25871d80c24deff717faf4c094..3913e5de7c182cd77942ba69027b37f774f104fc 100755
+--- a/config.sub
++++ b/config.sub
+@@ -9,13 +9,13 @@ timestamp='2022-01-03'
+ # This file is free software; you can redistribute it and/or modify it
+ # under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful, but
+-# WITHOUT ANY WARRANTY; without even the implied warranty of
++# WITHOUT ANY WARRANTY; without even the implied warranty amigaunix
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ # General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program; if not, see <https://www.gnu.org/licenses/>.
+ #
+@@ -228,18 +228,14 @@ case $1 in
+ 				basic_os=bsd
+ 				;;
+ 			amdahl)
+ 				basic_machine=580-amdahl
+ 				basic_os=sysv
+ 				;;
+-			amiga)
+-				basic_machine=m68k-unknown
+-				basic_os=
+-				;;
+-			amigaos | amigados)
+-				basic_machine=m68k-unknown
++			amigaos | amigados | amiga)
++				basic_machine=powerpc-unknown
+ 				basic_os=amigaos
+ 				;;
+ 			amigaunix | amix)
+ 				basic_machine=m68k-unknown
+ 				basic_os=sysv4
+ 				;;
+diff --git a/elfcpp/powerpc.h b/elfcpp/powerpc.h
+index 9322061daed24fd9e8942129322804ad3282e77b..375468d984fbcc86d2246b2e569564b89cc34f10 100644
+--- a/elfcpp/powerpc.h
++++ b/elfcpp/powerpc.h
+@@ -208,12 +208,18 @@ enum
+   R_PPC64_DTPREL34 = 147,
+   R_PPC64_GOT_TLSGD_PCREL34 = 148,
+   R_PPC64_GOT_TLSLD_PCREL34 = 149,
+   R_PPC64_GOT_TPREL_PCREL34 = 150,
+   R_PPC64_GOT_DTPREL_PCREL34 = 151,
+ 
++  /* ML: TODO: AmigaOS ELF base relative addressing data secion via r2 relocation (compile option -mbaserel)*/
++  R_PPC_AMIGAOS_BREL = 210,
++  R_PPC_AMIGAOS_BREL_LO = 211,
++  R_PPC_AMIGAOS_BREL_HI = 212,
++  R_PPC_AMIGAOS_BREL_HA = 213,
++  
+   R_PPC_VLE_REL8 = 216,
+   R_PPC_VLE_REL15 = 217,
+   R_PPC_VLE_REL24 = 218,
+   R_PPC_VLE_LO16A = 219,
+   R_PPC_VLE_LO16D = 220,
+   R_PPC_VLE_HI16A = 221,
+diff --git a/gas/Makefile.am b/gas/Makefile.am
+index ba2896581b75ea89f9a53200d636cdbb9910b751..b6fbe64a10c26c229afc65cad6ae48b84c7f37e5 100644
+--- a/gas/Makefile.am
++++ b/gas/Makefile.am
+@@ -314,12 +314,13 @@ OBJ_FORMAT_HFILES = \
+ 
+ # Emulation header files in config
+ 
+ TARG_ENV_HFILES = \
+ 	config/te-386bsd.h \
+ 	config/te-aix5.h \
++	config/te-amigaos.h \
+ 	config/te-armeabi.h \
+ 	config/te-armfbsdeabi.h \
+ 	config/te-armfbsdvfp.h \
+ 	config/te-armlinuxeabi.h \
+ 	config/te-csky_abiv1.h \
+ 	config/te-csky_abiv1_linux.h \
+diff --git a/gas/Makefile.in b/gas/Makefile.in
+index 8319181b47278770c2449c23b5dfac043a4ead5d..743c546418da854330df420ed153a67b5d3f8e7c 100644
+--- a/gas/Makefile.in
++++ b/gas/Makefile.in
+@@ -801,12 +801,13 @@ OBJ_FORMAT_HFILES = \
+ 
+ 
+ # Emulation header files in config
+ TARG_ENV_HFILES = \
+ 	config/te-386bsd.h \
+ 	config/te-aix5.h \
++	config/te-amigaos.h \
+ 	config/te-armeabi.h \
+ 	config/te-armfbsdeabi.h \
+ 	config/te-armfbsdvfp.h \
+ 	config/te-armlinuxeabi.h \
+ 	config/te-csky_abiv1.h \
+ 	config/te-csky_abiv1_linux.h \
+diff --git a/gas/config/tc-ppc.c b/gas/config/tc-ppc.c
+index 9450fa74de1b61542c9a18babf8c8f621ef904fb..cb5da74ab478d0da04fa562f4a96a351e862c35a 100644
+--- a/gas/config/tc-ppc.c
++++ b/gas/config/tc-ppc.c
+@@ -1544,20 +1544,24 @@ ppc_target_format (void)
+ #  else
+   return (ppc_obj64 ? "aixcoff64-rs6000" : "aixcoff-rs6000");
+ #  endif
+ #endif
+ #endif
+ #ifdef OBJ_ELF
+-# ifdef TE_FreeBSD
++# if TE_AMIGAOS
++  return "elf32-powerpc-amigaos";
++# else
++#  ifdef TE_FreeBSD
+   return (ppc_obj64 ? "elf64-powerpc-freebsd" : "elf32-powerpc-freebsd");
+-# elif defined (TE_VXWORKS)
++#  elif defined (TE_VXWORKS)
+   return "elf32-powerpc-vxworks";
+-# else
++#  else
+   return (target_big_endian
+ 	  ? (ppc_obj64 ? "elf64-powerpc" : "elf32-powerpc")
+ 	  : (ppc_obj64 ? "elf64-powerpcle" : "elf32-powerpcle"));
++#  endif
+ # endif
+ #endif
+ }
+ 
+ /* Validate one entry in powerpc_opcodes[] or vle_opcodes[].
+    Return TRUE if there's a problem, otherwise FALSE.  */
+@@ -2108,12 +2112,16 @@ ppc_elf_suffix (char **str_p, expressionS *exp_p)
+ 
+ #define MAP(str, reloc)   { str, sizeof (str) - 1, 1, 1, reloc }
+ #define MAP32(str, reloc) { str, sizeof (str) - 1, 1, 0, reloc }
+ #define MAP64(str, reloc) { str, sizeof (str) - 1, 0, 1, reloc }
+ 
+   static const struct map_bfd mapping[] = {
++    MAP ("brel",		BFD_RELOC_PPC_AMIGAOS_BREL),
++    MAP ("brel@l",		BFD_RELOC_PPC_AMIGAOS_BREL_LO),
++    MAP ("brel@h",		BFD_RELOC_PPC_AMIGAOS_BREL_HI),
++    MAP ("brel@ha",		BFD_RELOC_PPC_AMIGAOS_BREL_HA),	
+     MAP ("l",			BFD_RELOC_LO16),
+     MAP ("h",			BFD_RELOC_HI16),
+     MAP ("ha",			BFD_RELOC_HI16_S),
+     MAP ("brtaken",		BFD_RELOC_PPC_B16_BRTAKEN),
+     MAP ("brntaken",		BFD_RELOC_PPC_B16_BRNTAKEN),
+     MAP ("got",			BFD_RELOC_16_GOTOFF),
+@@ -3108,12 +3116,15 @@ fixup_size (bfd_reloc_code_real_type reloc, bool *pc_relative)
+     case BFD_RELOC_PPC_TOC16_HI:
+     case BFD_RELOC_PPC_TOC16_LO:
+     case BFD_RELOC_PPC_TPREL16:
+     case BFD_RELOC_PPC_TPREL16_HA:
+     case BFD_RELOC_PPC_TPREL16_HI:
+     case BFD_RELOC_PPC_TPREL16_LO:
++	case BFD_RELOC_PPC_AMIGAOS_BREL_LO:
++	case BFD_RELOC_PPC_AMIGAOS_BREL_HI:
++	case BFD_RELOC_PPC_AMIGAOS_BREL_HA:
+       size = 2;
+       break;
+ 
+     case BFD_RELOC_16_PCREL:
+     case BFD_RELOC_HI16_PCREL:
+     case BFD_RELOC_HI16_S_PCREL:
+@@ -3172,12 +3183,13 @@ fixup_size (bfd_reloc_code_real_type reloc, bool *pc_relative)
+     case BFD_RELOC_PPC_VLE_SDAREL_HI16A:
+     case BFD_RELOC_PPC_VLE_SDAREL_HI16D:
+     case BFD_RELOC_PPC_VLE_SDAREL_LO16A:
+     case BFD_RELOC_PPC_VLE_SDAREL_LO16D:
+     case BFD_RELOC_PPC64_TLS_PCREL:
+     case BFD_RELOC_RVA:
++	case BFD_RELOC_PPC_AMIGAOS_BREL:
+       size = 4;
+       break;
+ 
+     case BFD_RELOC_24_PLT_PCREL:
+     case BFD_RELOC_32_PCREL:
+     case BFD_RELOC_32_PLT_PCREL:
+@@ -7504,12 +7516,20 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
+ 
+ 	case BFD_RELOC_VTABLE_ENTRY:
+ 	  fixP->fx_done = 0;
+ 	  break;
+ 
+ #ifdef OBJ_ELF
++	case BFD_RELOC_PPC_AMIGAOS_BREL:
++	case BFD_RELOC_PPC_AMIGAOS_BREL_HI:
++	case BFD_RELOC_PPC_AMIGAOS_BREL_LO:
++	case BFD_RELOC_PPC_AMIGAOS_BREL_HA:
++	  md_number_to_chars (fixP->fx_frag->fr_literal + fixP->fx_where,
++			      value, 2);
++	  break;
++
+ 	  /* These can appear with @l etc. in data.  */
+ 	case BFD_RELOC_LO16:
+ 	case BFD_RELOC_LO16_PCREL:
+ 	case BFD_RELOC_HI16:
+ 	case BFD_RELOC_HI16_PCREL:
+ 	case BFD_RELOC_HI16_S:
+diff --git a/gas/config/te-amigaos.h b/gas/config/te-amigaos.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..56f213ddd38b0475d86b0d5333aad1060f7f98f3
+--- /dev/null
++++ b/gas/config/te-amigaos.h
+@@ -0,0 +1,14 @@
++/*
++ * te-amigaos.h -- Amiga target environment declarations.
++ */
++
++#define TE_AMIGAOS 1
++
++#define LOCAL_LABELS_DOLLAR 1
++#define LOCAL_LABELS_FB 1
++
++#ifdef OBJ_HEADER
++#include OBJ_HEADER
++#else
++#include "obj-format.h"
++#endif
+\ No newline at end of file
+diff --git a/gas/configure.tgt b/gas/configure.tgt
+index 765ba73633df54b51eec560002cc234ce98205c3..6b3d33c96e1eab00caab1a78d0e43798f5a64c31 100644
+--- a/gas/configure.tgt
++++ b/gas/configure.tgt
+@@ -358,12 +358,13 @@ case ${generic_target} in
+   ppc-*-aix5.[01])			fmt=coff em=aix5 ;;
+   ppc-*-aix[5-9].*)			fmt=coff em=aix5 ;;
+   ppc-*-aix*)				fmt=coff em=aix ;;
+   ppc-*-beos*)				fmt=coff ;;
+   ppc-*-*n*bsd* | ppc-*-elf*)		fmt=elf ;;
+   ppc-*-eabi* | ppc-*-sysv4*)		fmt=elf ;;
++  ppc-*-amigaos*)         	fmt=elf em=amigaos;;
+   ppc-*-haiku*)				fmt=elf em=haiku ;;
+   ppc-*-linux-*)			fmt=elf em=linux ;;
+   ppc-*-solaris*)			fmt=elf em=solaris ;;
+   ppc-*-macos*)				fmt=coff em=macos ;;
+   ppc-*-nto*)				fmt=elf ;;
+   ppc-*-kaos*)				fmt=elf ;;
+diff --git a/gas/doc/.dirstamp b/gas/doc/.dirstamp
+deleted file mode 100644
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
+diff --git a/gas/po/POTFILES.in b/gas/po/POTFILES.in
+index 8f2efdb8d556578d94a98c68b5f4ddfc36bea36c..b0d625ffa80e23f05a8ae3f6d6064c8ab4d7aa17 100644
+--- a/gas/po/POTFILES.in
++++ b/gas/po/POTFILES.in
+@@ -182,12 +182,13 @@ config/tc-xtensa.h
+ config/tc-z80.c
+ config/tc-z80.h
+ config/tc-z8k.c
+ config/tc-z8k.h
+ config/te-386bsd.h
+ config/te-aix5.h
++config/te-amigaos.h
+ config/te-armeabi.h
+ config/te-armfbsdeabi.h
+ config/te-armfbsdvfp.h
+ config/te-armlinuxeabi.h
+ config/te-csky_abiv1.h
+ config/te-csky_abiv1_linux.h
+diff --git a/gdb/Makefile.in b/gdb/Makefile.in
+index 9bc81cda03f5600b6fe7996741abdc5cffce04ef..dfa148e582bf6822b02762f1b563ebdad984c921 100644
+--- a/gdb/Makefile.in
++++ b/gdb/Makefile.in
+@@ -1750,12 +1750,14 @@ ALLDEPFILES = \
+ 	nios2-linux-tdep.c \
+ 	nios2-tdep.c \
+ 	obsd-nat.c \
+ 	obsd-tdep.c \
+ 	or1k-linux-nat.c \
+ 	posix-hdep.c \
++	ppc-amigaos-nat.c \
++	ppc-amigaos-tdep.c \
+ 	ppc-fbsd-nat.c \
+ 	ppc-fbsd-tdep.c \
+ 	ppc-linux-nat.c \
+ 	ppc-linux-tdep.c \
+ 	ppc-netbsd-nat.c \
+ 	ppc-netbsd-tdep.c \
+diff --git a/gdb/auto-load.c b/gdb/auto-load.c
+index 198bb073a1baa3ecdcc5e87d4b6f81a8e6d1382f..4a577f88219f1569441d78551919c3dde6beb9ce 100644
+--- a/gdb/auto-load.c
++++ b/gdb/auto-load.c
+@@ -40,12 +40,17 @@
+ #include "extension.h"
+ #include "gdb/section-scripts.h"
+ #include <algorithm>
+ #include "gdbsupport/pathstuff.h"
+ #include "cli/cli-style.h"
+ 
++#ifdef __amigaos4__
++#define AUTO_LOAD_DIR "$debugdir;$datadir/auto-load"
++#define AUTO_LOAD_SAFE_PATH AUTO_LOAD_DIR
++#endif
++
+ /* The section to look in for auto-loaded scripts (in file formats that
+    support sections).
+    Each entry in this section is a record that begins with a leading byte
+    identifying the record type.
+    At the moment we only support one record type: A leading byte of 1,
+    followed by the path of a python script to load.  */
+diff --git a/gdb/configure.host b/gdb/configure.host
+index da71675b201b11ea5236c1818e01ab37423585c0..90512728e550a5b6650175acd777e181edbee21d 100644
+--- a/gdb/configure.host
++++ b/gdb/configure.host
+@@ -134,12 +134,13 @@ mips*-*-freebsd*)	gdb_host=fbsd ;;
+ mips64*-*-openbsd*)	gdb_host=obsd64 ;;
+ 
+ or1k-*-linux*)		gdb_host=linux ;;
+ 
+ powerpc-*-aix* | rs6000-*-* | powerpc64-*-aix*)
+ 			gdb_host=aix ;;
++powerpc-*-amigaos*) gdb_host=amigaos ;;
+ powerpc*-*-freebsd*)	gdb_host=fbsd ;;
+ powerpc-*-netbsdaout* | powerpc-*-knetbsd*-gnu)
+ 			gdb_host=nbsd ;;
+ powerpc-*-openbsd*)	gdb_host=obsd ;;
+ 
+ powerpc64*-*-linux*)	gdb_host=ppc64-linux ;;
+diff --git a/gdb/configure.nat b/gdb/configure.nat
+index d219d6a960c396056571cc9af2e07c47930f6507..5a0b27b20977fc3f39cc6c41ef8d21cae7cff1b8 100644
+--- a/gdb/configure.nat
++++ b/gdb/configure.nat
+@@ -109,12 +109,20 @@ case ${gdb_host} in
+ 		# should be passed.  We have no idea who our current
+ 		# compiler is though, so we skip it.
+ 		# MH_CFLAGS='-bnodelcsect'
+ 		;;
+ 	esac
+ 	;;
++    amigaos)
++	case ${gdb_host_cpu} in
++	    powerpc)
++		# Host: Big-endian PowerPC running AmigaOS
++		NATDEPFILES="${NATDEPFILES} ppc-amigaos-nat.o"
++		;;
++	esac
++	;;
+     alpha-linux)
+ 	case ${gdb_host_cpu} in
+ 	    alpha)
+ 		# Host: Little-endian Alpha running Linux
+ 		NATDEPFILES="${NATDEPFILES} linux-nat-trad.o alpha-linux-nat.o"
+ 		# doublest.c currently assumes some properties of FP arithmetic
+diff --git a/gdb/configure.tgt b/gdb/configure.tgt
+index e84e222ba0d9c9610efe719abd5eecb5f760e3eb..fbacf9530c93918bbd3dd29d5405aa3eb3636adf 100644
+--- a/gdb/configure.tgt
++++ b/gdb/configure.tgt
+@@ -504,12 +504,18 @@ powerpc*-*-linux*)
+ 			ppc64-tdep.o solib-svr4.o \
+ 			glibc-tdep.o symfile-mem.o linux-tdep.o \
+ 			ravenscar-thread.o ppc-ravenscar-thread.o \
+ 			linux-record.o \
+ 			arch/ppc-linux-common.o"
+ 	;;
++powerpc-*-amigaos*)
++	# Target: PowerPC running AmigaOS
++	gdb_target_obs="rs6000-tdep.o ppc-sysv-tdep.o \
++			ppc-amigaos-tdep.o \
++			ravenscar-thread.o ppc-ravenscar-thread.o"
++	;;	
+ powerpc-*-lynx*178)
+ 	# Target: PowerPC running Lynx178.
+ 	gdb_target_obs="rs6000-tdep.o rs6000-lynx178-tdep.o \
+ 			xcoffread.o ppc-sysv-tdep.o \
+ 			ravenscar-thread.o ppc-ravenscar-thread.o"
+ 	;;
+@@ -796,12 +802,13 @@ m68*-*-openbsd* | m88*-*-openbsd* | vax-*-openbsd*) ;;
+ *-*-*-gnu*)	;; # prevent non-GNU kernels to match the Hurd rule below
+ *-*-gnu*)	gdb_osabi=GDB_OSABI_HURD ;;
+ *-*-mingw32ce*)	gdb_osabi=GDB_OSABI_WINCE ;;
+ *-*-mingw*)	gdb_osabi=GDB_OSABI_WINDOWS ;;
+ *-*-cygwin*)	gdb_osabi=GDB_OSABI_CYGWIN ;;
+ *-*-dicos*)	gdb_osabi=GDB_OSABI_DICOS ;;
++powerpc-*-amigaos*)	gdb_osabi=GDB_OSABI_AMIGAOS ;;
+ powerpc-*-aix* | rs6000-*-* | powerpc64-*-aix*)
+                 gdb_osabi=GDB_OSABI_AIX ;;
+ esac
+ 
+ # Check whether this target supports gcore.
+ # Such target has to call set_gdbarch_find_memory_regions.
+diff --git a/gdb/defs.h b/gdb/defs.h
+index 4771d02a92a4572265a9565afb1ef903d0d699b4..b73f1a823f8502ea1649335426f63c943912757f 100644
+--- a/gdb/defs.h
++++ b/gdb/defs.h
+@@ -31,12 +31,15 @@
+ #undef PACKAGE_NAME
+ #undef PACKAGE_VERSION
+ #undef PACKAGE_STRING
+ #undef PACKAGE_TARNAME
+ 
+ #include <config.h>
++#if defined(__amigaos4__) 
++# undef HAVE_SOCKETPAIR
++#endif
+ #include "bfd.h"
+ 
+ #include <sys/types.h>
+ #include <limits.h>
+ 
+ /* The libdecnumber library, on which GDB depends, includes a header file
+diff --git a/gdb/dwarf2/read.c b/gdb/dwarf2/read.c
+index b33ea6847e0e8634dcf977ebf473679cf83c8871..fe903d83177ff4004691796482f78ac9264c2c2d 100644
+--- a/gdb/dwarf2/read.c
++++ b/gdb/dwarf2/read.c
+@@ -2855,32 +2855,32 @@ dw2_get_file_names (dwarf2_per_cu_data *this_cu,
+ 
+ /* A helper for the "quick" functions which computes and caches the
+    real path for a given file name from the line table.  */
+ 
+ static const char *
+ dw2_get_real_path (dwarf2_per_objfile *per_objfile,
+-		   struct quick_file_names *qfn, int index)
++		   struct quick_file_names *qfn, int i)
+ {
+   if (qfn->real_names == NULL)
+     qfn->real_names = OBSTACK_CALLOC (&per_objfile->per_bfd->obstack,
+ 				      qfn->num_file_names, const char *);
+ 
+-  if (qfn->real_names[index] == NULL)
++  if (qfn->real_names[i] == NULL)
+     {
+       const char *dirname = nullptr;
+ 
+-      if (!IS_ABSOLUTE_PATH (qfn->file_names[index]))
++      if (!IS_ABSOLUTE_PATH (qfn->file_names[i]))
+ 	dirname = qfn->comp_dir;
+ 
+       gdb::unique_xmalloc_ptr<char> fullname;
+-      fullname = find_source_or_rewrite (qfn->file_names[index], dirname);
++      fullname = find_source_or_rewrite (qfn->file_names[i], dirname);
+ 
+-      qfn->real_names[index] = fullname.release ();
++      qfn->real_names[i] = fullname.release ();
+     }
+ 
+-  return qfn->real_names[index];
++  return qfn->real_names[i];
+ }
+ 
+ struct symtab *
+ dwarf2_base_index_functions::find_last_source_symtab (struct objfile *objfile)
+ {
+   dwarf2_per_objfile *per_objfile = get_dwarf2_per_objfile (objfile);
+@@ -11168,19 +11168,19 @@ try_open_dwop_file (dwarf2_per_objfile *per_objfile,
+ 
+   gdb::unique_xmalloc_ptr<char> search_path_holder;
+   if (search_cwd)
+     {
+       if (!debug_file_directory.empty ())
+ 	{
+-	  search_path_holder.reset (concat (".", dirname_separator_string,
++	  search_path_holder.reset (concat ("", dirname_separator_string,
+ 					    debug_file_directory.c_str (),
+ 					    (char *) NULL));
+ 	  search_path = search_path_holder.get ();
+ 	}
+       else
+-	search_path = ".";
++	search_path = "";
+     }
+   else
+     search_path = debug_file_directory.c_str ();
+ 
+   /* Add the path for the executable binary to the list of search paths.  */
+   std::string objfile_dir = ldirname (objfile_name (per_objfile->objfile));
+diff --git a/gdb/filesystem.c b/gdb/filesystem.c
+index f9aaeed7b406b28e0ac7125e9dab7d833fc948b2..f768d99413f936bbe409819c6d1653b69f2ac0e3 100644
+--- a/gdb/filesystem.c
++++ b/gdb/filesystem.c
+@@ -22,40 +22,46 @@
+ #include "gdbarch.h"
+ #include "gdbcmd.h"
+ 
+ const char file_system_kind_auto[] = "auto";
+ const char file_system_kind_unix[] = "unix";
+ const char file_system_kind_dos_based[] = "dos-based";
++const char file_system_kind_amigaos_based[] = "amiga-based";
+ const char *const target_file_system_kinds[] =
+ {
+   file_system_kind_auto,
+   file_system_kind_unix,
+   file_system_kind_dos_based,
++  file_system_kind_amigaos_based,
+   NULL
+ };
+ const char *target_file_system_kind = file_system_kind_auto;
+ 
+ const char *
+ effective_target_file_system_kind (void)
+ {
+   if (target_file_system_kind == file_system_kind_auto)
+     {
+       if (gdbarch_has_dos_based_file_system (target_gdbarch ()))
+ 	return file_system_kind_dos_based;
++	  else if (gdbarch_has_amiga_based_file_system (target_gdbarch ()))
++	return file_system_kind_amigaos_based;
+       else
+ 	return file_system_kind_unix;
+     }
+   else
+     return target_file_system_kind;
+ }
+ 
+ const char *
+ target_lbasename (const char *kind, const char *name)
+ {
+   if (kind == file_system_kind_dos_based)
+     return dos_lbasename (name);
++  else if (kind == file_system_kind_amigaos_based)
++    return amiga_lbasename (name);
+   else
+     return unix_lbasename (name);
+ }
+ 
+ static void
+ show_target_file_system_kind_command (struct ui_file *file,
+@@ -89,13 +95,16 @@ Show assumed file system kind for target reported file names."),
+ 			_("\
+ If `unix', target file names (e.g., loaded shared library file names)\n\
+ starting the forward slash (`/') character are considered absolute,\n\
+ and the directory separator character is the forward slash (`/').  If\n\
+ `dos-based', target file names starting with a drive letter followed\n\
+ by a colon (e.g., `c:'), are also considered absolute, and the\n\
+-backslash (`\\') is also considered a directory separator.  Set to\n\
++backslash (`\\') is also considered a directory separator. If\n\
++`amiga-based', target file names starting with a drive name followed\n\
++by a colon (e.g., `sys:'), are also considered absolute, and the\n\
++directory separator character is the forward slash (`/'). Set to\n\
+ `auto' (which is the default), to let GDB decide, based on its\n\
+ knowledge of the target operating system."),
+ 			NULL, /* setfunc */
+ 			show_target_file_system_kind_command,
+ 			&setlist, &showlist);
+ }
+diff --git a/gdb/filesystem.h b/gdb/filesystem.h
+index 2485f6b4e359a306dc38d9c28440f9be0219be94..7e2994b818312c12971e2321b95b25dbecfd964d 100644
+--- a/gdb/filesystem.h
++++ b/gdb/filesystem.h
+@@ -19,34 +19,38 @@
+ #ifndef FILESYSTEM_H
+ #define FILESYSTEM_H
+ 
+ extern const char file_system_kind_auto[];
+ extern const char file_system_kind_unix[];
+ extern const char file_system_kind_dos_based[];
++extern const char file_system_kind_amigaos_based[];
+ 
+ extern const char *target_file_system_kind;
+ 
+ /* Same as IS_DIR_SEPARATOR but with file system kind KIND's
+    semantics, instead of host semantics.  */
+ 
+ #define IS_TARGET_DIR_SEPARATOR(kind, c)				\
+   (((kind) == file_system_kind_dos_based) ? IS_DOS_DIR_SEPARATOR (c) \
++   : ((kind) == file_system_kind_amigaos_based) ? IS_AMIGOS_DIR_SEPARATOR(c) \
+    : IS_UNIX_DIR_SEPARATOR (c))
+ 
+ /* Same as IS_ABSOLUTE_PATH but with file system kind KIND's
+    semantics, instead of host semantics.  */
+ 
+ #define IS_TARGET_ABSOLUTE_PATH(kind, p)				\
+   (((kind) == file_system_kind_dos_based) ? IS_DOS_ABSOLUTE_PATH (p) \
++   : ((kind) == file_system_kind_amigaos_based) ? IS_AMIGOS_ABSOLUTE_PATH(p) \
+    : IS_UNIX_ABSOLUTE_PATH (p))
+ 
+ /* Same as HAS_DRIVE_SPEC but with file system kind KIND's semantics,
+    instead of host semantics.  */
+ 
+ #define HAS_TARGET_DRIVE_SPEC(kind, p)					\
+   (((kind) == file_system_kind_dos_based) ? HAS_DOS_DRIVE_SPEC (p) \
++   : ((kind) == file_system_kind_amigaos_based) ? HAS_AMIGOS_DRIVE_SPEC(p) \
+    : 0)
+ 
+ /* Same as lbasename, but with file system kind KIND's semantics,
+    instead of host semantics.  */
+ extern const char *target_lbasename (const char *kind, const char *name);
+ 
+diff --git a/gdb/gdbarch-gen.h b/gdb/gdbarch-gen.h
+index 5918de517ef29f74c2685431f2c1c2ed59614f59..fdcccd706869fff3b9b94f28688704219ba39f76 100644
+--- a/gdb/gdbarch-gen.h
++++ b/gdb/gdbarch-gen.h
+@@ -1482,12 +1482,19 @@ extern void set_gdbarch_solib_symbols_extension (struct gdbarch *gdbarch, const
+    is, absolute paths include a drive name, and the backslash is
+    considered a directory separator. */
+ 
+ extern int gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch);
+ extern void set_gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch, int has_dos_based_file_system);
+ 
++/* If true, the target OS has AMIGA-based file system semantics.  That
++   is, absolute paths include a drive name, and the slash is
++   considered a directory separator. */
++
++extern int gdbarch_has_amiga_based_file_system (struct gdbarch *gdbarch);
++extern void set_gdbarch_has_amiga_based_file_system (struct gdbarch *gdbarch, int has_dos_based_file_system);
++
+ /* Generate bytecodes to collect the return address in a frame.
+    Since the bytecodes run on the target, possibly with GDB not even
+    connected, the full unwinding machinery is not available, and
+    typically this function will issue bytecodes for one or more likely
+    places that the return address may be found. */
+ 
+diff --git a/gdb/gdbarch.c b/gdb/gdbarch.c
+index 2d4b1164e2051143efc455c044443f20f527883b..9dffb4931c458f3d3b05771ac017d151bef9e43c 100644
+--- a/gdb/gdbarch.c
++++ b/gdb/gdbarch.c
+@@ -229,12 +229,13 @@ struct gdbarch
+   gdbarch_fast_tracepoint_valid_at_ftype *fast_tracepoint_valid_at = default_fast_tracepoint_valid_at;
+   gdbarch_guess_tracepoint_registers_ftype *guess_tracepoint_registers = default_guess_tracepoint_registers;
+   gdbarch_auto_charset_ftype *auto_charset = default_auto_charset;
+   gdbarch_auto_wide_charset_ftype *auto_wide_charset = default_auto_wide_charset;
+   const char * solib_symbols_extension = 0;
+   int has_dos_based_file_system = 0;
++  int has_amiga_based_file_system = 0;
+   gdbarch_gen_return_address_ftype *gen_return_address = default_gen_return_address;
+   gdbarch_info_proc_ftype *info_proc = nullptr;
+   gdbarch_core_info_proc_ftype *core_info_proc = nullptr;
+   gdbarch_iterate_over_objfiles_in_search_order_ftype *iterate_over_objfiles_in_search_order = default_iterate_over_objfiles_in_search_order;
+   struct ravenscar_arch_ops * ravenscar_ops = NULL;
+   gdbarch_insn_is_call_ftype *insn_is_call = default_insn_is_call;
+@@ -1271,12 +1272,15 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
+   gdb_printf (file,
+ 	      "gdbarch_dump: solib_symbols_extension = %s\n",
+ 	      pstring (gdbarch->solib_symbols_extension));
+   gdb_printf (file,
+ 	      "gdbarch_dump: has_dos_based_file_system = %s\n",
+ 	      plongest (gdbarch->has_dos_based_file_system));
++  gdb_printf (file,
++	      "gdbarch_dump: has_amiga_based_file_system = %s\n",
++	      plongest (gdbarch->has_amiga_based_file_system));
+   gdb_printf (file,
+ 	      "gdbarch_dump: gen_return_address = <%s>\n",
+ 	      host_address_to_string (gdbarch->gen_return_address));
+   gdb_printf (file,
+ 	      "gdbarch_dump: gdbarch_info_proc_p() = %d\n",
+ 	      gdbarch_info_proc_p (gdbarch));
+@@ -4898,12 +4902,34 @@ gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch)
+ 
+ void
+ set_gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch,
+ 				       int has_dos_based_file_system)
+ {
+   gdbarch->has_dos_based_file_system = has_dos_based_file_system;
++
++  if( has_dos_based_file_system )
++	set_gdbarch_has_amiga_based_file_system( gdbarch,0 );
++}
++
++int gdbarch_has_amiga_based_file_system (struct gdbarch *gdbarch)
++{
++  gdb_assert (gdbarch != NULL);
++  /* Skip verify of has_amiga_based_file_system, invalid_p == 0 */
++  if (gdbarch_debug >= 2)
++    gdb_printf (gdb_stdlog, "gdbarch_has_amiga_based_file_system called\n");
++  return gdbarch->has_amiga_based_file_system;
++}
++
++void
++set_gdbarch_has_amiga_based_file_system (struct gdbarch *gdbarch,
++				       int has_amiga_based_file_system)
++{
++  gdbarch->has_amiga_based_file_system = has_amiga_based_file_system;
++
++  if( has_amiga_based_file_system )
++	set_gdbarch_has_dos_based_file_system( gdbarch,0 );
+ }
+ 
+ void
+ gdbarch_gen_return_address (struct gdbarch *gdbarch, struct agent_expr *ax, struct axs_value *value, CORE_ADDR scope)
+ {
+   gdb_assert (gdbarch != NULL);
+diff --git a/gdb/osabi.c b/gdb/osabi.c
+index 57e2df6b25c1b515b9a5b28ed67670203016136e..2eb227d2fc15f2669167f84f646c861115f44540 100644
+--- a/gdb/osabi.c
++++ b/gdb/osabi.c
+@@ -79,12 +79,13 @@ static const struct osabi_names gdb_osabi_names[] =
+   { "Darwin", NULL },
+   { "OpenVMS", NULL },
+   { "LynxOS178", NULL },
+   { "Newlib", NULL },
+   { "SDE", NULL },
+   { "PikeOS", NULL },
++  { "AmigaOS", NULL },
+ 
+   { "<invalid>", NULL }
+ };
+ 
+ const char *
+ gdbarch_osabi_name (enum gdb_osabi osabi)
+@@ -608,12 +609,32 @@ generic_elf_osabi_sniffer (bfd *abfd)
+ 	 header to "brand" their ELF binaries in FreeBSD 3.x.  */
+       if (memcmp (&elf_elfheader (abfd)->e_ident[8],
+ 		  "FreeBSD", sizeof ("FreeBSD")) == 0)
+ 	osabi = GDB_OSABI_FREEBSD;
+     }
+ 
++  if (osabi == GDB_OSABI_UNKNOWN)
++	{
++	  /* AmigaOS has a symbol __amigaos4__ which marks the ELF */
++	  if (bfd_get_symtab_upper_bound (abfd) > 0 )
++	  {
++		asymbol **symbol_table = (asymbol **)xmalloc (bfd_get_symtab_upper_bound (abfd));
++		if (symbol_table)
++		{
++		  for (int i = 0; i < bfd_canonicalize_symtab(abfd, symbol_table); i++) {
++        	if (strcmp("__amigaos4__", bfd_asymbol_name(symbol_table[i])) == 0) {
++              osabi = GDB_OSABI_AMIGAOS;
++              break;
++			}
++          }
++		  
++		  xfree (symbol_table);
++		}
++	  }
++	}
++
+   return osabi;
+ }
+ 
+ static void
+ set_osabi (const char *args, int from_tty, struct cmd_list_element *c)
+ {
+diff --git a/gdb/osabi.h b/gdb/osabi.h
+index 478a418aac235b30e29093e399b82fdabcacdc56..58750743b3942402f4d6997d9e24e733ef26c5db 100644
+--- a/gdb/osabi.h
++++ b/gdb/osabi.h
+@@ -43,12 +43,13 @@ enum gdb_osabi
+   GDB_OSABI_DARWIN,
+   GDB_OSABI_OPENVMS,
+   GDB_OSABI_LYNXOS178,
+   GDB_OSABI_NEWLIB,
+   GDB_OSABI_SDE,
+   GDB_OSABI_PIKEOS,
++  GDB_OSABI_AMIGAOS,
+ 
+   GDB_OSABI_INVALID		/* keep this last */
+ };
+ 
+ /* Register an OS ABI sniffer.  Each arch/flavour may have more than
+    one sniffer.  This is used to e.g. differentiate one OS's a.out from
+diff --git a/gdb/ppc-amigaos-nat.c b/gdb/ppc-amigaos-nat.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..576cc0ee91d485ac3cd1e3e9a47f8e2b058f8598
+--- /dev/null
++++ b/gdb/ppc-amigaos-nat.c
+@@ -0,0 +1,1122 @@
++
++/* Native-dependent code for PowerPC's running AmigaOS, for GDB.
++   Copyright (C) 2013-2024 Free Software Foundation, Inc.
++
++   This file is part of GDB.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++
++#include "ppc-amigaos-nat.h"
++#include "defs.h"
++#include "gdbcore.h"
++#include "objfiles.h"
++#include "symtab.h"
++#include "exec.h"
++#include "inferior.h"
++#include "regset.h"
++#include "regcache.h"
++#include "inf-child.h"
++#include "ppc-tdep.h"
++#include "gdbsupport/ptid.h"
++#include "gdbsupport/gdb_wait.h"
++
++#include <proto/dos.h>
++#include <proto/exec.h>
++#include <proto/elf.h>
++
++#include <exec/exec.h>
++#include <exec/execbase.h>
++#include <exec/exectags.h>
++#include <exec/tasks.h>
++#include <exec/interrupts.h>
++
++#include <dos/dos.h>
++#include <dos/dostags.h>
++#include <dos/dosextens.h>
++
++
++struct regcache_map_entry ppc_amigaos_vrregmap[] =
++{
++	{ 1,	PPC_VSCR_REGNUM,	16 },
++	{ 32,	PPC_VR0_REGNUM,		16 },
++	{ 1,	PPC_VRSAVE_REGNUM,	 4 },
++	{ 0 }
++};
++
++const struct regset ppc_amigaos_vrregset = 
++{
++	ppc_amigaos_vrregmap,
++	regcache_supply_regset,
++	regcache_collect_regset
++};
++
++// From clib4 , bucket list to clear up 
++extern struct Library *ElfBase;
++extern struct ElfIFace *IElf;
++
++struct DebugIFace *IDebug = NULL;
++struct MMUIFace *IMMU = NULL;
++
++struct amigaos_debug_hook_data
++{
++    struct Process		*current_process;
++    struct Task			*debugger_task;
++    struct MsgPort		*debugger_port;
++};
++
++/* The type of Message sent by IDebug->AddDebugHook () */
++struct KernelDebugMessage
++{
++  uint32 type;
++  union
++  {
++    struct ExceptionContext *context;
++    struct Library *library;
++  } message;
++};
++
++static VOID amigaos_debug_suspend ( struct Hook *amigaos_debug_hook );
++static VOID amigaos_debug_kill ( int32 return_code,struct debugger_message *dmsg );
++static ULONG amigaos_debug_callback (struct Hook *, struct Task *, struct KernelDebugMessage *);
++static int trap_to_signal(struct ExceptionContext *context, uint32 flags);
++void ppc_amigaos_relocate_sections (const char *exec_file,BPTR exec_seglist);
++
++#define MAX_DEBUG_MESSAGES 20
++
++class ppc_amigaos_nat_target : public inf_child_target
++{
++private:
++
++	struct Hook *					amigaos_debug_hook;
++	void *							amigaos_debug_messages_storage = 0;
++	struct List	*					amigaos_debug_messages_list;
++
++public:
++
++	struct amigaos_debug_hook_data	amigaos_debug_hook_data;
++
++	/**
++	 * Get an empty message and initialize it.
++	 * @return
++	 */
++	struct debugger_message *
++	alloc_message ( struct Process *process )
++	{
++		struct debugger_message *message = (struct debugger_message *)IExec->RemHead(amigaos_debug_messages_list);
++
++		message->msg.mn_Node.ln_Type = NT_MESSAGE;
++		message->msg.mn_Node.ln_Name = NULL;
++		message->msg.mn_ReplyPort = NULL;
++		message->msg.mn_Length = sizeof(struct debugger_message);
++		message->process = process;
++
++		return message;
++	}
++
++	/**
++	 * Return a message to the pool. Note that we disable here so that we're not
++	 * interrupted. Can't use semaphores because get_msg_packet is called during an
++	 * exception.
++	 *
++	 * @param msg
++	 */
++	void
++	free_message( struct debugger_message *message )
++	{
++		if (message)
++		{
++			IExec->AddTail(amigaos_debug_messages_list, (struct Node *)message);
++		}
++	}
++	
++	ppc_amigaos_nat_target ();
++	~ppc_amigaos_nat_target () override;
++	
++	ptid_t wait (ptid_t, struct target_waitstatus *, target_wait_flags) override;
++
++	void fetch_registers (struct regcache *, int) override;	
++	void store_registers (struct regcache *, int) override;
++
++    enum target_xfer_status xfer_partial (enum target_object object,const char *annex,gdb_byte *readbuf,const gdb_byte *writebuf,ULONGEST offset, ULONGEST len,ULONGEST *xfered_len) override;
++
++	void attach (const char *, int) override;
++
++	bool attach_no_wait () override
++	{
++		return true;
++	}
++
++	/*
++	void post_attach (int pid) override
++	{
++		printf( "[GDB] %s (pid: %d)\n",__func__,pid );
++	}
++	
++	void detach (inferior *inf, int from_tty) override
++	{
++		printf( "[GDB] %s ( inferior: %p, from_tty: %d )\n",__func__,inf,from_tty );
++	}
++	*/
++
++	void create_inferior (const char *, const std::string &,char **, int) override;
++
++	/*
++	void mourn_inferior() override
++	{
++		printf( "[GDB] %s ()\n",__func__ );
++	}
++	*/
++	
++	// TODO: ? void prepare_to_store (regcache *regs) override;
++	// TODO: ? int async_wait_fd () override
++	
++	void resume (ptid_t ptid,int step,enum gdb_signal signal) override
++	{
++		struct Task *task = (struct Task *)(ptid == minus_one_ptid ? inferior_ptid.pid () : ptid.pid ());
++		
++		IExec->DebugPrintF("[GDB] %s ( step: %d, gdb_signal: %d, Task: %p  )\n",__func__,step,signal,task);
++
++		IExec->RestartTask (task,0);
++	}
++
++	void kill () override
++	{
++		struct inferior *inf = current_inferior ();
++
++		if (inferior_ptid == null_ptid)
++			return;
++
++		gdb_assert (inf != NULL);
++
++		struct Task *task = (struct Task *)inf->pid;
++
++		IExec->DebugPrintF( "[GDB] %s ( task: %p )\n",__func__,task );
++
++		if( task ) 
++		{
++			/* Clear the debug hook (necessary to avoid the shell reusing it) */ 
++			IDebug->AddDebugHook ( task,NULL );
++
++			// ML: According to the dos Autodoc DeleteTask/RemTask shouldn't be used on Process, but no other API avaiblle
++			IExec->DeleteTask ( task );		
++		}
++
++		target_mourn_inferior(inferior_ptid);		
++	}
++	
++	/*
++	std::string pid_to_str (ptid_t ptid) override
++	{
++		IExec->DebugPrintF ("[GDB] %s Entering\n",__func__);
++		
++		/ *
++		if( ptid != minus_one_ptid )
++		{
++			struct Task *task = (struct Task *)ptid.pid();
++
++			IExec->Forbid();
++			// ML: Should actually check that Task address is still a valid Task!?
++			std::string str = string_printf (_("Task '%s' @ %s"), task->tc_Node.ln_Name ,phex ((ULONGEST)task, sizeof (void *)));
++			IExec->Permit();
++
++			return str;
++		}
++		* /
++
++	  return normal_pid_to_str (ptid);
++	}
++	*/
++	
++	// TODO: char *pid_to_exec_file (int pid) override;
++	
++	/*
++	bool info_proc (const char *args, enum info_proc_what what) override 
++	{
++		IExec->DebugPrintF("[GDB] %s (false)\n",__func__);
++		return false;
++	}
++	*/
++};
++
++ppc_amigaos_nat_target::ppc_amigaos_nat_target ()
++{
++	ElfBase = IExec->OpenLibrary ("elf.library",0);
++	if (!ElfBase)
++	{
++		error ("Can't open elf.library. How did you run *this* program ?\n");
++	}
++
++	IElf = (struct ElfIFace *)IExec->GetInterface (ElfBase,"main",1,0);
++	if (!IElf)
++	{
++		IExec->CloseLibrary (ElfBase);
++
++		ElfBase = NULL;
++
++		error ("Can't get elf.library::main\n");
++	}
++
++	IMMU = (struct MMUIFace *)IExec->GetInterface ((struct Library *)SysBase,"mmu",1,0 );
++	if (!IMMU)
++	{
++		IExec->DropInterface ((struct Interface *)IElf);
++		IExec->CloseLibrary (ElfBase);
++
++		IElf = NULL;
++		ElfBase = NULL;
++
++		error ("Can't get MMU access\n");
++	}
++
++	IDebug = (struct DebugIFace *)IExec->GetInterface ((struct Library *)SysBase,"debug",1,0 );
++	if (!IDebug)
++	{
++		IExec->DropInterface ((struct Interface *)IMMU);
++		IExec->DropInterface ((struct Interface *)IElf);
++		IExec->CloseLibrary (ElfBase);
++
++		IMMU = NULL;
++		IElf = NULL;
++		ElfBase = NULL;
++
++		error ("Can't find kernel's debugger interface\n");
++	}
++
++	amigaos_debug_hook_data.debugger_port = (struct MsgPort *)IExec->AllocSysObjectTags (ASOT_PORT, ASOPORT_Name, "GDB", TAG_DONE);
++	if (!amigaos_debug_hook_data.debugger_port)
++	{
++		IExec->DropInterface ((struct Interface *)IDebug);
++		IExec->DropInterface ((struct Interface *)IMMU);
++		IExec->DropInterface ((struct Interface *)IElf);
++		IExec->CloseLibrary (ElfBase);
++
++		IDebug = NULL;
++		IMMU = NULL;
++		IElf = NULL;
++		ElfBase = NULL;
++
++		error ("Can't allocate message port\n");
++	}
++
++	amigaos_debug_hook_data.current_process	= 0;
++	amigaos_debug_hook_data.debugger_task	= IExec->FindTask ( NULL );
++
++	amigaos_debug_hook = (struct Hook *)IExec->AllocSysObjectTags ( ASOT_HOOK, 
++		ASOHOOK_Entry,	(HOOKFUNC)amigaos_debug_callback,
++		ASOHOOK_Data,	(APTR)this,
++		TAG_DONE);
++	if (!amigaos_debug_hook)
++	{
++		IExec->FreeSysObject (ASOT_PORT,amigaos_debug_hook_data.debugger_port);
++		IExec->DropInterface ((struct Interface *)IDebug);
++		IExec->DropInterface ((struct Interface *)IMMU);
++		IExec->DropInterface ((struct Interface *)IElf);
++		IExec->CloseLibrary (ElfBase);
++
++		IDebug = NULL;
++		IMMU = NULL;
++		IElf = NULL;
++		ElfBase = NULL;
++
++		error ("Can't allocate debugger hook\n");
++	}
++
++	if (!(amigaos_debug_messages_storage = IExec->AllocVecTags (MAX_DEBUG_MESSAGES * sizeof(struct debugger_message), AVT_Type, MEMF_SHARED, TAG_DONE)))
++	{
++		IExec->FreeSysObject (ASOT_PORT,amigaos_debug_hook);
++		IExec->FreeSysObject (ASOT_PORT,amigaos_debug_hook_data.debugger_port);
++		IExec->DropInterface ((struct Interface *)IDebug);
++		IExec->DropInterface ((struct Interface *)IMMU);
++		IExec->DropInterface ((struct Interface *)IElf);
++		IExec->CloseLibrary (ElfBase);
++
++		IDebug = NULL;
++		IMMU = NULL;
++		IElf = NULL;
++		ElfBase = NULL;
++	
++	
++		error ("Can't allocate memory for messages\n");
++	}
++
++	amigaos_debug_messages_list = (struct List *)IExec->AllocSysObjectTags ( ASOT_LIST, TAG_DONE);
++	if (!amigaos_debug_messages_list)
++	{
++		IExec->FreeVec(amigaos_debug_messages_storage);
++		IExec->FreeSysObject (ASOT_PORT,amigaos_debug_hook);
++		IExec->FreeSysObject (ASOT_PORT,amigaos_debug_hook_data.debugger_port);
++		IExec->DropInterface ((struct Interface *)IDebug);
++		IExec->DropInterface ((struct Interface *)IMMU);
++		IExec->DropInterface ((struct Interface *)IElf);
++		IExec->CloseLibrary (ElfBase);
++
++		IDebug = NULL;
++		IMMU = NULL;
++		IElf = NULL;
++		ElfBase = NULL;
++
++		error ("Can't allocate list for debug message\n");
++	}
++
++	struct debugger_message *msg = (struct debugger_message *)amigaos_debug_messages_storage;
++	for (int i = 0; i < MAX_DEBUG_MESSAGES; i++)
++	{
++		IExec->AddHead( amigaos_debug_messages_list, (struct Node *)msg);
++		msg++;
++	}
++}
++
++ppc_amigaos_nat_target::~ppc_amigaos_nat_target ()
++{
++	/* Free pending messages and port */
++	while (struct debugger_message *message = (struct debugger_message *)IExec->GetMsg (amigaos_debug_hook_data.debugger_port))
++		free_message (message);
++
++	if (amigaos_debug_messages_list)
++	{
++		IExec->FreeSysObject (ASOT_LIST,amigaos_debug_messages_list);
++	}
++
++	if (amigaos_debug_messages_storage)
++	{
++		IExec->FreeVec(amigaos_debug_messages_storage);
++	}
++
++	if (amigaos_debug_hook_data.debugger_port)
++	{
++		IExec->FreeSysObject (ASOT_PORT,amigaos_debug_hook_data.debugger_port);
++	}
++	amigaos_debug_hook_data.debugger_port = NULL;
++
++	if (amigaos_debug_hook)
++	{
++		IExec->FreeSysObject (ASOT_HOOK,amigaos_debug_hook);
++	}
++	amigaos_debug_hook = NULL;
++
++	if (IElf)
++	{
++		IExec->DropInterface ((struct Interface *)IElf);
++	}
++	IElf = NULL;
++
++	if (ElfBase)
++	{
++		IExec->CloseLibrary (ElfBase);
++	}
++	ElfBase = NULL;
++
++	if (IMMU)
++	{
++		IExec->DropInterface ((struct Interface *)IMMU);
++	}
++	IMMU = NULL;
++
++	if (IDebug)
++	{
++		IExec->DropInterface ((struct Interface *)IDebug);
++	}
++	IDebug = NULL;
++}
++
++ptid_t
++ppc_amigaos_nat_target::wait (ptid_t ptid, struct target_waitstatus *ourstatus,target_wait_flags options)
++{
++	struct Process *process = (ptid == minus_one_ptid ? amigaos_debug_hook_data.current_process : (struct Process *)ptid.pid());
++
++	if( ptid == minus_one_ptid )
++		ptid = ptid_t ((int)amigaos_debug_hook_data.current_process);
++
++	while( 1 )
++	{
++		IExec->DebugPrintF("[GDB] %s Entering wait loop\n",__func__);
++
++		uint32 signal = IExec->Wait (SIGBREAKF_CTRL_D|SIGBREAKF_CTRL_C|1<<amigaos_debug_hook_data.debugger_port->mp_SigBit);
++
++		if( ( signal & SIGBREAKF_CTRL_D ) == SIGBREAKF_CTRL_D )
++		{
++			IExec->DebugPrintF("[GDB] %s received SIGBREAKF_CTRL_D\n",__func__);
++
++			ourstatus->set_exited (0);
++
++			IExec->DebugPrintF("[GDB] %s@%d Leaving with ptid: 0x%08x\n",__func__,__LINE__,ptid );
++
++			return ptid;
++		}
++
++		if( ( signal & SIGBREAKF_CTRL_C ) == SIGBREAKF_CTRL_C )
++		{
++			IExec->DebugPrintF("[GDB] %s received SIGBREAKF_CTRL_C\n",__func__);
++
++			IExec->SuspendTask ((struct Task *)process,0);
++
++			ourstatus->set_stopped (GDB_SIGNAL_TRAP);
++
++			IExec->DebugPrintF("[GDB] %s@%d Leaving with ptid: 0x%08x\n",__func__,__LINE__,ptid );
++
++			return ptid;
++		}
++
++		while (struct Message *message = IExec->GetMsg (amigaos_debug_hook_data.debugger_port) ) 		
++		{
++			IExec->DebugPrintF("[GDB] %s received message: %p\n",__func__,message );
++
++			struct debugger_message *debuggerMessage = (struct debugger_message *)message;
++
++			IExec->DebugPrintF("[GDB] %s received debug message for task: %p\n",__func__,debuggerMessage->process );
++
++			if( debuggerMessage->signal == -1 )
++			{
++				switch( debuggerMessage->flags )
++				{
++					case DM_FLAGS_TASK_OPENLIB:
++					{
++						IExec->DebugPrintF("[GDB] %s received task open library\n",__func__);
++
++						break;
++					}
++					case DM_FLAGS_TASK_CLOSELIB:
++					{
++						IExec->DebugPrintF("[GDB] %s received task close library\n",__func__);
++
++						break;
++					}
++					case DM_FLAGS_TASK_TERMINATED:
++					{
++						IExec->DebugPrintF("[GDB] %s received task terminated\n",__func__);
++
++						if( process == debuggerMessage->process) 
++						{
++							ourstatus->set_exited (0);
++
++							kill();
++						}
++
++						break;
++					}
++					case DM_FLAGS_TASK_FINAL:
++					{
++						IExec->DebugPrintF("[GDB] %s received SIGB_CHILD of Process %p with dos return: %ld\n",__func__,debuggerMessage->process,debuggerMessage->ReturnCode);
++
++						if( debuggerMessage->process == process ) {
++							ourstatus->set_exited (debuggerMessage->ReturnCode);
++
++							kill();
++
++							IDOS->UnLoadSeg( (BPTR)debuggerMessage->seglist );
++
++							free_message (debuggerMessage);
++
++							IExec->DebugPrintF("[GDB] %s@%d Leaving with ptid: 0x%08x\n",__func__,__LINE__,ptid );
++
++							return ptid;
++						}
++						else
++						{
++							IExec->DebugPrintF("[GDB] Process %p already killed\n",__func__,__LINE__,debuggerMessage->process );
++						}
++
++						break;
++					}
++					default:
++					{
++						IExec->DebugPrintF("[GDB] %s received unknown flags for signal -1 from callback %ld\n",__func__,debuggerMessage->flags);
++	
++						break;
++					}
++				}
++
++				free_message (debuggerMessage);
++			}
++			else
++			{
++				IExec->DebugPrintF("[GDB] %s Inferior (%p) signaled : '%s'\n",__func__,process,gdb_signal_to_name ((enum gdb_signal)debuggerMessage->signal));
++
++				switch (debuggerMessage->signal)
++				{
++					case GDB_SIGNAL_CHLD:
++					{
++						ourstatus->set_signalled (GDB_SIGNAL_0);
++
++						break;
++					}
++					case GDB_SIGNAL_QUIT:
++					{
++						ourstatus->set_signalled (GDB_SIGNAL_QUIT);
++
++						break;
++					}
++					case GDB_SIGNAL_TRAP:
++					{
++						ourstatus->set_stopped (GDB_SIGNAL_TRAP);
++
++						break;
++					}
++					case GDB_SIGNAL_SEGV:
++					case GDB_SIGNAL_BUS:
++					case GDB_SIGNAL_INT:
++					case GDB_SIGNAL_FPE:
++					case GDB_SIGNAL_ILL:
++					case GDB_SIGNAL_ALRM:					
++					{					
++						ourstatus->set_stopped (GDB_SIGNAL_0);
++
++						break;
++					}
++					default:
++					{
++						IExec->DebugPrintF("[GDB] %s received unknown signal from callback %ld\n",__func__,debuggerMessage->signal);
++
++						break;
++					}
++				}
++
++				free_message (debuggerMessage);
++				
++				IExec->DebugPrintF("[GDB] %s@%d Leaving with ptid: 0x%08x\n",__func__,__LINE__,ptid );
++
++				return ptid;
++			}		
++		}
++	}
++
++	IExec->DebugPrintF("[GDB] %s@%d Leaving with ptid: 0x%08x\n",__func__,__LINE__,ptid_t::make_minus_one () );
++
++	return ptid_t::make_minus_one ();
++}
++
++/* Fetch register REGNO from the inferior.  */
++void 
++ppc_amigaos_nat_target::fetch_registers (struct regcache *regcache, int regno) 
++{
++	struct gdbarch *gdbarch = regcache->arch ();
++	ppc_gdbarch_tdep *tdep = gdbarch_tdep<ppc_gdbarch_tdep> (gdbarch);	
++	struct Task *task = (struct Task *)regcache->ptid().pid();
++
++	IExec->DebugPrintF("[GDB] %s ( regcache: %p, regno: %d (%s), task: %p)\n",__func__,regcache,regno,gdbarch_register_name( gdbarch,regno ),task);
++
++	struct ExceptionContext context;
++	IDebug->ReadTaskContext( task,&context,RTCF_INFO | RTCF_SPECIAL | RTCF_STATE | RTCF_GENERAL | RTCF_FPU | RTCF_VECTOR );
++
++	if( regno == -1 )
++	{
++		for (int i = 0; i < 31; i++)
++			regcache->raw_supply (regno, (void*)&context.gpr[i]);
++
++		for (int i = 0; i < 31; i++)
++			regcache->raw_supply (regno, (void*)&context.fpr[i]);
++
++		regcache->raw_supply (gdbarch_pc_regnum (gdbarch), (void *)&context.ip);
++		regcache->raw_supply (tdep->ppc_ps_regnum, (void *)&context.msr);
++		regcache->raw_supply (tdep->ppc_cr_regnum, (void *)&context.cr);
++		regcache->raw_supply (tdep->ppc_lr_regnum, (void *)&context.lr);
++		regcache->raw_supply (tdep->ppc_ctr_regnum, (void *)&context.ctr);
++		regcache->raw_supply (tdep->ppc_xer_regnum, (void *)&context.xer);
++		regcache->raw_supply (tdep->ppc_fpscr_regnum, (void *)&context.fpscr);			
++
++		if (tdep->ppc_vr0_regnum != -1 && tdep->ppc_vrsave_regnum != -1)
++		{
++			ppc_amigaos_vrregset.supply_regset( &ppc_amigaos_vrregset,regcache,regno,(void *)&context.vscr,PPC_AMIGAOS_SIZEOF_VRREGSET );
++		}
++	}
++	else 
++	{
++		if (regno == gdbarch_pc_regnum (gdbarch) )
++		{			
++			regcache->raw_supply (regno, (void*)&context.ip);
++		}
++		else if (regno >= 0 && regno <= 31) 
++		{
++			regcache->raw_supply (regno, (void*)&context.gpr[regno]);
++		}
++		else if (altivec_register_p (gdbarch, regno))
++		{
++			ppc_amigaos_vrregset.supply_regset( &ppc_amigaos_vrregset,regcache,regno,(void *)&context.vscr,PPC_AMIGAOS_SIZEOF_VRREGSET );
++		}
++		else if (regno >= 32 && regno <= 64)
++			regcache->raw_supply (regno, (void*)&context.fpr[regno]);
++		else if (regno == tdep->ppc_ps_regnum)
++			regcache->raw_supply (regno, (void *)&context.msr);
++		else if (regno == tdep->ppc_cr_regnum)
++			regcache->raw_supply (tdep->ppc_cr_regnum, (void *)&context.cr);
++		else if (regno == tdep->ppc_lr_regnum)
++			regcache->raw_supply (tdep->ppc_lr_regnum, (void *)&context.lr);
++		else if (regno == tdep->ppc_ctr_regnum) 
++			regcache->raw_supply (tdep->ppc_ctr_regnum, (void *)&context.ctr);
++		else if (regno == tdep->ppc_xer_regnum)
++			regcache->raw_supply (tdep->ppc_xer_regnum, (void *)&context.xer);
++		else if (regno == tdep->ppc_fpscr_regnum)
++			regcache->raw_supply (tdep->ppc_fpscr_regnum, (void *)&context.fpscr);		
++		else if (regno == tdep->ppc_vr0_regnum)
++			regcache->raw_supply (tdep->ppc_vr0_regnum, (void *)&context.vr );		
++		else if (regno == tdep->ppc_vrsave_regnum)
++			regcache->raw_supply (tdep->ppc_vrsave_regnum, (void *)&context.vrsave );		
++		else
++		{
++			internal_error (_("fetch_registers: unexpected register: '%s'"),gdbarch_register_name ( gdbarch,regno ));
++		}
++	}
++}
++
++void
++ppc_amigaos_nat_target::store_registers (struct regcache *regcache, int regno)
++{
++	printf( "[GDB] %s Todo ( regcache: %p, regno: %d)\n",__func__,regcache,regno );
++}
++
++enum target_xfer_status
++ppc_amigaos_nat_target::xfer_partial (enum target_object object,const char *annex, gdb_byte *readbuf,const gdb_byte *writebuf,ULONGEST offset, ULONGEST len, ULONGEST *xfered_len)
++{
++	IExec->DebugPrintF ( string_printf (_("[GDB] %s called for memory tranfser at address: 0x%s for %s bytes (readbuf: %p, writebuf: %p, annex: '%s', object: %d )\n"),__func__,phex (offset, sizeof (offset)),pulongest (len), readbuf, writebuf, annex, object).c_str());
++
++	switch (object)
++	{
++		case TARGET_OBJECT_MEMORY:
++		{
++			if (offset == 0) 
++			{
++				// ML: Helps to unwind farme correctly
++				return TARGET_XFER_E_IO;
++			}
++			else
++			{
++				APTR user_stack = IExec->SuperState();
++
++				ULONG currentAttrs = IMMU->GetMemoryAttrs( (APTR)offset,0 );
++				IMMU->SetMemoryAttrs ( (APTR)offset,len,MEMATTRF_READ_WRITE );
++
++				if (readbuf) 
++				{
++					IExec->CopyMem( (APTR)offset,(APTR)readbuf,len );
++				}
++				else // if(writebuf)
++				{
++					IExec->CopyMem( (APTR)writebuf,(APTR)offset,len );
++					IExec->CacheClearE( (APTR)offset,len,CACRF_ClearI );
++				}
++
++				IMMU->SetMemoryAttrs( (APTR)offset,len,currentAttrs );
++
++				if (user_stack)
++				{
++					IExec->UserState( user_stack );
++				}
++			}
++
++			*xfered_len = len;
++
++			IExec->DebugPrintF ( string_printf (_("[GDB] %s tansferfed %s bytes\n"),__func__,pulongest (*xfered_len)).c_str());
++
++			return TARGET_XFER_OK;			
++		}
++		break;
++
++		case TARGET_OBJECT_LIBRARIES:
++		{
++			IExec->DebugPrintF("[GDB] %s tansferfed object library '%s' failed, aka not supported yet\n",__func__,annex);
++
++			return TARGET_XFER_E_IO;			
++		}
++		break;
++
++		default:
++			if (beneath()) 
++			{
++				IExec->DebugPrintF("[GDB] %s tansferfed delegated to beneath for target_object %d\n",__func__,object);
++
++				return this->beneath ()->xfer_partial (object,annex,readbuf,writebuf,offset,len,xfered_len);
++			}
++			/* This can happen when requesting the transfer of unsupported
++			 objects before a program has been started (and therefore
++			 with the current_target having no target beneath).  */
++	}
++
++	return TARGET_XFER_E_IO;
++}
++
++void
++ppc_amigaos_nat_target::attach (const char *args, int from_tty)
++{
++	printf( "[GDB] %s ( args: '%s', from_tty: %d )\n",__func__,args,from_tty );
++}
++
++void
++ppc_amigaos_relocate_sections (const char *exec_file,BPTR exec_seglist) 
++{
++	// To debug this stuff, enableing elf debug out with 'SetENV ELF.debug 1' helps alot on thr target
++	Elf32_Handle exec_elfhandle = 0;
++	if( 1 == IDOS->GetSegListInfoTags( exec_seglist,
++		GSLI_ElfHandle,		&exec_elfhandle,
++		TAG_DONE) )
++	{
++		Elf32_Handle exec_opendelf = IElf->OpenElfTags(
++			OET_ElfHandle,			exec_elfhandle,
++			OET_ReadOnlyCopy,		TRUE,
++			TAG_DONE );
++		if( exec_opendelf ) 
++		{
++			if( current_program_space->symfile_object_file ) 
++			{
++				struct objfile *symfile = current_program_space->symfile_object_file;
++				section_offsets offsets (symfile->section_offsets.size () );
++
++				struct obj_section *osect;
++				ALL_OBJFILE_OSECTIONS(symfile, osect)
++				{
++					struct bfd_section *section = osect->the_bfd_section;
++					int osect_idx = osect - symfile->sections;
++					
++					void *address = IElf->GetSectionTags( exec_opendelf,
++						GST_SectionName, section->name,
++						TAG_DONE );
++						
++					if( address )
++					{
++						IExec->DebugPrintF ( string_printf (_("[GDB] On symfile_object relocated %d section '%s' from 0x%08lx to %p, size %ld, old offset: 0x%s\n"),section->index,section->name,section->vma,address,section->size,phex ( osect->addr(), sizeof (osect->addr()))).c_str());
++						
++						offsets[ osect_idx ] = (CORE_ADDR)address - osect->addr();
++					}
++				}
++
++				objfile_relocate(symfile, offsets);
++			}
++			else if( current_program_space->exec_bfd() )
++			{
++				/* Go through all GDB sections, and make sure they are loaded and relocated */
++				for (asection *section : gdb_bfd_sections (current_program_space->exec_bfd ())) {
++
++					void *address = IElf->GetSectionTags( exec_opendelf,
++						GST_SectionName, section->name,
++						TAG_DONE );
++								
++					if( address )
++					{
++						printf ( "[GDB] On exec_bfd relocated %d section '%s' from %08lx to %p, size %ld\n",section->index,section->name,section->vma,address,section->size);
++						
++						exec_set_section_address( exec_file,section->index,(CORE_ADDR)address );							
++					}
++				}
++			}
++
++			IElf->CloseElfTags( exec_opendelf,
++				CET_FreeUnneeded,		TRUE,
++				TAG_DONE );
++		}
++	}
++}
++
++/* Start a new inferior AmigaOS DOS process.  EXEC_FILE is the file to
++   run, ALLARGS is a string containing the arguments to the program.
++   ENV is the environment vector to pass.  */
++void ppc_amigaos_nat_target::create_inferior (const char *exec_file,const std::string &allargs,char **env, int from_tty)
++{
++	inferior *inf = current_inferior ();
++	if( !inf )
++	{
++		error ("No current inferior present" );
++	}
++
++	/* If no exec file handed to us, get it from the exec-file command -- with
++	 a good, common error message if none is specified.  */
++	if (exec_file == 0)
++	{
++	    exec_file = get_exec_file (1);
++	}
++
++	struct debugger_message *dmsg = alloc_message( NULL );
++	if( dmsg == NULL )
++	{
++		error ("Can't allocate memory for death message\n");
++	}
++
++	dmsg->msg.mn_Node.ln_Name	= (char*)"DeathMessage";
++	dmsg->msg.mn_ReplyPort		= amigaos_debug_hook_data.debugger_port;
++	dmsg->flags					= DM_FLAGS_TASK_FINAL;
++	dmsg->signal				= -1; 	
++
++	dmsg->seglist = (void*)IDOS->LoadSeg( exec_file );
++	if( ! dmsg->seglist )
++	{
++		error ("'%s': not an executable file\n",exec_file );
++	}
++
++	BPTR exec_home = ZERO;
++	BPTR exec_lock = IDOS->Lock( exec_file,SHARED_LOCK );
++	if( exec_lock )
++	{
++		exec_home = IDOS->ParentDir( exec_lock );
++
++		IDOS->UnLock( exec_lock );
++	}
++
++	dmsg->process = amigaos_debug_hook_data.current_process = IDOS->CreateNewProcTags(
++			NP_Seglist,										dmsg->seglist,
++			NP_FreeSeglist,									FALSE,
++			NP_EntryCode,									amigaos_debug_suspend,
++			NP_EntryData,									amigaos_debug_hook,
++			NP_Child,										TRUE,
++			NP_FinalCode,									amigaos_debug_kill,
++			NP_FinalData,									dmsg,
++			NP_Name,										lbasename( exec_file ),
++			NP_CommandName,									lbasename( exec_file ),
++			NP_Cli,											TRUE,
++			NP_Arguments,									allargs.c_str(),
++			NP_Input,										IDOS->Input(),
++			NP_CloseInput,									FALSE,
++			NP_Output,										IDOS->Output(),
++			NP_CloseOutput,									FALSE,
++			NP_Error,										IDOS->ErrorOutput(),
++			NP_CloseError,									FALSE,
++			(exec_home ? NP_ProgramDir: TAG_IGNORE),		exec_home,
++			TAG_DONE
++		);
++
++	IExec->DebugPrintF ( "[GDB] Process %p has debug message %p\n",amigaos_debug_hook_data.current_process,dmsg );
++
++	if (! amigaos_debug_hook_data.current_process)
++	{
++		error ("Can't create AmigaOS DOS process\n");
++	}
++
++	IDebug->AddDebugHook((struct Task *)amigaos_debug_hook_data.current_process,amigaos_debug_hook);
++
++	inferior_ptid = ptid_t ((int)amigaos_debug_hook_data.current_process);
++	inferior_appeared (inf,(int)amigaos_debug_hook_data.current_process);
++	/* We have something that executes now.  We'll be running through
++	 the shell at this point (if startup-with-shell is true), but the
++	 pid shouldn't change.  */
++
++	/* Do not change either targets above or the same target if already present.
++	 The reason is the target stack is shared across multiple inferiors.  */
++	inf->unpush_target(this);
++	
++	if(!inf->target_is_pushed(this))
++		inf->push_target(this);
++
++	thread_info *thr = add_thread (this, inferior_ptid);
++	switch_to_thread (thr);
++
++	clear_proceed_status (0);
++	init_wait_for_inferior ();
++
++	ppc_amigaos_relocate_sections (exec_file,(BPTR)dmsg->seglist);
++
++	IExec->DebugPrintF("[GDB] %s inferior_ptid=0x%08x inf=%p thr=%p\n",__func__,inferior_ptid.pid(),inf,thr);
++}
++
++static ppc_amigaos_nat_target the_ppc_amigaos_nat_target;
++
++void _initialize_ppcamigaos_nat ();
++void
++_initialize_ppcamigaos_nat ()
++{
++	add_inf_child_target (&the_ppc_amigaos_nat_target);
++}
++
++VOID amigaos_debug_suspend( struct Hook *amigaos_debug_hook ) 
++{
++	struct Task *current = IExec->FindTask (NULL);
++
++	IExec->DebugPrintF("[GDB] %s inferiorer %p started by kernel, suspending myself and installing debug hook: %p\n",__func__,current,amigaos_debug_hook);
++	
++	IExec->SuspendTask (current,0);
++
++	IExec->DebugPrintF("[GDB] %s inferiorer %p started by gdb\n",__func__,current);
++}
++
++VOID amigaos_debug_kill( int32 return_code,struct debugger_message *dmsg ) 
++{
++	struct Task *current = IExec->FindTask (NULL);
++
++	dmsg->ReturnCode = return_code;
++
++	IExec->DebugPrintF("[GDB] %s inferiorer %p killed by kernel, sending death message: %p\n",__func__,current,dmsg);
++
++	IExec->PutMsg( dmsg->msg.mn_ReplyPort,(struct Message *)dmsg );	
++}
++
++ULONG amigaos_debug_callback (struct Hook *hook, struct Task *currentTask,struct KernelDebugMessage *dbgmsg )
++{
++	class ppc_amigaos_nat_target *ppc_amigaos_nat_target = (class ppc_amigaos_nat_target *)hook->h_Data;
++	struct amigaos_debug_hook_data *data = &(ppc_amigaos_nat_target->amigaos_debug_hook_data);
++	
++	if( (struct Task *)data->current_process != currentTask )
++	{
++		IExec->DebugPrintF ("[GDB] Task: %p ('%s'), task NOT under our observation\n",currentTask,currentTask->tc_Node.ln_Name);
++
++		return 0;
++	}
++	IExec->DebugPrintF ("[GDB] Task: %p ('%s'), task IS under our observation\n",currentTask,currentTask->tc_Node.ln_Name);
++
++
++	switch( dbgmsg->type ) 
++	{
++		case DBHMT_EXCEPTION:
++		{
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'),Exception ooccured (DBHMT_EXCEPTION)\n",currentTask,currentTask->tc_Node.ln_Name);
++
++			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			message->flags	= 0;
++			message->signal	= trap_to_signal( dbgmsg->message.context,message->flags );
++			
++			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
++
++			IExec->PutMsg (data->debugger_port,(struct Message *)message);
++
++			return 1; // Suspend execution
++		}
++		case DBHMT_ADDTASK:
++		{
++			IExec->DebugPrintF("[GDB] Task: %p ('%s'), (DBHMT_ADDTASK), Task added\n",currentTask,currentTask->tc_Node.ln_Name);
++
++			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);	
++			message->flags	= DM_FLAGS_TASK_ATTACHED;
++			message->signal	= -1;
++			
++			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
++
++			IExec->PutMsg (data->debugger_port,(struct Message *)message);
++
++			break;
++		}
++		case DBHMT_REMTASK:
++		{
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_REMTASK), Task removed\n",currentTask,currentTask->tc_Node.ln_Name);
++
++			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			message->flags	= DM_FLAGS_TASK_TERMINATED;
++			message->signal	= -1;
++			
++			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
++
++			IExec->PutMsg (data->debugger_port,(struct Message *)message);
++			
++			break;
++		}
++		case DBHMT_OPENLIB:
++		{
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_OPENLIB), Task opened library '%s'\n",currentTask,currentTask->tc_Node.ln_Name,(char*)dbgmsg->message.library->lib_IdString);
++
++			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			message->flags		= DM_FLAGS_TASK_OPENLIB;
++			message->signal		= -1;
++			message->library	= dbgmsg->message.library;
++			
++			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
++
++			IExec->PutMsg (data->debugger_port,(struct Message *)message);
++
++			break;
++		}
++		case DBHMT_CLOSELIB:
++		{
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_CLOSELIB), Task closed library '%s'\n",currentTask,currentTask->tc_Node.ln_Name,(char*)dbgmsg->message.library->lib_IdString);
++
++			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);	
++			message->flags		= DM_FLAGS_TASK_CLOSELIB;
++			message->signal		= -1;
++			message->library	= dbgmsg->message.library;
++
++			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
++
++			IExec->PutMsg (data->debugger_port,(struct Message *)message);
++
++			break;
++		}
++		case DBHMT_SHAREDOBJECTOPEN:
++		{
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_SHAREDOBJECTOPEN), Task opened shared object '%s'\n",currentTask,currentTask->tc_Node.ln_Name,(char*)dbgmsg->message.library->lib_IdString);
++			break;
++		}
++		case DBHMT_SHAREDOBJECTCLOSE:
++		{
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_SHAREDOBJECTCLOSE), Task closed shared object '%s'\n",currentTask,currentTask->tc_Node.ln_Name,(char*)dbgmsg->message.library->lib_IdString);
++			break;
++		}
++		default:
++		{
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_UNKNOWN), Task unknown message type %lu\n",currentTask,currentTask->tc_Node.ln_Name,dbgmsg->type);
++		}
++	}
++
++	return 0; // Resume execution
++}
++
++static int
++trap_to_signal(struct ExceptionContext *context, uint32 flags)
++{
++	IExec->DebugPrintF( "[GDB] trap_to_signal ( flags: 0x%lx )\n",flags );
++
++	if (!context || (flags & DM_FLAGS_TASK_TERMINATED)) {
++		IExec->DebugPrintF( "[GDB] Return GDB_SIGNAL_QUIT )\n" );
++	
++		return GDB_SIGNAL_QUIT;
++	}
++
++	IExec->DebugPrintF( "[GDB] traptype: 0x%lx\n",context->Traptype );
++
++	switch (context->Traptype)
++	{
++	case TRAP_MCE:
++	case TRAP_DSI:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_SEGV )\n" );
++		return GDB_SIGNAL_SEGV;
++	case TRAP_ISI:
++	case TRAP_ALIGN:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_BUS )\n" );
++		return GDB_SIGNAL_BUS;
++	case TRAP_EXTERN:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_INT )\n" );
++		return GDB_SIGNAL_INT;
++	case TRAP_PROG: 
++		if (context->msr & EXC_FPE) {
++			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE )\n" );
++			return GDB_SIGNAL_FPE;
++		}
++		else if (context->msr & EXC_ILLEGAL) {
++			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL )\n" );
++			return GDB_SIGNAL_ILL;
++		}
++		else if (context->msr & EXC_PRIV) {
++			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL )\n" );
++			return GDB_SIGNAL_ILL;
++		}
++		else {
++			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP )\n" );
++			return GDB_SIGNAL_TRAP;
++		}
++	case TRAP_FPU:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE )\n" );
++		return GDB_SIGNAL_FPE;
++	case TRAP_DEC:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ALRM )\n" );
++		return GDB_SIGNAL_ALRM;
++	case TRAP_RESERVEDA:
++	case TRAP_RESERVEDB:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL )\n" );
++		return GDB_SIGNAL_ILL;
++	case TRAP_SYSCALL:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_CHLD )\n" );
++		return GDB_SIGNAL_CHLD;
++	case TRAP_TRACEI:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP )\n" );
++		return GDB_SIGNAL_TRAP;
++	case TRAP_FPA:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE )\n" );
++		return GDB_SIGNAL_FPE;
++	default:
++		IExec->DebugPrintF( "[GDB] Return ( -1 )\n" );
++		return -1;
++	}
++}
+\ No newline at end of file
+diff --git a/gdb/ppc-amigaos-nat.h b/gdb/ppc-amigaos-nat.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0796f44cf4df6efa7073500e13c7c180126b3c0
+--- /dev/null
++++ b/gdb/ppc-amigaos-nat.h
+@@ -0,0 +1,81 @@
++/* Native-dependent code for PowerPC's running AmigaOS, for GDB.
++
++   Copyright (C) 2013-2024 Free Software Foundation, Inc.
++
++   This file is part of GDB.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++
++#ifndef PPC_AMIGAOS_NAT_H
++#define PPC_AMIGAOS_NAT_H
++
++#include <exec/ports.h>
++
++#define PPC_AMIGAOS_SIZEOF_VRREGSET 532
++
++// Chapter Interrupt Reference union from different ppc32 cpus
++#define TRAP_RESET 			0x0100 /* System reset */
++#define TRAP_MCE   			0x0200 /* Machine check */
++#define TRAP_DSI    		0x0300 /* Data storage */
++#define TRAP_DSEGI   		0x0380 /* Data segment (Book III v2.01) */
++#define TRAP_ISI     		0x0400 /* Instruction storage */
++#define TRAP_ISEGI   		0x0480 /* Instruction segment (Book III v2.01)*/
++#define TRAP_EXTERN   		0x0500 /* External Interrupt */
++#define TRAP_ALIGN   		0x0600 /* Alignment */
++#define TRAP_PROG    		0x0700 /* Program */
++#define TRAP_FPU			0x0800 /* FPU Disabled */
++#define TRAP_DEC			0x0900 /* Decrementer */
++#define TRAP_RESERVEDA		0x0a00 /* Reserved (Book III v2.01)*/
++#define TRAP_RESERVEDB		0x0b00 /* Reserved (Book III v2.01)*/
++#define TRAP_SYSCALL		0x0c00 /* System call */
++#define TRAP_TRACEI			0x0d00 /* Trace */
++#define TRAP_FPA			0x0e00 /* Floating-point Assist */
++#define TRAP_PMI     		0x0f00 /* Performance monitor (Book III v2.01)*/
++#define TRAP_APU			0x0f20 /* APU Unavailble */
++#define TRAP_PIT			0x1000 /* Programmable-interval timer (PIT) */
++#define TRAP_FIT			0x1010 /* Fixed-interval timer (FIT) */
++#define TRAP_WATCHDOG		0x1020 /* Watch Dog */
++#define TRAP_DTBL			0x1100 /* Data TBL error */
++#define TRAP_ITBL			0x1200 /* Instruction TBL error */
++#define TRAP_DEBUG			0x2000 /* Debug */
++
++/* MSR Bits */
++#define    MSR_TRACE_ENABLE           0x00000400
++#define    EXC_FPE                    0x00100000
++#define    EXC_ILLEGAL                0x00080000
++#define    EXC_PRIV                   0x00040000
++#define    EXC_TRAP                   0x00020000
++
++/* Message sent from debugger hook to debugger to alert debugger
++   of an event that happened */
++struct debugger_message
++{
++	struct Message msg;
++	struct Process *process;
++	uint32 flags;
++	uint32 signal;
++	struct Library *library;
++	void* seglist;
++	int32 ReturnCode;
++};
++
++/* Possible debuger_message flags */
++#define    DM_FLAGS_TASK_TERMINATED				0x00000001
++#define    DM_FLAGS_TASK_ATTACHED				0x00000002
++#define    DM_FLAGS_TASK_INTERRUPTED			0x00000004
++#define	   DM_FLAGS_TASK_OPENLIB				0x00000008
++#define	   DM_FLAGS_TASK_CLOSELIB				0x00000010
++#define    DM_FLAGS_TASK_FINAL					0x10000000
++
++#endif /* PPC_AMIGAOS_NAT_H */
+diff --git a/gdb/ppc-amigaos-tdep.c b/gdb/ppc-amigaos-tdep.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..4dba12da78e14abca777e8d2e4d4bc9a933d0b38
+--- /dev/null
++++ b/gdb/ppc-amigaos-tdep.c
+@@ -0,0 +1,153 @@
++/* Target-dependent code for GDB, the GNU debugger.
++
++   Copyright (C) 1986-2024 Free Software Foundation, Inc.
++
++   This file is part of GDB.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++
++#include "defs.h"
++#include "gdbcore.h"
++#include "gdbarch.h"
++#include "ppc-tdep.h"
++
++static int
++ppc_amigaos_has_shared_address_space (struct gdbarch *gdbarch)
++{
++	return true;
++}
++
++/* 1 to 1 copy from rs6000aix-tdp.c branch_dest , 
++except removed AIX_TEXT_SEGMENT_BASE checks, 
++removed byte_order */
++static CORE_ADDR
++branch_dest (struct regcache *regcache, int opcode, int instr,
++	     CORE_ADDR pc, CORE_ADDR safety)
++{
++  struct gdbarch *gdbarch = regcache->arch ();
++  ppc_gdbarch_tdep *tdep = gdbarch_tdep<ppc_gdbarch_tdep> (gdbarch);
++  CORE_ADDR dest;
++  int immediate;
++  int absolute;
++  int ext_op;
++
++  absolute = (int) ((instr >> 1) & 1);
++
++  switch (opcode)
++    {
++    case 18:
++      immediate = ((instr & ~3) << 6) >> 6;	/* br unconditional */
++      if (absolute)
++	dest = immediate;
++      else
++	dest = pc + immediate;
++      break;
++
++    case 16:
++      immediate = ((instr & ~3) << 16) >> 16;	/* br conditional */
++      if (absolute)
++	dest = immediate;
++      else
++	dest = pc + immediate;
++      break;
++
++    case 19:
++      ext_op = (instr >> 1) & 0x3ff;
++
++      if (ext_op == 16)		/* br conditional register */
++	  dest = regcache_raw_get_unsigned (regcache, tdep->ppc_lr_regnum) & ~3;
++      else if (ext_op == 528)	/* br cond to count reg */
++	  dest = regcache_raw_get_unsigned (regcache,
++					    tdep->ppc_ctr_regnum) & ~3;
++      else
++	return -1;
++      break;
++
++    default:
++      return -1;
++    }
++  return dest;
++}
++
++/* 1 to 1 copy from rs6000aix-tdp.c rs6000_software_single_step */
++static std::vector<CORE_ADDR>
++ppc_amigaos_software_single_step (struct regcache *regcache)
++{
++  struct gdbarch *gdbarch = regcache->arch ();
++  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
++  int ii, insn;
++  CORE_ADDR loc;
++  CORE_ADDR breaks[2];
++  int opcode;
++
++  loc = regcache_read_pc (regcache);
++
++  insn = read_memory_integer (loc, 4, byte_order);
++
++  std::vector<CORE_ADDR> next_pcs = ppc_deal_with_atomic_sequence (regcache);
++  if (!next_pcs.empty ())
++    return next_pcs;
++  
++  breaks[0] = loc + PPC_INSN_SIZE;
++  opcode = insn >> 26;
++  breaks[1] = branch_dest (regcache, opcode, insn, loc, breaks[0]);
++
++  /* Don't put two breakpoints on the same address.  */
++  if (breaks[1] == breaks[0])
++    breaks[1] = -1;
++
++  for (ii = 0; ii < 2; ++ii)
++    {
++      /* ignore invalid breakpoint.  */
++      if (breaks[ii] == -1)
++	continue;
++
++      next_pcs.push_back (breaks[ii]);
++    }
++
++  errno = 0;			/* FIXME, don't ignore errors!  */
++  /* What errors?  {read,write}_memory call error().  */
++  return next_pcs;
++}
++
++static void
++ppc_amigaos_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
++{
++	/* Canonical paths on this target look like `SYS:Utilities/Clock', for example.  */
++	set_gdbarch_has_amiga_based_file_system (gdbarch, 1);
++
++	/* Everything runs in the same address space, but might have a priveta adresse area */
++	set_gdbarch_has_shared_address_space (gdbarch, ppc_amigaos_has_shared_address_space);
++
++	// PT_STEP not supported so, need to simulate it, like rs6000-aix
++	set_gdbarch_software_single_step (gdbarch, ppc_amigaos_software_single_step);
++	/* Displaced stepping is currently not supported in combination with
++		software single-stepping.  These override the values set by
++		rs6000_gdbarch_init.  */
++	set_gdbarch_displaced_step_copy_insn (gdbarch, NULL);
++	set_gdbarch_displaced_step_fixup (gdbarch, NULL);
++	set_gdbarch_displaced_step_prepare (gdbarch, NULL);
++	set_gdbarch_displaced_step_finish (gdbarch, NULL);
++
++  	// Traget bfd name, seems to be only needed for message/debug output
++	set_gdbarch_gcore_bfd_target (gdbarch, "elf32-powerpc-amigaos");
++}
++
++void _initialize_ppc_amigaos_tdep ();
++void
++_initialize_ppc_amigaos_tdep ()
++{
++	gdbarch_register_osabi (bfd_arch_rs6000, 0, GDB_OSABI_AMIGAOS, ppc_amigaos_init_abi);
++	gdbarch_register_osabi (bfd_arch_powerpc, 0, GDB_OSABI_AMIGAOS, ppc_amigaos_init_abi);
++}
+diff --git a/gdb/source.c b/gdb/source.c
+index d0f2d1c763523da801eb77736b7c141267ba25ad..ed5c1ae25593411e08224ee55883b7a9da2db0f8 100644
+--- a/gdb/source.c
++++ b/gdb/source.c
+@@ -828,13 +828,17 @@ openp (const char *path, openp_flags opts, const char *string,
+     {
+       errno = ENOENT;
+       return -1;
+     }
+ 
+   if (!path)
++  #if defined(__amigaos4__) 
++    path = "\"\"";
++  #elif
+     path = ".";
++  #endif
+ 
+   mode |= O_BINARY;
+ 
+   if ((opts & OPF_TRY_CWD_FIRST) || IS_ABSOLUTE_PATH (string))
+     {
+       int i, reg_file_errno;
+@@ -875,13 +879,13 @@ openp (const char *path, openp_flags opts, const char *string,
+   for (const gdb::unique_xmalloc_ptr<char> &dir_up : dir_vec)
+     {
+       char *dir = dir_up.get ();
+       size_t len = strlen (dir);
+       int reg_file_errno;
+ 
+-      if (strcmp (dir, "$cwd") == 0)
++      if (strcmp (dir, "$cwd") == 0 || strcmp (dir, "") == 0)
+ 	{
+ 	  /* Name is $cwd -- insert current directory name instead.  */
+ 	  int newlen;
+ 
+ 	  /* First, realloc the filename buffer if too short.  */
+ 	  len = strlen (current_directory);
+diff --git a/gdbsupport/common-defs.h b/gdbsupport/common-defs.h
+index e4985332e3f4016ccec2b2502dfe28bab16e2c92..e92e54ef41a87b64a1fabeb3cbf0ad74432ce79c 100644
+--- a/gdbsupport/common-defs.h
++++ b/gdbsupport/common-defs.h
+@@ -18,12 +18,13 @@
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
+ #ifndef COMMON_COMMON_DEFS_H
+ #define COMMON_COMMON_DEFS_H
+ 
+ #include <gdbsupport/config.h>
++#include <gdbsupport/host-defs.h>
+ 
+ #undef PACKAGE_NAME
+ #undef PACKAGE
+ #undef PACKAGE_VERSION
+ #undef PACKAGE_STRING
+ #undef PACKAGE_TARNAME
+diff --git a/gdbsupport/common-inferior.cc b/gdbsupport/common-inferior.cc
+index 7e1a5b6fa447c21b2a8ae1c8315c965447b7cffb..b48dc4f06397a5f01c49ec06fc8c9fd3d231bf57 100644
+--- a/gdbsupport/common-inferior.cc
++++ b/gdbsupport/common-inferior.cc
+@@ -36,12 +36,17 @@ construct_inferior_arguments (gdb::array_view<char * const> argv)
+     {
+ #ifdef __MINGW32__
+       /* This holds all the characters considered special to the
+ 	 Windows shells.  */
+       static const char special[] = "\"!&*|[]{}<>?`~^=;, \t\n";
+       static const char quote = '"';
++#elif __amigaos4__
++      /* This holds all the characters considered special to the
++	 Amiga shells. Currently copy of unix */
++      static const char special[] = "\"!#$&*()\\|[]{}<>?'`~^; \t\n";
++      static const char quote = '"';
+ #else
+       /* This holds all the characters considered special to the
+ 	 typical Unix shells.  We include `^' because the SunOS
+ 	 /bin/sh treats it as a synonym for `|'.  */
+       static const char special[] = "\"!#$&*()\\|[]{}<>?'`~^; \t\n";
+       static const char quote = '\'';
+diff --git a/gdbsupport/host-defs.h b/gdbsupport/host-defs.h
+index 4e0d71244a5abb5efb2525b653f701b9fb4b3039..e7deafff6a79c6a30c0e029264baa1d486e84661 100644
+--- a/gdbsupport/host-defs.h
++++ b/gdbsupport/host-defs.h
+@@ -47,12 +47,19 @@
+ #endif
+ 
+ #if !defined (__CYGWIN__) && defined (_WIN32)
+ # define DIRNAME_SEPARATOR ';'
+ #endif
+ 
++#if defined(__amigaos4__) 
++# define CANT_FORK
++# undef HAVE_POLL
++# undef HAVE_SOCKETPAIR
++# define DIRNAME_SEPARATOR ';'
++#endif
++
+ #ifndef DIRNAME_SEPARATOR
+ #define DIRNAME_SEPARATOR ':'
+ #endif
+ 
+ #ifndef SLASH_STRING
+ #define SLASH_STRING "/"
+diff --git a/gdbsupport/pathstuff.cc b/gdbsupport/pathstuff.cc
+index 390f10b1b5e4895cef6c4a7656cb1199d76d83b3..4a8f4719324796fbdd20265ecc348e9218c96036 100644
+--- a/gdbsupport/pathstuff.cc
++++ b/gdbsupport/pathstuff.cc
+@@ -229,12 +229,14 @@ contains_dir_separator (const char *path)
+ 
+ std::string
+ get_standard_cache_dir ()
+ {
+ #ifdef __APPLE__
+ #define HOME_CACHE_DIR "Library/Caches"
++#elif __amigaos4__
++#define HOME_CACHE_DIR "cache"
+ #else
+ #define HOME_CACHE_DIR ".cache"
+ #endif
+ 
+ #ifndef __APPLE__
+   const char *xdg_cache_home = getenv ("XDG_CACHE_HOME");
+@@ -261,13 +263,20 @@ get_standard_cache_dir ()
+       /* Make sure the path is absolute and tilde-expanded.  */
+       std::string abs = gdb_abspath (win_home);
+       return path_join (abs.c_str (), "gdb");
+     }
+ #endif
+ 
++#ifdef __amigaos4__
++  // Its always PROGDIR: on AmigaOS
++  /* Make sure the path is absolute and tilde-expanded.  */
++  std::string abs = gdb_abspath ("PROGDIR:");
++  return path_join (abs.c_str (), HOME_CACHE_DIR, "gdb");
++#else
+   return {};
++#endif
+ }
+ 
+ /* See gdbsupport/pathstuff.h.  */
+ 
+ std::string
+ get_standard_temp_dir ()
+@@ -279,13 +288,14 @@ get_standard_temp_dir ()
+ 
+   tmp = getenv ("TEMP");
+   if (tmp != nullptr)
+     return tmp;
+ 
+   error (_("Couldn't find temp dir path, both TMP and TEMP are unset."));
+-
++#elif __amigaos4__
++  return "T:";
+ #else
+   const char *tmp = getenv ("TMPDIR");
+   if (tmp != nullptr)
+     return tmp;
+ 
+   return "/tmp";
+@@ -318,13 +328,20 @@ get_standard_config_dir ()
+     {
+       /* Make sure the path is absolute and tilde-expanded.  */
+       std::string abs = gdb_abspath (home);
+       return path_join (abs.c_str (), HOME_CONFIG_DIR, "gdb");
+     }
+ 
++#ifdef __amigaos4__
++  // Its always ENVARC: on AmigaOS
++  /* Make sure the path is absolute and tilde-expanded.  */
++  std::string abs = gdb_abspath ("ENVARC:");
++  return path_join (abs.c_str (), HOME_CONFIG_DIR, "gdb");
++#else
+   return {};
++#endif
+ }
+ 
+ /* See pathstuff.h. */
+ 
+ std::string
+ get_standard_config_filename (const char *filename)
+diff --git a/gnulib/configure b/gnulib/configure
+index cc7e8287d5a0a250e2b4f55c1c2fa270399793bd..aaa4b6c0801485d544f2be07237b2be1d3b92f67 100644
+--- a/gnulib/configure
++++ b/gnulib/configure
+@@ -12920,12 +12920,14 @@ else
+   if test "$cross_compiling" = yes; then :
+   case "$host_os" in
+                            # Guess yes on glibc systems.
+             *-gnu* | gnu*) gl_cv_func_getcwd_null="guessing yes";;
+                            # Guess yes on musl systems.
+             *-musl*)       gl_cv_func_getcwd_null="guessing yes";;
++						   # Guess yes on AmigaOS
++			amigaos*) 	   gl_cv_func_getcwd_null="guessing yes";;
+                            # Guess yes on Cygwin.
+             cygwin*)       gl_cv_func_getcwd_null="guessing yes";;
+                            # If we don't know, obey --enable-cross-guesses.
+             *)             gl_cv_func_getcwd_null="$gl_cross_guess_normal";;
+           esac
+ 
+@@ -25495,12 +25497,14 @@ else
+   # Cross-compilation guesses:
+         case "$host_os" in
+           aix*) # On AIX, it has the AIX bug.
+             gl_cv_func_getcwd_path_max='guessing no, it has the AIX bug' ;;
+           gnu*) # On Hurd, it is 'yes'.
+             gl_cv_func_getcwd_path_max='guessing yes' ;;
++		  amigaos*) # On AmigaOS, it is 'yes'
++		    gl_cv_func_getcwd_path_max="guessing yes";;
+           linux* | kfreebsd*)
+             # On older Linux+glibc it's 'no, but it is partly working',
+             # on newer Linux+glibc it's 'yes'.
+             # On Linux+musl libc, it's 'no, but it is partly working'.
+             # On kFreeBSD+glibc, it's 'no, but it is partly working'.
+             gl_cv_func_getcwd_path_max='guessing no, but it is partly working' ;;
+diff --git a/gnulib/import/m4/getcwd-path-max.m4 b/gnulib/import/m4/getcwd-path-max.m4
+index e12045596b13d6352d7ba2fad1c31fd12638b456..bddf75ed4071b22163c95cc57461e6b6b3ce7f34 100644
+--- a/gnulib/import/m4/getcwd-path-max.m4
++++ b/gnulib/import/m4/getcwd-path-max.m4
+@@ -219,12 +219,14 @@ main ()
+        [# Cross-compilation guesses:
+         case "$host_os" in
+           aix*) # On AIX, it has the AIX bug.
+             gl_cv_func_getcwd_path_max='guessing no, it has the AIX bug' ;;
+           gnu*) # On Hurd, it is 'yes'.
+             gl_cv_func_getcwd_path_max='guessing yes' ;;
++		  amigaos*) # On AmigaOS, it is 'yes'
++		    gl_cv_func_getcwd_path_max="guessing yes";;
+           linux* | kfreebsd*)
+             # On older Linux+glibc it's 'no, but it is partly working',
+             # on newer Linux+glibc it's 'yes'.
+             # On Linux+musl libc, it's 'no, but it is partly working'.
+             # On kFreeBSD+glibc, it's 'no, but it is partly working'.
+             gl_cv_func_getcwd_path_max='guessing no, but it is partly working' ;;
+diff --git a/gnulib/import/m4/getcwd.m4 b/gnulib/import/m4/getcwd.m4
+index 076ca31485853b9789786079118de3648a6a188c..a7e0e7f9b863458665ef8f2d8a2bb45b5b61c740 100644
+--- a/gnulib/import/m4/getcwd.m4
++++ b/gnulib/import/m4/getcwd.m4
+@@ -52,12 +52,14 @@ AC_DEFUN([gl_FUNC_GETCWD_NULL],
+                            # Guess yes on glibc systems.
+             *-gnu* | gnu*) gl_cv_func_getcwd_null="guessing yes";;
+                            # Guess yes on musl systems.
+             *-musl*)       gl_cv_func_getcwd_null="guessing yes";;
+                            # Guess yes on Cygwin.
+             cygwin*)       gl_cv_func_getcwd_null="guessing yes";;
++						   # Guess yes on AmigaOS
++			amigaos*) 	   gl_cv_func_getcwd_null="guessing yes";;
+                            # If we don't know, obey --enable-cross-guesses.
+             *)             gl_cv_func_getcwd_null="$gl_cross_guess_normal";;
+           esac
+         ]])])
+ ])
+ 
+diff --git a/gnulib/import/sys_time.in.h b/gnulib/import/sys_time.in.h
+index 87db1a88745b034cf736ebefb9dd279e1f7a2bdf..93fce036d36505c27126603d1cce3e116e1ea2eb 100644
+--- a/gnulib/import/sys_time.in.h
++++ b/gnulib/import/sys_time.in.h
+@@ -58,12 +58,13 @@
+ /* The definitions of _GL_FUNCDECL_RPL etc. are copied here.  */
+ 
+ /* The definition of _GL_ARG_NONNULL is copied here.  */
+ 
+ /* The definition of _GL_WARN_ON_USE is copied here.  */
+ 
++#ifndef __amigaos4__
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+ #if !@HAVE_STRUCT_TIMEVAL@ || @REPLACE_STRUCT_TIMEVAL@
+ 
+@@ -82,12 +83,13 @@ struct timeval
+ 
+ #endif
+ 
+ #ifdef __cplusplus
+ }
+ #endif
++#endif
+ 
+ #if @GNULIB_GETTIMEOFDAY@
+ # if @REPLACE_GETTIMEOFDAY@
+ #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+ #   undef gettimeofday
+ #   define gettimeofday rpl_gettimeofday
+diff --git a/include/elf/amigaos.h b/include/elf/amigaos.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..2f12286430f85a5487808af69d3d38881de573c3
+--- /dev/null
++++ b/include/elf/amigaos.h
+@@ -0,0 +1,27 @@
++/* AmigaOS ELF support for BFD.
++   Copyright 2001 Free Software Foundation, Inc.
++
++This file is part of BFD, the Binary File Descriptor library.
++
++This program is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2 of the License, or
++(at your option) any later version.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with this program; if not, write to the Free Software Foundation, Inc.,
++51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++#ifndef _ELF_AMIGAOS_H
++#define _ELF_AMIGAOS_H
++
++#include "elf/common.h"
++
++#define DT_AMIGAOS_DYNVERSION	(DT_LOOS + 1)
++
++#endif /* _ELF_AMIGAOS_H */
+\ No newline at end of file
+diff --git a/include/elf/ppc.h b/include/elf/ppc.h
+index e0c54a66292c99dbc87d5fdf754421c63e158311..8af55a10a85f9017146c89a590a37aee8602439d 100644
+--- a/include/elf/ppc.h
++++ b/include/elf/ppc.h
+@@ -135,12 +135,18 @@ START_RELOC_NUMBERS (elf_ppc_reloc_type)
+   RELOC_NUMBER (R_PPC_EMB_RELSDA,	116)
+ 
+ /* Marker reloc for inline plt call insns.  */
+   RELOC_NUMBER (R_PPC_PLTSEQ,		119)
+   RELOC_NUMBER (R_PPC_PLTCALL,		120)
+ 
++/* AmigaOS4 relocs */
++  RELOC_NUMBER (R_PPC_AMIGAOS_BREL,	210)
++  RELOC_NUMBER (R_PPC_AMIGAOS_BREL_LO,	211)
++  RELOC_NUMBER (R_PPC_AMIGAOS_BREL_HI,  212)
++  RELOC_NUMBER (R_PPC_AMIGAOS_BREL_HA,  213)
++  
+ /* PowerPC VLE relocations.  */
+   RELOC_NUMBER (R_PPC_VLE_REL8,		216)
+   RELOC_NUMBER (R_PPC_VLE_REL15,	217)
+   RELOC_NUMBER (R_PPC_VLE_REL24,	218)
+   RELOC_NUMBER (R_PPC_VLE_LO16A,	219)
+   RELOC_NUMBER (R_PPC_VLE_LO16D,	220)
+diff --git a/include/filenames.h b/include/filenames.h
+index 444c5cc411cfc0518488193f378299ea13bc5584..3a12e2d025dc651e0faf16f9682f16976bdfd5a6 100644
+--- a/include/filenames.h
++++ b/include/filenames.h
+@@ -40,12 +40,22 @@ extern "C" {
+ #  ifndef HAVE_CASE_INSENSITIVE_FILE_SYSTEM
+ #    define HAVE_CASE_INSENSITIVE_FILE_SYSTEM 1
+ #  endif
+ #  define HAS_DRIVE_SPEC(f) HAS_DOS_DRIVE_SPEC (f)
+ #  define IS_DIR_SEPARATOR(c) IS_DOS_DIR_SEPARATOR (c)
+ #  define IS_ABSOLUTE_PATH(f) IS_DOS_ABSOLUTE_PATH (f)
++#elif defined(__amigaos4__)
++#  ifndef HAVE_AMIGA_BASED_FILE_SYSTEM
++#    define HAVE_AMIGA_BASED_FILE_SYSTEM 1
++#  endif
++#  ifndef HAVE_CASE_INSENSITIVE_FILE_SYSTEM
++#    define HAVE_CASE_INSENSITIVE_FILE_SYSTEM 1
++#  endif
++#  define HAS_DRIVE_SPEC(f) HAS_AMIGOS_DRIVE_SPEC (f)
++#  define IS_DIR_SEPARATOR(c) IS_AMIGOS_DIR_SEPARATOR (c)
++#  define IS_ABSOLUTE_PATH(f) IS_AMIGOS_ABSOLUTE_PATH (f)
+ #else /* not DOSish */
+ #  if defined(__APPLE__)
+ #    ifndef HAVE_CASE_INSENSITIVE_FILE_SYSTEM
+ #      define HAVE_CASE_INSENSITIVE_FILE_SYSTEM 1
+ #    endif
+ #  endif /* __APPLE__ */
+@@ -60,18 +70,26 @@ extern "C" {
+ 
+ #define HAS_DRIVE_SPEC_1(dos_based, f)			\
+   ((f)[0] && ((f)[1] == ':') && (dos_based))
+ 
+ /* Remove the drive spec from F, assuming HAS_DRIVE_SPEC (f).
+    The result is a pointer to the remainder of F.  */
++#if defined(__amigaos4__)
++#define STRIP_DRIVE_SPEC(f)	(index( &(f)[0],':') + 1 )
++#else
+ #define STRIP_DRIVE_SPEC(f)	((f) + 2)
++#endif
+ 
+ #define IS_DOS_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (1, c)
+ #define IS_DOS_ABSOLUTE_PATH(f) IS_ABSOLUTE_PATH_1 (1, f)
+ #define HAS_DOS_DRIVE_SPEC(f) HAS_DRIVE_SPEC_1 (1, f)
+ 
++#define IS_AMIGOS_DIR_SEPARATOR(c) ( ((c) == '/') || ((c) == ':') )
++#define IS_AMIGOS_ABSOLUTE_PATH(f) HAS_AMIGOS_DRIVE_SPEC(f)
++#define HAS_AMIGOS_DRIVE_SPEC(f) (index (&(f)[0], ':') != NULL ) 
++
+ #define IS_UNIX_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (0, c)
+ #define IS_UNIX_ABSOLUTE_PATH(f) IS_ABSOLUTE_PATH_1 (0, f)
+ 
+ /* Note that when DOS_BASED is true, IS_ABSOLUTE_PATH accepts d:foo as
+    well, although it is only semi-absolute.  This is because the users
+    of IS_ABSOLUTE_PATH want to know whether to prepend the current
+diff --git a/include/libiberty.h b/include/libiberty.h
+index 1d5c779fcff358a9c96ea0111f7306a9e6ffa6d0..e9d103d797572248720ffa8ff993ea61082fb991 100644
+--- a/include/libiberty.h
++++ b/include/libiberty.h
+@@ -124,12 +124,17 @@ extern const char *lbasename (const char *) ATTRIBUTE_RETURNS_NONNULL ATTRIBUTE_
+ 
+ /* Same, but assumes DOS semantics (drive name, backslash is also a
+    dir separator) regardless of host.  */
+ 
+ extern const char *dos_lbasename (const char *) ATTRIBUTE_RETURNS_NONNULL ATTRIBUTE_NONNULL(1);
+ 
++/* Same, but assumes AMIGA semantics (drive name, slash is also a
++   dir separator) regardless of host.  */
++
++extern const char *amiga_lbasename (const char *) ATTRIBUTE_RETURNS_NONNULL ATTRIBUTE_NONNULL(1);
++
+ /* Same, but assumes Unix semantics (absolute paths always start with
+    a slash, only forward slash is accepted as dir separator)
+    regardless of host.  */
+ 
+ extern const char *unix_lbasename (const char *) ATTRIBUTE_RETURNS_NONNULL ATTRIBUTE_NONNULL(1);
+ 
+diff --git a/ld/Makefile.am b/ld/Makefile.am
+index 12b2c3c453fdbdb1fcac74bf5047bc4d0001483f..fe85a5adb17fe595aedd7fa05d4d7428721e9a16 100644
+--- a/ld/Makefile.am
++++ b/ld/Makefile.am
+@@ -155,12 +155,13 @@ ALL_EMULATION_SOURCES = \
+ 	eaix5ppc.c \
+ 	eaix5rs6.c \
+ 	eaixppc.c \
+ 	eaixrs6.c \
+ 	ealpha.c \
+ 	ealphavms.c \
++	eamigaos.c \
+ 	earcelf.c \
+ 	earclinux.c \
+ 	earclinux_nps.c \
+ 	earcv2elf.c \
+ 	earcv2elfx.c \
+ 	earm_wince_pe.c \
+@@ -650,12 +651,13 @@ $(ALL_EMULATION_SOURCES) $(ALL_64_EMULATION_SOURCES): $(GEN_DEPENDS)
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaix5ppc.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaix5rs6.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaixppc.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaixrs6.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ealpha.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ealphavms.Pc@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eamigaos.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earcelf.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earclinux.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earclinux_nps.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earcv2elf.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earcv2elfx.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earm_wince_pe.Pc@am__quote@
+diff --git a/ld/Makefile.in b/ld/Makefile.in
+index 3d5685d6bae1ce6258f053190da8d84f9eaba463..63ad373bbd053b1cbbbcce79e4cd0fd44dd780cb 100644
+--- a/ld/Makefile.in
++++ b/ld/Makefile.in
+@@ -656,12 +656,13 @@ ALL_EMULATION_SOURCES = \
+ 	eaix5ppc.c \
+ 	eaix5rs6.c \
+ 	eaixppc.c \
+ 	eaixrs6.c \
+ 	ealpha.c \
+ 	ealphavms.c \
++	eamigaos.c \
+ 	earcelf.c \
+ 	earclinux.c \
+ 	earclinux_nps.c \
+ 	earcv2elf.c \
+ 	earcv2elfx.c \
+ 	earm_wince_pe.c \
+@@ -1269,12 +1270,13 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaix5ppc.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaix5rs6.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaixppc.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaixrs6.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ealpha.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ealphavms.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eamigaos.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earcelf.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earclinux.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earclinux_nps.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earcv2elf.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earcv2elfx.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/earm_wince_pe.Po@am__quote@
+diff --git a/ld/configure.tgt b/ld/configure.tgt
+index de04a44b8125f08095b792285be5ddbaf41e95f2..a2b3a54a94452c6ec882df7c41e63bd00b905b81 100644
+--- a/ld/configure.tgt
++++ b/ld/configure.tgt
+@@ -674,12 +674,16 @@ pdp11-*-*)		targ_emul=pdp11
+ pjl*-*-*)		targ_emul=pjlelf
+ 			targ_extra_emuls="elf_i386 elf_iamcu"
+ 			;;
+ pj*-*-*)		targ_emul=pjelf
+ 			targ_extra_ofiles=ldelfgen.o
+ 			;;
++powerpc-*-amigaos*)
++			targ_emul=amigaos
++			targ_extra_emuls=elf32ppc
++			;;			
+ powerpc-*-freebsd* | powerpc-*-kfreebsd*-gnu)
+ 			targ_emul=elf32ppc_fbsd
+ 			targ_extra_emuls="elf32ppc elf32ppcsim"
+ 			targ_extra_libpath=elf32ppc;
+ 			tdir_elf32ppcsim=`echo ${targ_alias} | sed -e 's/ppc/ppcsim/'`
+ 			;;
+@@ -1141,12 +1145,16 @@ i[03-9x]86-*-cygwin* | x86_64-*-cygwin*)
+ *-*-linux*)
+   ;;
+ 
+ *-*-netbsd*)
+   ;;
+ 
++powerpc-*-amigaos*)
++  NATIVE_LIB_DIRS='/gcc/local/lib /gcc/lib'
++  ;;
++
+ alpha*-*-*)
+   NATIVE_LIB_DIRS='/usr/local/lib /usr/ccs/lib /lib /usr/lib'
+   ;;
+ 
+ esac
+ 
+diff --git a/ld/emulparams/amigaos.sh b/ld/emulparams/amigaos.sh
+new file mode 100644
+index 0000000000000000000000000000000000000000..c9e25b1cbb5060faac798aa9480dae874751ef5d
+--- /dev/null
++++ b/ld/emulparams/amigaos.sh
+@@ -0,0 +1,31 @@
++. ${srcdir}/emulparams/elf32ppccommon.sh
++. ${srcdir}/emulparams/plt_unwind.sh
++
++TEMPLATE_NAME=elf
++EXTRA_EM_FILE=ppc32elf
++SCRIPT_NAME=amigaos
++OUTPUT_FORMAT="elf32-powerpc-amigaos"
++MAXPAGESIZE="CONSTANT (MAXPAGESIZE)"
++COMMONPAGESIZE="CONSTANT (COMMONPAGESIZE)"
++DATA_SEGMENT_ALIGN="ALIGN(${SEGMENT_SIZE})"
++ALIGNMENT=16
++ARCH=powerpc
++MACHINE=
++GENERATE_SHLIB_SCRIPT=yes
++TEXT_START_ADDR=0x01000000
++SHLIB_TEXT_START_ADDR=0x10000000
++unset WRITABLE_RODATA
++DATA_START_SYMBOLS="_DATA_BASE_ = .;"
++SDATA_START_SYMBOLS="_SDA_BASE_ = . + 0x8000;"
++DATA_GOT=
++SDATA_GOT=
++TEXT_PLT=yes
++SEPARATE_GOTPLT=0
++unset BSS_PLT
++unset DATA_PLT
++GOT=".got          ${RELOCATING-0} : SPECIAL { *(.got) }"
++PLT=".plt          ${RELOCATING-0} :  { *(.plt) }"
++# GOTPLT="${PLT}"
++OTHER_TEXT_SECTIONS="*(.glink)"
++ENABLE_INITFINI_ARRAY=no
++DYNAMIC_LINK=false
+\ No newline at end of file
+diff --git a/ld/ldctor.c b/ld/ldctor.c
+index 2f80aa02df699a0b1f3301412b02b2da030bac01..6bdbba10074d8052e83ca858cc7e6cec21c0d772 100644
+--- a/ld/ldctor.c
++++ b/ld/ldctor.c
+@@ -29,12 +29,13 @@
+ #include "ldexp.h"
+ #include "ldlang.h"
+ #include "ldmisc.h"
+ #include <ldgram.h>
+ #include "ldmain.h"
+ #include "ldctor.h"
++#include "elf-bfd.h"
+ 
+ /* The list of statements needed to handle constructors.  These are
+    invoked by the command CONSTRUCTORS in the linker script.  */
+ lang_statement_list_type constructor_list;
+ 
+ /* Whether the constructors should be sorted.  Note that this is
+@@ -253,14 +254,19 @@ ldctor_build_sets (void)
+       reloc_howto_type *howto;
+       int reloc_size, size;
+ 
+       /* If the symbol is defined, we may have been invoked from
+ 	 collect, and the sets may already have been built, so we do
+ 	 not do anything.  */
+-      if (p->h->type == bfd_link_hash_defined
+-	  || p->h->type == bfd_link_hash_defweak)
++	 /* dgv -- libnix v1.1 uses absolute sets that are also explicitly
++	 defined in the library so that the sets need to be build even
++	 if the symbol is defined */
++	  if (!(bfd_get_flavour (link_info.output_bfd) == bfd_target_elf_flavour &&
++		get_elf_backend_data (link_info.output_bfd)->target_os == is_amigaos) &&
++        (p->h->type == bfd_link_hash_defined
++	    || p->h->type == bfd_link_hash_defweak))
+ 	continue;
+ 
+       /* For each set we build:
+ 	   set:
+ 	     .long number_of_elements
+ 	     .long element0
+@@ -353,21 +359,28 @@ ldctor_build_sets (void)
+ 		  len = 0;
+ 		}
+ 	      print_spaces (20 - len);
+ 
+ 	      if (e->name != NULL)
+ 		minfo ("%pT\n", e->name);
+-	      else
+-		minfo ("%G\n", e->section->owner, e->section, e->value);
++		  else if (e->section->owner)
++	    minfo ("%G\n", e->section->owner, e->section, e->value);
++		  else
++		minfo ("%s\n", "** ABS **");
+ 	    }
+ 
+ 	  /* Need SEC_KEEP for --gc-sections.  */
+ 	  if (!bfd_is_abs_section (e->section))
+ 	    e->section->flags |= SEC_KEEP;
+ 
+-	  if (bfd_link_relocatable (&link_info))
++	  /* dgv -- on the amiga, we want the constructors to be relocateable
++	     objects. However, this should be arranged somewhere else (FIXME) */
++	  if (bfd_link_relocatable (&link_info) ||
++		  (bfd_get_flavour (link_info.output_bfd) == bfd_target_elf_flavour &&
++           get_elf_backend_data (link_info.output_bfd)->target_os == is_amigaos &&
++	       e->section != bfd_abs_section_ptr))
+ 	    lang_add_reloc (p->reloc, howto, e->section, e->name,
+ 			    exp_intop (e->value));
+ 	  else
+ 	    lang_add_data (size, exp_relop (e->section, e->value));
+ 	}
+ 
+diff --git a/ld/ldlang.c b/ld/ldlang.c
+index b66d8c6bc1dd8c9bcb8f142c7111307513098588..2f546239ab0503fe4ba4a9318d9670e454db7349 100644
+--- a/ld/ldlang.c
++++ b/ld/ldlang.c
+@@ -3837,12 +3837,19 @@ typedef struct bfd_sym_chain ldlang_undef_chain_list_type;
+ 
+ #define ldlang_undef_chain_list_head entry_symbol.next
+ 
+ void
+ ldlang_add_undef (const char *const name, bool cmdline ATTRIBUTE_UNUSED)
+ {
++#if 1
++  /* This is a quick ugly hak of getting around the problem
++   * with -use-dynld being passed to the linker
++   */
++  if (strcmp(name, "se-dynld") == 0)
++    return;
++#endif	
+   ldlang_undef_chain_list_type *new_undef;
+ 
+   new_undef = stat_alloc (sizeof (*new_undef));
+   new_undef->next = ldlang_undef_chain_list_head;
+   ldlang_undef_chain_list_head = new_undef;
+ 
+diff --git a/ld/ldmain.c b/ld/ldmain.c
+index 9290a189b0d26fbd7bbcc97624ee45fbcd188584..308928445feced047f44a99c463f6d89174f9776 100644
+--- a/ld/ldmain.c
++++ b/ld/ldmain.c
+@@ -493,18 +493,23 @@ main (int argc, char **argv)
+ 	}
+       link_info.has_map_file = true;
+     }
+ 
+   lang_process ();
+ 
+-  /* Print error messages for any missing symbols, for any warning
++    /* Print error messages for any missing symbols, for any warning
+      symbols, and possibly multiple definitions.  */
++#ifdef __amigaos4__
++  /* Make all files executable, even relocatable files */
++    link_info.output_bfd->flags |= EXEC_P;
++#else
+   if (bfd_link_relocatable (&link_info))
+     link_info.output_bfd->flags &= ~EXEC_P;
+   else
+     link_info.output_bfd->flags |= EXEC_P;
++#endif
+ 
+   flagword flags = 0;
+   switch (config.compress_debug)
+     {
+     case COMPRESS_DEBUG_GNU_ZLIB:
+       flags = BFD_COMPRESS;
+diff --git a/ld/po/BLD-POTFILES.in b/ld/po/BLD-POTFILES.in
+index ff820172b9845f40be4fdae1df56137d3e2d65ac..018ac5d6dc7299a8dd57167b72d8851a07e075af 100644
+--- a/ld/po/BLD-POTFILES.in
++++ b/ld/po/BLD-POTFILES.in
+@@ -265,12 +265,14 @@ ends32elf16m.c
+ ends32elf_linux.c
+ enios2elf.c
+ enios2linux.c
+ ens32knbsd.c
+ epc532macha.c
+ epdp11.c
++eppcamiga.c
++eppcamiga_bss.c
+ epjelf.c
+ epjlelf.c
+ eppcmacos.c
+ epruelf.c
+ escore3_elf.c
+ escore7_elf.c
+diff --git a/ld/scripttempl/elf.sc b/ld/scripttempl/amigaos.sc
+similarity index 99%
+copy from ld/scripttempl/elf.sc
+copy to ld/scripttempl/amigaos.sc
+index 5d3b0d31b1bbb5903730a785c32937939931d1cf..4b2b8a1e66ed188f672ca09baba622e40eff6502 100644
+--- a/ld/scripttempl/elf.sc
++++ b/ld/scripttempl/amigaos.sc
+@@ -535,13 +535,12 @@ cat <<EOF
+   {
+     ${RELOCATING+${INIT_START}}
+     KEEP (*(SORT_NONE(.init)))
+     ${RELOCATING+${INIT_END}}
+   } ${FILL}
+ 
+-  ${TEXT_PLT+${PLT_NEXT_DATA-${PLT} ${OTHER_PLT_SECTIONS}}}
+   ${TINY_READONLY_SECTION}
+   .text         ${RELOCATING-0} :
+   {
+     ${RELOCATING+${TEXT_START_SYMBOLS}}
+     ${RELOCATING+*(.text.unlikely .text.*_unlikely .text.unlikely.*)}
+     ${RELOCATING+*(.text.exit .text.exit.*)}
+@@ -550,12 +549,15 @@ cat <<EOF
+     ${RELOCATING+*(SORT(.text.sorted.*))}
+     *(.text .stub${RELOCATING+ .text.* .gnu.linkonce.t.*})
+     /* .gnu.warning sections are handled specially by elf.em.  */
+     *(.gnu.warning)
+     ${RELOCATING+${OTHER_TEXT_SECTIONS}}
+   } ${FILL}
++  . = ALIGN(4096);
++  ${TEXT_PLT+${PLT_NEXT_DATA-${PLT} ${OTHER_PLT_SECTIONS}}}
++  . = ALIGN(4096);
+   .fini         ${RELOCATING-0}${RELOCATING+${FINI_ADDR}} :
+   {
+     ${RELOCATING+${FINI_START}}
+     KEEP (*(SORT_NONE(.fini)))
+     ${RELOCATING+${FINI_END}}
+   } ${FILL}
+diff --git a/libiberty/Makefile.in b/libiberty/Makefile.in
+index f9fbba23e2c81793bb7271f069b663b52813e812..8bbad59fcc5b137a4cfeb74995a0a05e2f5e8a7b 100644
+--- a/libiberty/Makefile.in
++++ b/libiberty/Makefile.in
+@@ -140,13 +140,13 @@ CFILES = alloca.c argv.c asprintf.c atexit.c				\
+ 	make-relative-prefix.c						\
+ 	make-temp-file.c md5.c memchr.c memcmp.c memcpy.c memmem.c	\
+ 	 memmove.c mempcpy.c memset.c mkstemps.c			\
+ 	objalloc.c obstack.c						\
+ 	partition.c pexecute.c						\
+ 	 pex-common.c pex-djgpp.c pex-msdos.c pex-one.c			\
+-	 pex-unix.c pex-win32.c						\
++	 pex-unix.c pex-win32.c	pex-amigaos.c			\
+          physmem.c putenv.c						\
+ 	random.c regex.c rename.c rindex.c				\
+ 	rust-demangle.c							\
+ 	safe-ctype.c setenv.c setproctitle.c sha1.c sigsetmask.c        \
+ 	 simple-object.c simple-object-coff.c simple-object-elf.c	\
+ 	 simple-object-mach-o.c simple-object-xcoff.c			\
+@@ -213,13 +213,13 @@ CONFIGURED_OFILES = ./asprintf.$(objext) ./atexit.$(objext)		\
+ 	 ./gettimeofday.$(objext)					\
+ 	./index.$(objext) ./insque.$(objext)				\
+ 	./memchr.$(objext) ./memcmp.$(objext) ./memcpy.$(objext) 	\
+ 	./memmem.$(objext) ./memmove.$(objext)				\
+ 	 ./mempcpy.$(objext) ./memset.$(objext) ./mkstemps.$(objext)	\
+ 	./pex-djgpp.$(objext) ./pex-msdos.$(objext)			\
+-	 ./pex-unix.$(objext) ./pex-win32.$(objext)			\
++	 ./pex-unix.$(objext) ./pex-win32.$(objext)	./pex-amigaos.$(objext)		\
+ 	 ./putenv.$(objext)						\
+ 	./random.$(objext) ./rename.$(objext) ./rindex.$(objext)	\
+ 	./setenv.$(objext) 						\
+ 	 ./setproctitle.$(objext)					\
+ 	 ./sigsetmask.$(objext) ./snprintf.$(objext)			\
+ 	 ./stpcpy.$(objext) ./stpncpy.$(objext) ./strcasecmp.$(objext)	\
+@@ -1162,12 +1162,22 @@ $(CONFIGURED_OFILES): stamp-picdir stamp-noasandir
+ 	else true; fi
+ 	if [ x"$(NOASANFLAG)" != x ]; then \
+ 	  $(COMPILE.c) $(PICFLAG) $(NOASANFLAG) $(srcdir)/pex-unix.c -o noasan/$@; \
+ 	else true; fi
+ 	$(COMPILE.c) $(srcdir)/pex-unix.c $(OUTPUT_OPTION)
+ 
++./pex-amigaos.$(objext): $(srcdir)/pex-amigaos.c config.h $(INCDIR)/ansidecl.h \
++	$(INCDIR)/libiberty.h $(srcdir)/pex-common.h
++	if [ x"$(PICFLAG)" != x ]; then \
++	  $(COMPILE.c) $(PICFLAG) $(srcdir)/pex-amigaos.c -o pic/$@; \
++	else true; fi
++	if [ x"$(NOASANFLAG)" != x ]; then \
++	  $(COMPILE.c) $(PICFLAG) $(NOASANFLAG) $(srcdir)/pex-amigaos.c -o noasan/$@; \
++	else true; fi
++	$(COMPILE.c) $(srcdir)/pex-amigaos.c $(OUTPUT_OPTION)
++
+ ./pex-win32.$(objext): $(srcdir)/pex-win32.c config.h $(INCDIR)/ansidecl.h \
+ 	$(INCDIR)/libiberty.h $(srcdir)/pex-common.h
+ 	if [ x"$(PICFLAG)" != x ]; then \
+ 	  $(COMPILE.c) $(PICFLAG) $(srcdir)/pex-win32.c -o pic/$@; \
+ 	else true; fi
+ 	if [ x"$(NOASANFLAG)" != x ]; then \
+diff --git a/libiberty/configure b/libiberty/configure
+index 1ccfac9fb11f334926f253d284b03a8335d94b2e..e5433eda5cf3bbe9527f12bae015535938e4995f 100755
+--- a/libiberty/configure
++++ b/libiberty/configure
+@@ -7537,12 +7537,13 @@ fi
+ 
+ # Figure out which version of pexecute to use.
+ case "${host}" in
+      *-*-mingw* | *-*-winnt*)	pexecute=pex-win32  ;;
+      *-*-msdosdjgpp*)		pexecute=pex-djgpp  ;;
+      *-*-msdos*)		pexecute=pex-msdos  ;;
++	 powerpc-*-amigaos*)	pexecute=pex-amigaos ;;
+      *)				pexecute=pex-unix   ;;
+ esac
+ 
+ 
+ 
+ 
+diff --git a/libiberty/configure.ac b/libiberty/configure.ac
+index 6c1ff9c60933a95a150334652061cd649457eebc..e4aa76595652047ea04754425d5d890abb11cf64 100644
+--- a/libiberty/configure.ac
++++ b/libiberty/configure.ac
+@@ -733,12 +733,13 @@ fi
+ 
+ # Figure out which version of pexecute to use.
+ case "${host}" in
+      *-*-mingw* | *-*-winnt*)	pexecute=pex-win32  ;;
+      *-*-msdosdjgpp*)		pexecute=pex-djgpp  ;;
+      *-*-msdos*)		pexecute=pex-msdos  ;;
++	 powerpc-*-amigaos*)	pexecute=pex-amigaos ;;
+      *)				pexecute=pex-unix   ;;
+ esac
+ AC_SUBST(pexecute)
+ 
+ libiberty_AC_FUNC_STRNCMP
+ 
+diff --git a/libiberty/fnmatch.c b/libiberty/fnmatch.c
+index 3602059ce8a5897d82fc8be62c40b37344713f0d..4b3e030d040bf102bd1f342c40f2f203338c924d 100644
+--- a/libiberty/fnmatch.c
++++ b/libiberty/fnmatch.c
+@@ -44,20 +44,23 @@ Boston, MA 02110-1301, USA.  */
+ #endif
+ 
+ #include <errno.h>
+ #include <fnmatch.h>
+ #include <safe-ctype.h>
+ 
++/* Ignore all this code if targeting AmigaOS4 with clib clib4, because
++   the clib4 clib provided it own fnmatch implementation */
++#if !(defined(__amigaos4__) && defined(__CLIB4__))
++
+ /* Comment out all this code if we are using the GNU C Library, and are not
+    actually compiling the library itself.  This code is part of the GNU C
+    Library, but also included in many other GNU distributions.  Compiling
+    and linking in this code is a waste when using the GNU C library
+    (especially if it is a shared library).  Rather than having every GNU
+    program understand `configure --with-gnu-libc' and omit the object files,
+    it is simpler to just do this in the source for each such file.  */
+-
+ #if defined (_LIBC) || !defined (__GNU_LIBRARY__)
+ 
+ 
+ #if !defined(__GNU_LIBRARY__) && !defined(STDC_HEADERS)
+ extern int errno;
+ #endif
+@@ -215,6 +218,7 @@ fnmatch (const char *pattern, const char *string, int flags)
+     return 0;
+ 
+   return FNM_NOMATCH;
+ }
+ 
+ #endif	/* _LIBC or not __GNU_LIBRARY__.  */
++#endif  /* not (AMIGAOS and CLIB4) $*/
+diff --git a/libiberty/lbasename.c b/libiberty/lbasename.c
+index a7864ab2b8c44c198b210b681efbadfcf8415fbb..d1f40818b2243b317e0d4fc65ee2978297ed890c 100644
+--- a/libiberty/lbasename.c
++++ b/libiberty/lbasename.c
+@@ -70,15 +70,35 @@ dos_lbasename (const char *name)
+     if (IS_DOS_DIR_SEPARATOR (*name))
+       base = name + 1;
+ 
+   return base;
+ }
+ 
++const char *
++amiga_lbasename (const char *name)
++{
++  const char *base = name;
++
++  /* Skip over a possible disk name.  */
++  if (HAS_AMIGOS_DRIVE_SPEC (name)) {
++    base = STRIP_DRIVE_SPEC (name);
++  };
++
++  /* Strip any directories */
++  for (; *name; name++)
++    if (IS_AMIGOS_DIR_SEPARATOR (*name))
++      base = name + 1;
++
++  return base;
++}
++
+ const char *
+ lbasename (const char *name)
+ {
+ #if defined (HAVE_DOS_BASED_FILE_SYSTEM)
+   return dos_lbasename (name);
++#elif defined (HAVE_AMIGA_BASED_FILE_SYSTEM)
++  return amiga_lbasename (name);
+ #else
+   return unix_lbasename (name);
+ #endif
+ }
+diff --git a/libiberty/make-temp-file.c b/libiberty/make-temp-file.c
+index fae743f398539d5217bcaca5f1a3de7be9f9e547..5f66abacc55f0dde71d19e7543f7e1a6453496a9 100644
+--- a/libiberty/make-temp-file.c
++++ b/libiberty/make-temp-file.c
+@@ -153,12 +153,14 @@ choose_tmpdir (void)
+       len = strlen (base);
+       tmpdir = XNEWVEC (char, len + 2);
+       strcpy (tmpdir, base);
+       tmpdir[len] = DIR_SEPARATOR;
+       tmpdir[len+1] = '\0';
+       memoized_tmpdir = tmpdir;
++#elif __amigaos4__
++    memoized_tmpdir = xstrdup ("T:");
+ #else /* defined(_WIN32) && !defined(__CYGWIN__) */
+       DWORD len;
+ 
+       /* Figure out how much space we need.  */
+       len = GetTempPath(0, NULL);
+       if (len)
+diff --git a/libiberty/pex-amigaos.c b/libiberty/pex-amigaos.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c07499f402b1a
+--- /dev/null
++++ b/libiberty/pex-amigaos.c
+@@ -0,0 +1,325 @@
++/* Utilities to execute a program in a subprocess (possibly linked by pipes
++   with other subprocesses), and wait for it.  Generic AMIGAOS specialization.
++   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2005
++   Free Software Foundation, Inc.
++
++This file is part of the libiberty library.
++Libiberty is free software; you can redistribute it and/or
++modify it under the terms of the GNU Library General Public
++License as published by the Free Software Foundation; either
++version 2 of the License, or (at your option) any later version.
++
++Libiberty is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++Library General Public License for more details.
++
++You should have received a copy of the GNU Library General Public
++License along with libiberty; see the file COPYING.LIB.  If not,
++write to the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
++Boston, MA 02110-1301, USA.  */
++
++#include "pex-common.h"
++
++#include <stdio.h>
++#include <errno.h>
++#ifdef NEED_DECLARATION_ERRNO
++extern int errno;
++#endif
++#ifdef HAVE_STDLIB_H
++#include <stdlib.h>
++#endif
++#include <string.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/stat.h>
++#include <ctype.h>
++
++/* Use ECHILD if available, otherwise use EINVAL.  */
++#ifdef ECHILD
++#define PWAIT_ERROR ECHILD
++#else
++#define PWAIT_ERROR EINVAL
++#endif
++
++#if !defined(FD_CLOEXEC)
++#define FD_CLOEXEC 1
++#endif
++
++static int pex_amiga_open_read (struct pex_obj *, const char *, int);
++static int pex_amiga_open_write (struct pex_obj *, const char *, int);
++static pid_t pex_amiga_exec_child (struct pex_obj *, int, const char *,
++				 char * const *, char * const *,
++				 int, int, int, int,
++				 const char **, int *);
++static int pex_amiga_close (struct pex_obj *, int);
++static int pex_amiga_wait (struct pex_obj *, long, int *, struct pex_time *,
++			   int, const char **, int *);
++static FILE *pex_amiga_fdopenr (struct pex_obj *, int, int);
++static FILE *pex_amiga_fdopenw (struct pex_obj *, int, int);
++
++/* The list of functions we pass to the common routines.  */
++
++const struct pex_funcs funcs =
++{
++  pex_amiga_open_read,
++  pex_amiga_open_write,
++  pex_amiga_exec_child,
++  pex_amiga_close,
++  pex_amiga_wait,
++  NULL, /* pipe */
++  pex_amiga_fdopenr,
++  pex_amiga_fdopenw,
++  NULL, /* cleanup */
++};
++
++/* Return a newly initialized pex_obj structure.  */
++
++struct pex_obj *
++pex_init (int flags, const char *pname, const char *tempbase)
++{
++  /* AMIGAOS does not support pipes.  */
++  flags &= ~ PEX_USE_PIPES;
++  return pex_init_common (flags, pname, tempbase, &funcs);
++}
++
++/* Open a file for reading.  */
++
++static int
++pex_amiga_open_read (struct pex_obj *obj ATTRIBUTE_UNUSED, const char *name,
++		    int binary ATTRIBUTE_UNUSED)
++{
++  return open (name, O_RDONLY);
++}
++
++/* Open a file for writing.  */
++
++static int
++pex_amiga_open_write (struct pex_obj *obj ATTRIBUTE_UNUSED, const char *name,
++		     int binary ATTRIBUTE_UNUSED)
++{
++  /* Note that we can't use O_EXCL here because gcc may have already
++     created the temporary file via make_temp_file.  */
++  return open (name, O_WRONLY | O_CREAT | O_TRUNC);
++}
++
++/* Close a file.  */
++
++static int
++pex_amiga_close (struct pex_obj *obj ATTRIBUTE_UNUSED, int fd)
++{
++  return close (fd);
++}
++
++/* Execute a child.  */
++
++const unsigned char __shell_escape_character = '\\';
++
++static pid_t
++pex_amiga_exec_child (struct pex_obj *obj, int flags ATTRIBUTE_UNUSED, const char *executable ATTRIBUTE_UNUSED,
++		     char * const * argv, char * const * env ATTRIBUTE_UNUSED,
++                     int in ATTRIBUTE_UNUSED, int out ATTRIBUTE_UNUSED, int errdes ATTRIBUTE_UNUSED,
++		     int toclose ATTRIBUTE_UNUSED, const char **errmsg, int *err)
++{
++  int rc;
++  char *scmd,*s;
++  int i,j,c,len,arglen;
++  int need_quote;
++  int already_have_quote;
++  int escaped;
++  int *statuses;
++
++  len = 0;
++
++  for(i = 0 ; argv[i] != NULL ; i++)
++  {
++    arglen = strlen(argv[i]);
++
++    len += 1 + arglen;
++
++    need_quote = already_have_quote = 0;
++
++    /* Check if this parameter is already surrounded by double quotes.
++       What counts is that the first character is a double quote. We
++       hope that the last character is an unescaped double quote, but
++       don't check for it. */
++    if(argv[i][0] == '\"')
++    {
++      already_have_quote = 1;
++    }
++    else
++    {
++      /* Check if there's a blank space in the argument. If so, we will
++         need to add double quote characters. */
++      for (j = 0 ; j < arglen ; j++)
++      {
++        c = argv[i][j];
++
++        if (isspace(c))
++        {
++          need_quote = 1;
++          break;
++        }
++      }
++
++      /* Make room for the double quote characters that we will have to add. */
++      if(need_quote)
++        len += 2;
++    }
++
++    /* Check if there are " or * characters in the quoted string which
++       may have to be escaped. */
++    if (need_quote || already_have_quote)
++    {
++      for (j = 0 ; j < arglen ; j++)
++      {
++        c = argv[i][j];
++
++        /* We just might have to add an escape character in front of these two. */
++        if (c == '\"' || c == '*')
++	        len++;
++      }
++    }
++  }
++
++  s = scmd = (char *) xmalloc (len+1);
++
++  for(i = 0 ; argv[i] != NULL ; i++)
++  {
++    arglen = strlen(argv[i]);
++
++    need_quote = already_have_quote = 0;
++
++    if (argv[i][0] == '\"')
++    {
++      already_have_quote = 1;
++    }
++    else
++    {
++      for (j = 0 ; j < arglen ; j++)
++      {
++        c = argv[i][j];
++
++        if (isspace(c))
++        {
++          need_quote = 1;
++          break;
++        }
++      }
++    }
++
++    if(s != scmd)
++      (*s++) = ' ';
++
++    if(need_quote)
++      (*s++) = '\"';
++
++    escaped = 0;
++
++    for(j = 0 ; j < arglen ; j++)
++    {
++      c = argv[i][j];
++
++      /* If this is a " or * and the parameter is quoted, try to
++         add an escape character in front of it. */
++      if((c == '\"' || c == '*') && (need_quote || already_have_quote))
++	    {
++        /* Careful, don't escape the first double
++           quote character by mistake. */
++        if(!already_have_quote || j > 0)
++        {
++          /* Don't add an escape character here if the previous character
++             already was an escape character. */
++          if(!escaped)
++            (*s++) = '*';
++	      }
++      }
++
++      (*s++) = c;
++
++      /* Remember if the last character read was an escape character. */
++      if (escaped)
++        escaped = 0;
++      else
++        escaped = (c == __shell_escape_character && c != '*');
++    }
++
++    if(need_quote)
++      (*s++) = '\"';
++  }
++
++  (*s) = '\0';
++
++  rc = system (scmd);
++
++  free (scmd);
++
++  if (rc == -1)
++  {
++    *err = errno;
++    *errmsg = install_error_msg;
++    return -1;
++  }
++
++  /* Save the exit status for later.  When we are called, obj->count
++     is the number of children which have executed before this
++     one.  */
++  statuses = (int *) obj->sysdep;
++  statuses = XRESIZEVEC (int, statuses, obj->count + 1);
++  statuses[obj->count] = (rc << 8); /* Tuck the status away for pwait */
++  obj->sysdep = (void *) statuses;
++
++  return obj->count;
++}
++
++/* Create a pipe.  */
++/*
++static int
++pex_amiga_pipe (struct pex_obj *obj ATTRIBUTE_UNUSED, int *p,
++	       int binary ATTRIBUTE_UNUSED)
++{
++  return pipe (p);
++}
++*/
++
++/* Get a FILE pointer to read from a file descriptor.  */
++
++static FILE *
++pex_amiga_fdopenr (struct pex_obj *obj ATTRIBUTE_UNUSED, int fd,
++		  int binary ATTRIBUTE_UNUSED)
++{
++  return fdopen (fd, "r");
++}
++
++/* Get a FILE pointer to write to a file descriptor.  */
++
++static FILE *
++pex_amiga_fdopenw (struct pex_obj *obj ATTRIBUTE_UNUSED, int fd,
++		  int binary ATTRIBUTE_UNUSED)
++{
++  if (fcntl (fd, F_SETFD, FD_CLOEXEC) < 0)
++    return NULL;
++  return fdopen (fd, "w");
++}
++
++
++/* Wait for a child process to complete.  Actually the child process
++   has already completed, and we just need to return the exit
++   status.  */
++
++static int
++pex_amiga_wait (struct pex_obj *obj, long pid, int *status,
++		struct pex_time *time, int done ATTRIBUTE_UNUSED,
++		const char **errmsg ATTRIBUTE_UNUSED,
++		int *err ATTRIBUTE_UNUSED)
++{
++  int *statuses;
++
++  if (time != NULL)
++    memset (time, 0, sizeof (struct pex_time));
++
++  statuses = (int *) obj->sysdep;
++  *status = statuses[pid];
++
++  return 0;
++}
+diff --git a/readline/readline/bind.c b/readline/readline/bind.c
+index 87596dcec95ad161743c6adf84e25f15ba7401b3..3da2352b0675e56e2d2d8d42ed3e0b80feb6fce3 100644
+--- a/readline/readline/bind.c
++++ b/readline/readline/bind.c
+@@ -990,15 +990,19 @@ _rl_read_init_file (const char *filename, int include_level)
+   char *buffer, *openname, *line, *end;
+   size_t file_size;
+ 
+   current_readline_init_file = filename;
+   current_readline_init_include_level = include_level;
+ 
+-  openname = tilde_expand (filename);
+-  buffer = _rl_read_file (openname, &file_size);
+-  xfree (openname);
++#ifndef __amigaos4__
++  openname = tilde_expand(filename);
++  buffer = _rl_read_file(openname, &file_size);
++  xfree(openname);
++#else
++  buffer = _rl_read_file((char *)filename, &file_size);
++#endif
+ 
+   RL_CHECK_SIGNALS ();
+   if (buffer == 0)
+     return (errno);
+   
+   if (include_level == 0 && filename != last_readline_init_file)
+diff --git a/readline/readline/input.c b/readline/readline/input.c
+index 61b0fde3c87f25644fd9ff7ec1ef0e02d14c403c..58bbd8df37642872d98a7b20a578cd80167a0c30 100644
+--- a/readline/readline/input.c
++++ b/readline/readline/input.c
+@@ -558,13 +558,17 @@ rl_getc (FILE *stream)
+       if (result == sizeof (unsigned char))
+ 	return (c);
+ 
+       /* If zero characters are returned, then the file that we are
+ 	 reading from is empty!  Return EOF in that case. */
+       if (result == 0)
+-	return (EOF);
++#ifndef __amigaos4__
++        return (EOF);
++#else
++        continue;
++#endif
+ 
+ #if defined (__BEOS__)
+       if (errno == EINTR)
+ 	continue;
+ #endif
+ 
+diff --git a/readline/readline/readline.c b/readline/readline/readline.c
+index 0e33587f23409157a784635f0c85f721dbbecbeb..8601063b71686072a22469e5bc232dcaf166535f 100644
+--- a/readline/readline/readline.c
++++ b/readline/readline/readline.c
+@@ -1333,12 +1333,23 @@ bind_arrow_keys_internal (Keymap map)
+ 
+ #if defined (__MSDOS__)
+   rl_bind_keyseq_if_unbound ("\033[0A", rl_get_previous_history);
+   rl_bind_keyseq_if_unbound ("\033[0B", rl_backward_char);
+   rl_bind_keyseq_if_unbound ("\033[0C", rl_forward_char);
+   rl_bind_keyseq_if_unbound ("\033[0D", rl_get_next_history);
++#elif defined(__amigaos4__)
++    rl_bind_keyseq_if_unbound("\233A", rl_get_previous_history);
++    rl_bind_keyseq_if_unbound("\233B", rl_get_next_history);
++    rl_bind_keyseq_if_unbound("\233C", rl_forward_char);
++    rl_bind_keyseq_if_unbound("\233D", rl_backward_char);
++    rl_bind_keyseq_if_unbound("\23344~", (rl_command_func_t *)0x0); //rl_beg_of_line); disable for now
++    rl_bind_keyseq_if_unbound("\23345~", (rl_command_func_t *)0x0); //rl_end_of_line); disable for now
++    rl_bind_keyseq_if_unbound("\23341~", (rl_command_func_t *)0x0); //Next Page
++    rl_bind_keyseq_if_unbound("\23342~", (rl_command_func_t *)0x0); //Previous Page
++    rl_bind_keyseq_if_unbound("\177", rl_delete);
++    rl_bind_keyseq_if_unbound("\23340", rl_overwrite_mode);  
+ #endif
+ 
+   rl_bind_keyseq_if_unbound ("\033[A", rl_get_previous_history);
+   rl_bind_keyseq_if_unbound ("\033[B", rl_get_next_history);
+   rl_bind_keyseq_if_unbound ("\033[C", rl_forward_char);
+   rl_bind_keyseq_if_unbound ("\033[D", rl_backward_char);
+diff --git a/readline/readline/rldefs.h b/readline/readline/rldefs.h
+index dab1beba1d72fbc6288f361b8c59fe2e3c78582e..a367593d693a34b60bd9fa2de58461bb27c8f827 100644
+--- a/readline/readline/rldefs.h
++++ b/readline/readline/rldefs.h
+@@ -37,20 +37,27 @@
+ #if defined (_POSIX_VERSION) && !defined (TERMIOS_MISSING)
+ #  define TERMIOS_TTY_DRIVER
+ #else
+ #  if defined (HAVE_TERMIO_H)
+ #    define TERMIO_TTY_DRIVER
+ #  else
+-#    if !defined (__MINGW32__)
++#    if !defined (__MINGW32__) && !defined(__amigaos4__)
+ #      define NEW_TTY_DRIVER
+ #    else
+ #      define NO_TTY_DRIVER
+ #    endif
+ #  endif
+ #endif
+ 
++#ifdef __amigaos4__
++#undef DEFAULT_INPUTRC
++#undef SYS_INPUTRC
++#define DEFAULT_INPUTRC "PROGDIR:inputrc"
++#define SYS_INPUTRC "ENVARC:inputrc"
++#endif
++
+ /* Posix macro to check file in statbuf for directory-ness.
+    This requires that <sys/stat.h> be included before this test. */
+ #if defined (S_IFDIR) && !defined (S_ISDIR)
+ #  define S_ISDIR(m) (((m)&S_IFMT) == S_IFDIR)
+ #endif
+ 
+diff --git a/readline/readline/rltty.h b/readline/readline/rltty.h
+index 5bcc946b270a4d079c11809895073c28443e7a44..89ac7cc762f3781dfcc93924301d4a10154a8802 100644
+--- a/readline/readline/rltty.h
++++ b/readline/readline/rltty.h
+@@ -16,12 +16,17 @@
+    GNU General Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License
+    along with Readline.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#if defined(__amigaos4__) && defined(__CLIB4__)
++#undef NEW_TTY_DRIVER
++#define TERMIOS_TTY_DRIVER
++#endif
++
+ #if !defined (_RLTTY_H_)
+ #define _RLTTY_H_
+ 
+ /* Posix systems use termios and the Posix signal functions. */
+ #if defined (TERMIOS_TTY_DRIVER)
+ #  include <termios.h>
+@@ -33,13 +38,13 @@
+ #  if !defined (TCOON)
+ #    define TCOON 1
+ #  endif
+ #endif /* TERMIO_TTY_DRIVER */
+ 
+ /* Other (BSD) machines use sgtty. */
+-#if defined (NEW_TTY_DRIVER)
++#if defined (NEW_TTY_DRIVER) 
+ #  include <sgtty.h>
+ #endif
+ 
+ #include "rlwinsize.h"
+ 
+ /* Define _POSIX_VDISABLE if we are not using the `new' tty driver and
+diff --git a/readline/readline/shell.c b/readline/readline/shell.c
+index 7fe2e97c983360641288ca4ecca254932c6bf053..80c21a20bda39836734261e26e35892eb2ba3a70 100644
+--- a/readline/readline/shell.c
++++ b/readline/readline/shell.c
+@@ -158,20 +158,25 @@ sh_get_home_dir (void)
+   struct passwd *entry;
+ 
+   if (home_dir)
+     return (home_dir);
+ 
+   home_dir = (char *)NULL;
+-#if defined (HAVE_GETPWUID)
+-#  if defined (__TANDEM)
++
++#if defined (__amigaos4__)
++    home_dir = "PROGDIR:";
++#else
++#  if defined (HAVE_GETPWUID)
++#    if defined (__TANDEM)
+   entry = getpwnam (getlogin ());
+-#  else
++#    else
+   entry = getpwuid (getuid ());
+-#  endif
++#    endif
+   if (entry)
+     home_dir = savestring (entry->pw_dir);
++#  endif
+ #endif
+ 
+ #if defined (HAVE_GETPWENT)
+   endpwent ();		/* some systems need this */
+ #endif
+ 
+diff --git a/readline/readline/terminal.c b/readline/readline/terminal.c
+index 05415dc42de1dca338d4047b168bc8b5aedd12ae..07a64af817298fecb6445c368d4a5ef00b15bd0d 100644
+--- a/readline/readline/terminal.c
++++ b/readline/readline/terminal.c
+@@ -99,18 +99,22 @@ int rl_change_environment = 1;
+ static char *term_buffer = (char *)NULL;
+ static char *term_string_buffer = (char *)NULL;
+ #endif
+ 
+ static int tcap_initialized;
+ 
+-#if !defined (__linux__) && !defined (NCURSES_VERSION)
++/* Ignore this code if targeting AmigaOS4 with clib clib4, because
++   the clib4 clib provided it own fnmatch implementation */
++#if !(defined(__amigaos4__) && defined(__CLIB4__))
++# if !defined (__linux__) && !defined (NCURSES_VERSION) 
+ #  if defined (__EMX__) || defined (NEED_EXTERN_PC)
+ extern 
+-#  endif /* __EMX__ || NEED_EXTERN_PC */
++#   endif /* __EMX__ || NEED_EXTERN_PC */
+ char PC, *BC, *UP;
+-#endif /* !__linux__ && !NCURSES_VERSION */
++# endif /* !__linux__ && !NCURSES_VERSION */
++#endif  /* not (AMIGAOS and CLIB4) $*/
+ 
+ /* Some strings to control terminal actions.  These are output by tputs (). */
+ char *_rl_term_clreol;
+ char *_rl_term_clrpag;
+ char *_rl_term_clrscroll;
+ char *_rl_term_cr;
+diff --git a/readline/readline/text.c b/readline/readline/text.c
+index 2567dea268ae2412dda65d9c9fbd898e1ac11e86..b363745db6a73f5c790a7d53feb21675d907be9e 100644
+--- a/readline/readline/text.c
++++ b/readline/readline/text.c
+@@ -68,13 +68,17 @@ static int _rl_char_search_callback PARAMS((_rl_callback_generic_arg *));
+ #endif
+ 
+ /* The largest chunk of text that can be inserted in one call to
+    rl_insert_text.  Text blocks larger than this are divided. */
+ #define TEXT_COUNT_MAX	1024
+ 
+-int _rl_optimize_typeahead = 1;	/* rl_insert tries to read typeahead */
++#ifndef __amigaos4__
++int _rl_optimize_typeahead = 1; /* rl_insert tries to read typeahead */
++#else
++int _rl_optimize_typeahead = 0; /* set it to 0 until we find why echo is not on */
++#endif
+ 
+ /* **************************************************************** */
+ /*								    */
+ /*			Insert and Delete			    */
+ /*								    */
+ /* **************************************************************** */
+-- 
+2.43.0
+
