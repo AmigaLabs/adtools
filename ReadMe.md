@@ -169,6 +169,7 @@ Building requires some dependencies:
 - bison
 - python3
 - python3-mako
+- patchelf
 
 If you just need a cross-compiler then call the ```gcc-cross``` target like
 that:
