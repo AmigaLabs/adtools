@@ -58,23 +58,6 @@ endif
 
 GCC_BRANCH_NAME:=$(word 1, $(subst ., , $(GCC_VERSION)))
 
-# Run through all the default generated SO files. We want to forcefully
-# set the DT_SONAME entry in the ELF file. We are only interested in
-# those that are meant to be used on the Amiga machine. Set the
-# DT_SONAME and copy - alongside - the file with the associated prefix.
-APPLY_SONAME=                                                                  \
-for SO in $$(find $(1) -name "*.so") ; do                                      \
-	echo "$$SO" | grep -q "_[0-9]\+_clib4\|newlib\|clib2.so" && continue ; \
-	"$(1)"/bin/ppc-amigaos-readelf -h "$$SO" |                             \
-		grep -q "Machine:.*PowerPC" || continue ;                      \
-	CLIB_INFIX=$$(echo "$$SO" | grep -o "clib4\|newlib\|clib2" ||          \
-		echo newlib) &&                                                \
-	SONAME=$$(echo "$$SO" |                                                \
-		sed "s/.so/_$(GCC_BRANCH_NAME)_$$CLIB_INFIX.so/") &&           \
-	patchelf --set-soname "$$(basename $$SONAME)" "$$SO" &&                \
-	cp "$$SO" "$$SONAME" ;                                                 \
-done
-
 # Handle SDK version and mapping to necessary file URL
 ifeq (54.16,$(SDK_VERSION))
 SDK_URL_FILE=127
@@ -296,6 +279,31 @@ clib2-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 	cp $(CLIB2_DIR)/../LICENSE $(CROSS_PREFIX)/ppc-amigaos/SDK/clib2
 	touch $@
 
+# Run through all the default generated SO files. We want to forcefully
+# set the DT_SONAME entry in the ELF file. We are only interested in
+# those that are meant to be used on the Amiga machine. Set the
+# DT_SONAME and copy - alongside - the file with the associated prefix.
+APPLY_SONAME=                                                                  \
+for SO in $$(find $(1) -name "*.so") ; do                                      \
+	echo "$$SO" | grep -q "_[0-9]\+_clib4\|newlib\|clib2.so" && continue ; \
+	"$(CROSS_PREFIX)"/bin/ppc-amigaos-readelf -h "$$SO" |                  \
+		grep -q "Machine:.*PowerPC" || continue ;                      \
+	CLIB_INFIX=$$(echo "$$SO" | grep -o "clib4\|newlib\|clib2" ||          \
+		echo newlib) &&                                                \
+	SONAME=$$(echo "$$SO" |                                                \
+		sed "s/.so/_$(GCC_BRANCH_NAME)_$$CLIB_INFIX.so/") &&           \
+	patchelf --set-soname "$$(basename $$SONAME)" "$$SO" &&                \
+	cp "$$SO" "$$SONAME" ;                                                 \
+done
+
+apply-soname-cross-done:
+	$(call APPLY_SONAME,$(CROSS_PREFIX))
+	touch $@
+
+apply-soname-native-done: apply-soname-cross-done
+	$(call APPLY_SONAME,/gcc/)
+	touch $@
+
 #
 # Build the cross compiler
 #
@@ -311,7 +319,8 @@ gcc-cross-done-$(GCC_VERSION): $(GCC_CROSS_DONE_DEPENDENCY)
 
 .PHONY: gcc-cross
 gcc-cross: gcc-cross-done-$(GCC_VERSION)
-	$(APPLY_SONAME $(CROSS_PREFIX))
+	$(MAKE) apply-soname-cross-done
+
 #
 # Optional target for additional libs
 #
@@ -507,7 +516,7 @@ native-install: coreutils-native-done gcc-native-done-$(GCC_VERSION) ReadMe doc
 	cp ReadMe /gcc
 	mkdir -p /gcc/doc
 	cp doc/* /gcc/doc
-	$(APPLY_SONAME /gcc/)
+	$(MAKE) apply-soname-native-done
 
 #
 # Similar to native-install but deploys the components in separate directories
@@ -628,7 +637,9 @@ clean: clean-clib2 clean-clib4 clean-gcc
 		libraries-done \
 		root-native \
 		coreutils-native-build \
-		coreutils-native-done
+		coreutils-native-done \
+		apply-soname-cross-done \
+		apply-soname-native-done
 
 #
 # Cleanup really everything
