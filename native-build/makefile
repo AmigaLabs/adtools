@@ -283,17 +283,17 @@ clib2-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 # set the DT_SONAME entry in the ELF file. We are only interested in
 # those that are meant to be used on the Amiga machine. Set the
 # DT_SONAME and copy - alongside - the file with the associated prefix.
-APPLY_SONAME=                                                                  \
-for SO in $$(find $(1) -name "*.so") ; do                                      \
-	echo "$$SO" | grep -q "_[0-9]\+_clib4\|newlib\|clib2.so" && continue ; \
-	"$(CROSS_PREFIX)"/bin/ppc-amigaos-readelf -h "$$SO" |                  \
-		grep -q "Machine:.*PowerPC" || continue ;                      \
-	CLIB_INFIX=$$(echo "$$SO" | grep -o "clib4\|newlib\|clib2" ||          \
-		echo newlib) &&                                                \
-	SONAME=$$(echo "$$SO" |                                                \
-		sed "s/.so/_$(GCC_BRANCH_NAME)_$$CLIB_INFIX.so/") &&           \
-	patchelf --set-soname "$$(basename $$SONAME)" "$$SO" &&                \
-	cp "$$SO" "$$SONAME" ;                                                 \
+APPLY_SONAME=                                                                      \
+for SO in $$(find $(1) -name "*.so") ; do                                          \
+	echo "$$SO" | grep -q "_[0-9]\+_\(clib4\|newlib\|clib2\).so" && continue ; \
+	"$(CROSS_PREFIX)"/bin/ppc-amigaos-readelf -h "$$SO" |                      \
+		grep -q "Machine:.*PowerPC" || continue ;                          \
+	CLIB_INFIX=$$(echo "$$SO" | grep -o "clib4\|newlib\|clib2" ||              \
+		echo newlib) &&                                                    \
+	SONAME=$$(echo "$$SO" |                                                    \
+		sed "s/.so/_$(GCC_BRANCH_NAME)_$$CLIB_INFIX.so/") &&               \
+	patchelf --set-soname "$$(basename $$SONAME)" "$$SO" &&                    \
+	cp "$$SO" "$$SONAME" ;                                                     \
 done
 
 apply-soname-cross-done:
