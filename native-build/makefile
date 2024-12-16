@@ -285,7 +285,7 @@ clib2-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 # DT_SONAME and copy - alongside - the file with the associated prefix.
 APPLY_SONAME=                                                                      \
 for SO in $$(find $(1) -name "*.so") ; do                                          \
-	echo "$$SO" | grep -q "_[0-9]\+_\(clib4\|newlib\|clib2\).so" && continue ; \
+	echo "$$SO" | grep -q "_[0-9]\+_\(clib4\|newlib\|clib2\)\.so" && continue ; \
 	"$(CROSS_PREFIX)"/bin/ppc-amigaos-readelf -h "$$SO" |                      \
 		grep -q "Machine:.*PowerPC" || continue ;                          \
 	CLIB_INFIX=$$(echo "$$SO" | grep -o "clib4\|newlib\|clib2" ||              \
