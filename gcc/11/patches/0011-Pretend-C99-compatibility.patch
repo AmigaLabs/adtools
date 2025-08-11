@@ -7,22 +7,23 @@ At least newlib is not fully C99 compatible because it doesn't expose
 various C99 function if __STRICT_ANSI__ is declared. Also it misses
 strtold() (as clib2).
 ---
- libstdc++-v3/config/os/amigaos/os_defines.h | 3 +++
+ libstdc++-v3/config/os/amigaos/os_defines.h | 4 +++-
  libstdc++-v3/include/bits/basic_string.h    | 3 +++
  libstdc++-v3/include/c_global/cstdlib       | 8 ++++++++
- 3 files changed, 14 insertions(+)
+ 3 files changed, 14 insertions(+), 1 deletion(-)
 
 diff --git a/libstdc++-v3/config/os/amigaos/os_defines.h b/libstdc++-v3/config/os/amigaos/os_defines.h
-index 346f063958cd7e80ebf97be4acee0bdf391cb811..6b67630b7be7102a9dfb7c104deac6293a13c017 100644
+index 05d9dfa218aa597f89d9cad34d448aa4d3a250cd..649c69160accc004109d5e42496d9ec704f648e7 100644
 --- a/libstdc++-v3/config/os/amigaos/os_defines.h
 +++ b/libstdc++-v3/config/os/amigaos/os_defines.h
-@@ -35,9 +35,12 @@
+@@ -35,10 +35,12 @@
  
  // No ioctl() on AmigaOS
  #define _GLIBCXX_NO_IOCTL 1
- 
+  
  #ifdef __NEWLIB__
  #define _GLIBCXX_USE_C99_STDINT_TR1 1
+-
 +#define _GLIBCXX_USE_C99 1
 +/* Temporary until newlib behaves properly */
 +#undef __STRICT_ANSI__
@@ -107,5 +108,5 @@ index 47b954cf2faca25ffbac6d5b5e81857ad22cad90..99325ad0682f2f88bc04ca38a50cc97a
  } // extern "C++"
  
 -- 
-2.34.1
+2.43.0
 

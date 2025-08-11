@@ -8,20 +8,20 @@ It is work in progress.
  config/gthr.m4                           |    1 +
  gcc/config.host                          |    1 +
  gcc/config/rs6000/amigaos.h              |    8 +-
- gcc/config/rs6000/amigaos.opt            |   18 +
+ gcc/config/rs6000/amigaos.opt            |   20 +-
  gcc/config/rs6000/x-amigaos              |   16 +
  gcc/configure                            |    2 +-
  gcc/configure.ac                         |    2 +-
  gcc/doc/invoke.texi                      |    9 +-
- libgcc/config/rs6000/t-amigaos           |    5 +
+ libgcc/config/rs6000/t-amigaos           |    7 +-
  libgcc/configure                         |    1 +
  libgcc/gthr-amigaos-asserts.h            |    8 +
  libgcc/gthr-amigaos-native.c             | 1017 ++++++++++++++++++++++
  libgcc/gthr-amigaos-posix.c              |  233 +++++
  libgcc/gthr-amigaos-single.c             |  141 +++
- libgcc/{gthr-single.h => gthr-amigaos.h} |  219 +++--
+ libgcc/{gthr-single.h => gthr-amigaos.h} |  217 +++--
  libstdc++-v3/configure                   |    1 +
- 16 files changed, 1592 insertions(+), 90 deletions(-)
+ 16 files changed, 1593 insertions(+), 91 deletions(-)
  create mode 100644 gcc/config/rs6000/x-amigaos
  create mode 100644 libgcc/gthr-amigaos-asserts.h
  create mode 100644 libgcc/gthr-amigaos-native.c
@@ -66,7 +66,7 @@ index a4354b5d3497e441d6e50b05aeefc232f4dfe40b..508a3cec85c32729c8cbca1a8b62afcf
      ;;
    powerpc64-*-darwin*)
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index d4812d8f618c2758bf95ec998f6aa53ee9bcb6fc..ec0146c4b8c05eb300f8928e475641123c3f5632 100644
+index 1dd078c97addc6768b326f231329c6622343a1d6..eb64a964b83759cd31fd38f3a56a738f33a87f2f 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -272,13 +272,13 @@ mcrt=default|!mcrt=*: %{mcrt=default|!nostdinc: %(cpp_amiga_default)}; \
@@ -84,22 +84,22 @@ index d4812d8f618c2758bf95ec998f6aa53ee9bcb6fc..ec0146c4b8c05eb300f8928e47564112
  mcrt=libnix: %(link_libnix); \
  mcrt=newlib: %(link_newlib); \
  mcrt=default|!mcrt=*: %(link_amiga_default); \
-@@ -294,12 +294,15 @@ mcrt=default|!mcrt=*: %(link_amiga_default); \
+@@ -293,12 +293,15 @@ mcrt=default|!mcrt=*: %(link_amiga_default); \
+ #else
  #define LINK_TEXT ""
  #endif
  
  #define LINK_SHLIB "\
  %{shared:-shared -dy --defsym __dynld_version__=1} %{!shared: %{static:-static}} %{use-dynld: -dy}"
- 
++ 
 +#define LINK_THREAD "\
 +%s%{athread=native:gthr-amigaos-native.o;athread=single:gthr-amigaos-single.o;athread=pthread:gthr-amigaos-pthread.o}"
-+
+ 
  #undef STARTFILE_SPEC
  #define STARTFILE_SPEC "\
  %{mcrt=clib2|mcrt=clib2-ts: %(startfile_clib2); \
  mcrt=ixemul: %(startfile_ixemul); \
  mcrt=libnix: %(startfile_libnix); \
- mcrt=newlib: %(startfile_newlib); \
 @@ -356,13 +359,14 @@ mcrt=default|!mcrt=*: %(endfile_amiga_default); \
    {"lib_subdir_newlib", LIB_SUBDIR_NEWLIB_SPEC}, \
    {"link_newlib", LINK_NEWLIB_SPEC}, \
@@ -117,16 +117,19 @@ index d4812d8f618c2758bf95ec998f6aa53ee9bcb6fc..ec0146c4b8c05eb300f8928e47564112
  #endif
  
 diff --git a/gcc/config/rs6000/amigaos.opt b/gcc/config/rs6000/amigaos.opt
-index 30df7d489e867ddb4e62b3d207d8245bdb7f9e1f..73107b5ad79109bdb095f7ca0eaee5e725d2f8fc 100644
+index 81452a71d11b20750b27323ae3fb44cae8d64b50..9eca30e7da072fb0a25d25ffff6ef9f38ab7f985 100644
 --- a/gcc/config/rs6000/amigaos.opt
 +++ b/gcc/config/rs6000/amigaos.opt
-@@ -32,6 +32,24 @@ mcheck68kfuncptr
+@@ -31,7 +31,25 @@ Generate base relative data access
+ mcheck68kfuncptr
  Target Var(CHECK68KFUNCPTR)
  Generate target checking for function pointers
  
  use-dynld
  Target Driver
- Generated binary employs the dynamic linker for shared objects.
+-Generated binary employs the dynamic linker for shared objects.
+\ No newline at end of file
++Generated binary employs the dynamic linker for shared objects.
 +
 +Enum
 +Name(athread) Type(int) UnknownError(argument %qs to %<-athread%> not recognized)
@@ -145,6 +148,7 @@ index 30df7d489e867ddb4e62b3d207d8245bdb7f9e1f..73107b5ad79109bdb095f7ca0eaee5e7
 +Specifies the thread implementation that is linked to the final binary.
 +
 +; This comment is to ensure we retain the blank line above.
+\ No newline at end of file
 diff --git a/gcc/config/rs6000/x-amigaos b/gcc/config/rs6000/x-amigaos
 new file mode 100644
 index 0000000000000000000000000000000000000000..a3dd2195809c2ce1fbab8be854f3c987dccc039b
@@ -169,10 +173,10 @@ index 0000000000000000000000000000000000000000..a3dd2195809c2ce1fbab8be854f3c987
 +$(ALL_EXECUTABLES) : override LDFLAGS += -athread=native -Wl,--gc-sections
 \ No newline at end of file
 diff --git a/gcc/configure b/gcc/configure
-index 7218b0c331a7245b38866e7a4bf90ec4dbf6967c..cd3cc0cf69f0048597a5a853ccce4554190febfc 100755
+index 86f44a35f42a234763a9eb4a942548bb5773fa80..178c638a991d9f6e6ed37bf6e2f5ca53bdcc7bb9 100755
 --- a/gcc/configure
 +++ b/gcc/configure
-@@ -12631,13 +12631,13 @@ case ${enable_threads} in
+@@ -12654,13 +12654,13 @@ case ${enable_threads} in
      target_thread_file='single'
      ;;
    yes)
@@ -188,10 +192,10 @@ index 7218b0c331a7245b38866e7a4bf90ec4dbf6967c..cd3cc0cf69f0048597a5a853ccce4554
      echo "${enable_threads} is an unknown thread package" 1>&2
      exit 1
 diff --git a/gcc/configure.ac b/gcc/configure.ac
-index 49f043ed29bcc487e61d08a8b7d6f5676a405185..e095de340c8a4caa26cfa74086c9479359768985 100644
+index a4d5bdb1b8d35d4a736e4e5e2a4fe094503935f6..38503f9eff9337328a7f19ddda5546c30ae68c34 100644
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
-@@ -1953,13 +1953,13 @@ case ${enable_threads} in
+@@ -1975,13 +1975,13 @@ case ${enable_threads} in
      target_thread_file='single'
      ;;
    yes)
@@ -207,7 +211,7 @@ index 49f043ed29bcc487e61d08a8b7d6f5676a405185..e095de340c8a4caa26cfa74086c94793
      echo "${enable_threads} is an unknown thread package" 1>&2
      exit 1
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index f38461ee463a15f3406df3bb451136869f8354af..68aea3e6867f1a993da0cc86ca8c48070871aed2 100644
+index fc5db027e8e823a2626eda0aa42e60d095784206..e9ce2a2f6cb37d10e3e902e6053fe82293e3a6a0 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -1433,13 +1433,13 @@ See RS/6000 and PowerPC Options.
@@ -225,42 +229,46 @@ index f38461ee463a15f3406df3bb451136869f8354af..68aea3e6867f1a993da0cc86ca8c4807
  @gccoptlist{-fcall-saved-@var{reg}  -fcall-used-@var{reg} @gol
  -ffixed-@var{reg}  -fexceptions @gol
  -fnon-call-exceptions  -fdelete-dead-exceptions  -funwind-tables @gol
-@@ -18733,12 +18733,19 @@ devices.  The compiled code must match the device mode. The default is
+@@ -18735,12 +18735,19 @@ devices.  The compiled code must match the device mode. The default is
+ @opindex mstack-size
  Specify how many @var{bytes} of stack space will be requested for each GPU
  thread (wave-front).  Beware that there may be many threads and limited memory
  available.  The size of the stack allocation may also have an impact on
  run-time performance.  The default is 32KB when using OpenACC or OpenMP, and
  1MB otherwise.
- 
++ 
 +@item -athread
 +@opindex athread
 +
 +This option specified which thread implementation should be linked to
 +the final executable. You can choose among @samp{single}, @samp{native},
 +and @samp{pthread}.
-+
+ 
  @item -mxnack
  @opindex mxnack
  Compile binaries suitable for devices with the XNACK feature enabled.  Some
  devices always require XNACK and some allow the user to configure XNACK.  The
  compiled code must match the device mode.  The default is @samp{-mno-xnack}.
- At present this option is a placeholder for support that is not yet
 diff --git a/libgcc/config/rs6000/t-amigaos b/libgcc/config/rs6000/t-amigaos
-index da1e303eed7e60df883971a610e8904db0df3e23..fa9d22e72161436c81f6a9f687ddaa752f01a966 100644
+index eb18e166d47fdd9997968b1c5c829cda8dc4cfdd..9d034bce265972dae6a2d83761183380ca0729db 100644
 --- a/libgcc/config/rs6000/t-amigaos
 +++ b/libgcc/config/rs6000/t-amigaos
-@@ -40,6 +40,11 @@ SHLIB_LINK = $(GCC_FOR_TARGET) -shared $(SHLIB_OBJS) -nodefaultlibs $(LIBGCC2_CF
+@@ -39,7 +39,12 @@ SHLIB_LINK = $(GCC_FOR_TARGET) -shared $(SHLIB_OBJS) -nodefaultlibs $(LIBGCC2_CF
+ 	-o $(SHLIB_DIR)/$(SHLIB_SONAME) @multilib_flags@ $(SHLIB_LC)
  
  # Install the shared libgcc library, but ensure that the name is libgcc.so
  SHLIB_INSTALL = \
  	$(mkinstalldirs) $(DESTDIR)$(inst_libdir); \
  	$(INSTALL_DATA) $(SHLIB_DIR)/$(SHLIB_SONAME) \
- 	  $(DESTDIR)$(inst_libdir)/libgcc$(SHLIB_EXT);
+-	  $(DESTDIR)$(inst_libdir)/libgcc$(SHLIB_EXT);
+\ No newline at end of file
++	  $(DESTDIR)$(inst_libdir)/libgcc$(SHLIB_EXT);
 +
 +EXTRA_PARTS += gthr-amigaos-native.o gthr-amigaos-single.o gthr-amigaos-pthread.o
 +
 +gthr-amigaos-%.o: $(srcdir)/gthr-amigaos-%.c $(srcdir)/gthr-amigaos.h
 +	$(gcc_compile) -c $<
+\ No newline at end of file
 diff --git a/libgcc/configure b/libgcc/configure
 index 4919a56f51810665804b9d38b00c2848605d719c..36399c534410cdd120d66e89bb209b4c32f54c2e 100755
 --- a/libgcc/configure
@@ -281,7 +289,7 @@ index 4919a56f51810665804b9d38b00c2848605d719c..36399c534410cdd120d66e89bb209b4c
      rtems)	thread_header=config/gthr-rtems.h ;;
 diff --git a/libgcc/gthr-amigaos-asserts.h b/libgcc/gthr-amigaos-asserts.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..bb6005cd52ef75cc7bfbc276d5d56ec54ed633cd
+index 0000000000000000000000000000000000000000..8e5830a421fa0cff0065f6937d5871da2759ddd5
 --- /dev/null
 +++ b/libgcc/gthr-amigaos-asserts.h
 @@ -0,0 +1,8 @@
@@ -293,9 +301,10 @@ index 0000000000000000000000000000000000000000..bb6005cd52ef75cc7bfbc276d5d56ec5
 +_Static_assert(sizeof(__gthread_recursive_mutex_t) >= sizeof(__internal_gthread_mutex_t), "__gthread_recursive_mutex_t not large enough!");
 +_Static_assert(sizeof(__gthread_cond_t) >= sizeof(__internal_gthread_cond_t), "__gthread_recursive_mutex_t not large enough!");
 +#endif
+\ No newline at end of file
 diff --git a/libgcc/gthr-amigaos-native.c b/libgcc/gthr-amigaos-native.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..3806359eed9a80027a7b37e79d148cded12ce7b9
+index 0000000000000000000000000000000000000000..d65c079c08439ec60d0950248173bf11591db621
 --- /dev/null
 +++ b/libgcc/gthr-amigaos-native.c
 @@ -0,0 +1,1017 @@
@@ -1316,9 +1325,10 @@ index 0000000000000000000000000000000000000000..3806359eed9a80027a7b37e79d148cde
 +#ifdef __cplusplus
 +}
 +#endif
+\ No newline at end of file
 diff --git a/libgcc/gthr-amigaos-posix.c b/libgcc/gthr-amigaos-posix.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..53caa3c686d42a39324ce79c0555611263f0b141
+index 0000000000000000000000000000000000000000..e3911780750d774aa4301454a23f7d8f3a122eb6
 --- /dev/null
 +++ b/libgcc/gthr-amigaos-posix.c
 @@ -0,0 +1,233 @@
@@ -1555,9 +1565,10 @@ index 0000000000000000000000000000000000000000..53caa3c686d42a39324ce79c05556112
 +#ifdef __cplusplus
 +}
 +#endif
+\ No newline at end of file
 diff --git a/libgcc/gthr-amigaos-single.c b/libgcc/gthr-amigaos-single.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..d68a3e019fbac94a93a420fcf59476d2563fccbf
+index 0000000000000000000000000000000000000000..e19dabfa993b331c651dcb467270f0868935a4a5
 --- /dev/null
 +++ b/libgcc/gthr-amigaos-single.c
 @@ -0,0 +1,141 @@
@@ -1702,25 +1713,15 @@ index 0000000000000000000000000000000000000000..d68a3e019fbac94a93a420fcf59476d2
 +#ifdef __cplusplus
 +}
 +#endif
+\ No newline at end of file
 diff --git a/libgcc/gthr-single.h b/libgcc/gthr-amigaos.h
 similarity index 59%
 copy from libgcc/gthr-single.h
 copy to libgcc/gthr-amigaos.h
-index 4d5cd39a967fdc2f1c3231e60ce08ec603b354b2..123d3512abed0a43a8c019bbce0d83f0128a89ec 100644
+index 4d5cd39a967fdc2f1c3231e60ce08ec603b354b2..91dfb78e213892b7872e62b0a75894021ed6bb64 100644
 --- a/libgcc/gthr-single.h
 +++ b/libgcc/gthr-amigaos.h
-@@ -1,9 +1,9 @@
- /* Threads compatibility routines for libgcc2 and libobjc.  */
- /* Compile this one with gcc.  */
--/* Copyright (C) 1997-2021 Free Software Foundation, Inc.
-+/* Copyright (C) 1997-2018 Free Software Foundation, Inc.
- 
- This file is part of GCC.
- 
- GCC is free software; you can redistribute it and/or modify it under
- the terms of the GNU General Public License as published by the Free
- Software Foundation; either version 3, or (at your option) any later
-@@ -20,31 +20,57 @@ permissions described in the GCC Runtime Library Exception, version
+@@ -20,30 +20,56 @@ permissions described in the GCC Runtime Library Exception, version
  
  You should have received a copy of the GNU General Public License and
  a copy of the GCC Runtime Library Exception along with this program;
@@ -1778,29 +1779,29 @@ index 4d5cd39a967fdc2f1c3231e60ce08ec603b354b2..123d3512abed0a43a8c019bbce0d83f0
 +#endif
  
  #ifdef _LIBOBJC
- 
++ 
 +#ifndef UNUSED
 +#define UNUSED __attribute__((__unused__))
 +#define UNUSED_DEFINED
 +#endif
-+
+ 
  /* Thread local storage for a single thread */
  static void *thread_local_storage = NULL;
  
  /* Backend initialization functions */
  
- /* Initialize the threads subsystem.  */
-@@ -202,97 +228,120 @@ __gthread_objc_condition_broadcast (objc_condition_t condition UNUSED)
+@@ -201,98 +227,121 @@ __gthread_objc_condition_broadcast (objc_condition_t condition UNUSED)
+ /* Wake up one thread waiting on this condition.  */
  static inline int
  __gthread_objc_condition_signal (objc_condition_t condition UNUSED)
  {
    return 0;
  }
- 
++ 
 +#ifndef UNUSED_DEFINED
 +#undef UNUSED
 +#endif
-+
+ 
  #else /* _LIBOBJC */
  
 -static inline int
@@ -1984,10 +1985,10 @@ index 4d5cd39a967fdc2f1c3231e60ce08ec603b354b2..123d3512abed0a43a8c019bbce0d83f0
 -#endif /* ! GCC_GTHR_SINGLE_H */
 +#endif /* ! GCC_GTHR_AMIGAOS_H */
 diff --git a/libstdc++-v3/configure b/libstdc++-v3/configure
-index af5d1ad365ef3113c61c8ce05993077635061ac1..6f771d0b1bc3a62bb68bd0657bb295b11c005ba6 100755
+index d182cade8351418e7327e472166aabd130a44465..3a8f2594620ea58f0044505fc2372a29af23be4e 100755
 --- a/libstdc++-v3/configure
 +++ b/libstdc++-v3/configure
-@@ -15740,12 +15740,13 @@ $as_echo_n "checking for thread model used by GCC... " >&6; }
+@@ -15756,12 +15756,13 @@ $as_echo_n "checking for thread model used by GCC... " >&6; }
    target_thread_file=`$CXX -v 2>&1 | sed -n 's/^Thread model: //p'`
    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $target_thread_file" >&5
  $as_echo "$target_thread_file" >&6; }
@@ -2002,5 +2003,5 @@ index af5d1ad365ef3113c61c8ce05993077635061ac1..6f771d0b1bc3a62bb68bd0657bb295b1
      posix)	thread_header=gthr-posix.h ;;
      rtems)	thread_header=config/gthr-rtems.h ;;
 -- 
-2.34.1
+2.43.0
 

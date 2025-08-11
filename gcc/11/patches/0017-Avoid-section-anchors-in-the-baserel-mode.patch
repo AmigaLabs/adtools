@@ -10,7 +10,7 @@ Subject: [PATCH 17/41] Avoid section anchors in the baserel mode.
  3 files changed, 25 insertions(+)
 
 diff --git a/gcc/config/rs6000/amigaos-protos.h b/gcc/config/rs6000/amigaos-protos.h
-index 3b8c994cdbd192eaf7112c780f0106a4d96cbb90..5a0b8006e2f6b6b8877e092994567233077594f1 100644
+index 4d4c01f882b3943cd8c976d87e3d1ecaee4c1a20..1ffaa07c38dc813cee6b88e4b3243bb334a3c138 100644
 --- a/gcc/config/rs6000/amigaos-protos.h
 +++ b/gcc/config/rs6000/amigaos-protos.h
 @@ -34,9 +34,10 @@ extern tree amigaos_handle_lineartags_attribute (tree *, tree, tree, int, bool*)
@@ -24,17 +24,19 @@ index 3b8c994cdbd192eaf7112c780f0106a4d96cbb90..5a0b8006e2f6b6b8877e092994567233
  
  //#endif /* TREE_CODE */
  //#endif /* RTX_CODE */
+\ No newline at end of file
 diff --git a/gcc/config/rs6000/amigaos.c b/gcc/config/rs6000/amigaos.c
-index 85c03f28e37d64865360692a14fcc8a197b55395..a7cfaaa2ca4ac913d78e3240aa994a65c2e4b03f 100644
+index fca3aa8212900da47d323dd01f91e59c5d8c054f..196a1af8d885b30d7b937b7666c223111c335e78 100644
 --- a/gcc/config/rs6000/amigaos.c
 +++ b/gcc/config/rs6000/amigaos.c
-@@ -495,6 +495,23 @@ amigaos_handle_check68kfuncptr_attribute (tree *node, tree name,
+@@ -494,7 +494,24 @@ amigaos_handle_check68kfuncptr_attribute (tree *node, tree name,
+       warning (0, "%s attribute only applies to functions",
  	       IDENTIFIER_POINTER (name));
        *no_add_attrs = true;
      }
  
    return NULL_TREE;
- }
++}
 +
 +/* Addititionally to the normal anchor (optimization) suppression, suppress
 + * it also in the baserel mode because we don't adjust the anchor access yet.
@@ -51,9 +53,10 @@ index 85c03f28e37d64865360692a14fcc8a197b55395..a7cfaaa2ca4ac913d78e3240aa994a65
 +  }
 +  /* Also check the normal reasons for suppressing.  */
 +  return default_use_anchors_for_symbol_p (symbol);
-+}
+ }
+\ No newline at end of file
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 1153ece337930f7bbf5f9978bf6f3faf2138bda6..d339c4280b67d863ec9c60dd38230d7bb2549345 100644
+index 3d91ae6dc7c40c75487e26b2e3bd23878b098982..3192daff4ab83071c82f14e99319b92fca72ac3a 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -400,12 +400,19 @@ do                                   \
@@ -77,5 +80,5 @@ index 1153ece337930f7bbf5f9978bf6f3faf2138bda6..d339c4280b67d863ec9c60dd38230d7b
  
  #undef INIT_CUMULATIVE_INCOMING_ARGS
 -- 
-2.34.1
+2.43.0
 
