@@ -4,56 +4,31 @@ Date: Fri, 22 Jan 2016 20:04:50 +0100
 Subject: [PATCH 08/41] Added libstc++ support for AmigaOS.
 
 ---
- .../os/{generic => amigaos}/ctype_base.h      |  2 +-
- .../ctype_configure_char.cc                   | 24 ++++++-------
- .../os/{generic => amigaos}/ctype_inline.h    | 16 ++++-----
- .../os/{generic => amigaos}/error_constants.h | 34 +++++++++----------
- .../config/os/{djgpp => amigaos}/os_defines.h | 11 +++---
+ .../os/{generic => amigaos}/ctype_base.h      |  0
+ .../ctype_configure_char.cc                   |  4 +--
+ .../os/{generic => amigaos}/ctype_inline.h    |  0
+ .../os/{generic => amigaos}/error_constants.h | 28 +++++++++----------
+ .../config/os/{djgpp => amigaos}/os_defines.h | 10 +++++--
  libstdc++-v3/configure.host                   |  3 ++
- 6 files changed, 48 insertions(+), 42 deletions(-)
- copy libstdc++-v3/config/os/{generic => amigaos}/ctype_base.h (97%)
- copy libstdc++-v3/config/os/{bsd/darwin => amigaos}/ctype_configure_char.cc (87%)
- copy libstdc++-v3/config/os/{generic => amigaos}/ctype_inline.h (96%)
- copy libstdc++-v3/config/os/{generic => amigaos}/error_constants.h (89%)
- copy libstdc++-v3/config/os/{djgpp => amigaos}/os_defines.h (85%)
+ 6 files changed, 26 insertions(+), 19 deletions(-)
+ copy libstdc++-v3/config/os/{generic => amigaos}/ctype_base.h (100%)
+ copy libstdc++-v3/config/os/{bsd/darwin => amigaos}/ctype_configure_char.cc (98%)
+ copy libstdc++-v3/config/os/{generic => amigaos}/ctype_inline.h (100%)
+ copy libstdc++-v3/config/os/{generic => amigaos}/error_constants.h (92%)
+ copy libstdc++-v3/config/os/{djgpp => amigaos}/os_defines.h (89%)
 
 diff --git a/libstdc++-v3/config/os/generic/ctype_base.h b/libstdc++-v3/config/os/amigaos/ctype_base.h
-similarity index 97%
+similarity index 100%
 copy from libstdc++-v3/config/os/generic/ctype_base.h
 copy to libstdc++-v3/config/os/amigaos/ctype_base.h
-index 62fce6080d16e87d4ad57074b550aaeccb6be62e..260b6142b6fc6a11a1e5f0bf7820b592d09f285e 100644
---- a/libstdc++-v3/config/os/generic/ctype_base.h
-+++ b/libstdc++-v3/config/os/amigaos/ctype_base.h
-@@ -1,9 +1,9 @@
- // Locale support -*- C++ -*-
- 
--// Copyright (C) 1997-2021 Free Software Foundation, Inc.
-+// Copyright (C) 1997-2015 Free Software Foundation, Inc.
- //
- // This file is part of the GNU ISO C++ Library.  This library is free
- // software; you can redistribute it and/or modify it under the
- // terms of the GNU General Public License as published by the
- // Free Software Foundation; either version 3, or (at your option)
- // any later version.
 diff --git a/libstdc++-v3/config/os/bsd/darwin/ctype_configure_char.cc b/libstdc++-v3/config/os/amigaos/ctype_configure_char.cc
-similarity index 87%
+similarity index 98%
 copy from libstdc++-v3/config/os/bsd/darwin/ctype_configure_char.cc
 copy to libstdc++-v3/config/os/amigaos/ctype_configure_char.cc
-index b12c0bd435ca013496f95c0ed9dad9c884b20001..e6f4895aee78da54bc6b1e01df00816206361c41 100644
+index b12c0bd435ca013496f95c0ed9dad9c884b20001..e8f5579caa949f20855a02cbde869d347d816e97 100644
 --- a/libstdc++-v3/config/os/bsd/darwin/ctype_configure_char.cc
 +++ b/libstdc++-v3/config/os/amigaos/ctype_configure_char.cc
-@@ -1,9 +1,9 @@
- // Locale support -*- C++ -*-
- 
--// Copyright (C) 2011-2021 Free Software Foundation, Inc.
-+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
- //
- // This file is part of the GNU ISO C++ Library.  This library is free
- // software; you can redistribute it and/or modify it under the
- // terms of the GNU General Public License as published by the
- // Free Software Foundation; either version 3, or (at your option)
- // any later version.
-@@ -39,29 +39,29 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -39,14 +39,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  // Information as gleaned from /usr/include/ctype.h
  
    const ctype_base::mask*
@@ -62,162 +37,25 @@ index b12c0bd435ca013496f95c0ed9dad9c884b20001..e6f4895aee78da54bc6b1e01df008162
  
 -  ctype<char>::ctype(__c_locale, const mask* __table, bool __del,
 -		     size_t __refs)
--  : facet(__refs), _M_del(__table != 0 && __del),
--  _M_toupper(NULL), _M_tolower(NULL),
--  _M_table(__table ? __table : classic_table())
--  {
 +  ctype<char>::ctype(__c_locale, const mask* __table, bool __del, 
-+		     size_t __refs) 
-+  : facet(__refs), _M_del(__table != 0 && __del), 
-+  _M_toupper(NULL), _M_tolower(NULL), 
-+  _M_table(__table ? __table : classic_table()) 
-+  { 
-     memset(_M_widen, 0, sizeof(_M_widen));
-     _M_widen_ok = 0;
-     memset(_M_narrow, 0, sizeof(_M_narrow));
-     _M_narrow_ok = 0;
-   }
- 
--  ctype<char>::ctype(const mask* __table, bool __del, size_t __refs)
--  : facet(__refs), _M_del(__table != 0 && __del),
--  _M_toupper(NULL), _M_tolower(NULL),
-+  ctype<char>::ctype(const mask* __table, bool __del, size_t __refs) 
-+  : facet(__refs), _M_del(__table != 0 && __del), 
-+  _M_toupper(NULL), _M_tolower(NULL), 
++          size_t __refs)
+   : facet(__refs), _M_del(__table != 0 && __del),
+   _M_toupper(NULL), _M_tolower(NULL),
    _M_table(__table ? __table : classic_table())
--  {
-+  { 
+   {
      memset(_M_widen, 0, sizeof(_M_widen));
      _M_widen_ok = 0;
-     memset(_M_narrow, 0, sizeof(_M_narrow));
-     _M_narrow_ok = 0;
-   }
- 
-@@ -81,13 +81,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
-   }
- 
-   char
-   ctype<char>::do_tolower(char __c) const
-   { return ::tolower((int) __c); }
- 
--  const char*
-+  const char* 
-   ctype<char>::do_tolower(char* __low, const char* __high) const
-   {
-     while (__low < __high)
-       {
- 	*__low = ::tolower((int) *__low);
- 	++__low;
 diff --git a/libstdc++-v3/config/os/generic/ctype_inline.h b/libstdc++-v3/config/os/amigaos/ctype_inline.h
-similarity index 96%
+similarity index 100%
 copy from libstdc++-v3/config/os/generic/ctype_inline.h
 copy to libstdc++-v3/config/os/amigaos/ctype_inline.h
-index b6ad988d82edd8a0a12b262103d66d23c812b3f7..cfa0146ae6b70623c2fe63b864ceef7bce0d5fe0 100644
---- a/libstdc++-v3/config/os/generic/ctype_inline.h
-+++ b/libstdc++-v3/config/os/amigaos/ctype_inline.h
-@@ -1,9 +1,9 @@
- // Locale support -*- C++ -*-
- 
--// Copyright (C) 2000-2021 Free Software Foundation, Inc.
-+// Copyright (C) 2000-2015 Free Software Foundation, Inc.
- //
- // This file is part of the GNU ISO C++ Library.  This library is free
- // software; you can redistribute it and/or modify it under the
- // terms of the GNU General Public License as published by the
- // Free Software Foundation; either version 3, or (at your option)
- // any later version.
-@@ -27,16 +27,16 @@
-  *  Do not attempt to use it directly. @headername{locale}
-  */
- 
- //
- // ISO C++ 14882: 22.1  Locales
- //
--
-+  
- // ctype bits to be inlined go here. Non-inlinable (ie virtual do_*)
- // functions go in ctype.cc
--
-+  
- // The following definitions are portable, but insanely slow. If one
- // cares at all about performance, then specialized ctype
- // functionality should be added for the native os in question: see
- // the config/os/bits/ctype_*.h files.
- 
- // Constructing a synthetic "C" table should be seriously considered...
-@@ -45,19 +45,19 @@ namespace std _GLIBCXX_VISIBILITY(default)
- {
- _GLIBCXX_BEGIN_NAMESPACE_VERSION
- 
-   bool
-   ctype<char>::
-   is(mask __m, char __c) const
--  {
-+  { 
-     if (_M_table)
-       return _M_table[static_cast<unsigned char>(__c)] & __m;
-     else
-       {
- 	bool __ret = false;
--	const size_t __bitmasksize = 15;
-+	const size_t __bitmasksize = 15; 
- 	size_t __bitcur = 0; // Lowest bitmask in ctype_base == 0
- 	for (; __bitcur <= __bitmasksize; ++__bitcur)
- 	  {
- 	    const mask __bit = static_cast<mask>(1 << __bitcur);
- 	    if (__m & __bit)
- 	      {
-@@ -109,29 +109,29 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
- 		__ret |= __testis;
- 	      }
- 	  }
- 	return __ret;
-       }
-   }
--
-+   
-   const char*
-   ctype<char>::
-   is(const char* __low, const char* __high, mask* __vec) const
-   {
-     if (_M_table)
-       while (__low < __high)
- 	*__vec++ = _M_table[static_cast<unsigned char>(*__low++)];
-     else
-       {
- 	// Highest bitmask in ctype_base == 11.
--	const size_t __bitmasksize = 15;
-+	const size_t __bitmasksize = 15; 
- 	for (;__low < __high; ++__vec, ++__low)
- 	  {
- 	    mask __m = 0;
- 	    // Lowest bitmask in ctype_base == 0
--	    size_t __i = 0;
-+	    size_t __i = 0; 
- 	    for (;__i <= __bitmasksize; ++__i)
- 	      {
- 		const mask __bit = static_cast<mask>(1 << __i);
- 		if (this->is(__bit, *__low))
- 		  __m |= __bit;
- 	      }
 diff --git a/libstdc++-v3/config/os/generic/error_constants.h b/libstdc++-v3/config/os/amigaos/error_constants.h
-similarity index 89%
+similarity index 92%
 copy from libstdc++-v3/config/os/generic/error_constants.h
 copy to libstdc++-v3/config/os/amigaos/error_constants.h
-index 9d01c16ee2711daa822df00a7e8683a7baf22b52..74492cf61c875eac28cb8a86d5bfdb3b8807aa16 100644
+index 1d37454ba2efa2579de109dc1c0d28887ed58ed2..700e71fa192e7f559e9cbdbcf5ce67519e7527a3 100644
 --- a/libstdc++-v3/config/os/generic/error_constants.h
 +++ b/libstdc++-v3/config/os/amigaos/error_constants.h
-@@ -1,9 +1,9 @@
- // Specific definitions for generic platforms  -*- C++ -*-
- 
--// Copyright (C) 2007-2021 Free Software Foundation, Inc.
-+// Copyright (C) 2007-2015 Free Software Foundation, Inc.
- //
- // This file is part of the GNU ISO C++ Library.  This library is free
- // software; you can redistribute it and/or modify it under the
- // terms of the GNU General Public License as published by the
- // Free Software Foundation; either version 3, or (at your option)
- // any later version.
 @@ -45,13 +45,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        already_connected = 			EISCONN,
        argument_list_too_long = 			E2BIG,
@@ -263,13 +101,11 @@ index 9d01c16ee2711daa822df00a7e8683a7baf22b52..74492cf61c875eac28cb8a86d5bfdb3b
        no_lock_available = 			ENOLCK,
  
 -#ifdef ENODATA
--      no_message_available = 			ENODATA,
 +#ifdef _GLIBCXX_HAVE_ENODATA
-+      no_message_available = 			ENODATA, 
+       no_message_available = 			ENODATA,
  #endif
  
--      no_message = 				ENOMSG,
-+      no_message = 				ENOMSG, 
+       no_message = 				ENOMSG,
        no_protocol_option = 			ENOPROTOOPT,
        no_space_on_device = 			ENOSPC,
  
@@ -350,31 +186,28 @@ index 9d01c16ee2711daa822df00a7e8683a7baf22b52..74492cf61c875eac28cb8a86d5bfdb3b
 -#ifdef EOVERFLOW
 +#ifdef _GLIBCXX_HAVE_EOVERFLOW
        value_too_large = 			EOVERFLOW,
+ #elif defined __AVR__
+       value_too_large = 			999,
  #endif
  
        wrong_protocol_type = 			EPROTOTYPE
-     };
- 
 diff --git a/libstdc++-v3/config/os/djgpp/os_defines.h b/libstdc++-v3/config/os/amigaos/os_defines.h
-similarity index 85%
+similarity index 89%
 copy from libstdc++-v3/config/os/djgpp/os_defines.h
 copy to libstdc++-v3/config/os/amigaos/os_defines.h
-index 11c783871accd6e8f9bcbb076654e9c49e27b2cc..346f063958cd7e80ebf97be4acee0bdf391cb811 100644
+index 11c783871accd6e8f9bcbb076654e9c49e27b2cc..05d9dfa218aa597f89d9cad34d448aa4d3a250cd 100644
 --- a/libstdc++-v3/config/os/djgpp/os_defines.h
 +++ b/libstdc++-v3/config/os/amigaos/os_defines.h
-@@ -1,9 +1,9 @@
+@@ -1,7 +1,7 @@
 -// Specific definitions for DJGPP  -*- C++ -*-
-+// Specific definitions for AmigaOS -*- C++ -*-
++// Specific definitions for AmigaOS  -*- C++ -*-
  
--// Copyright (C) 2001-2021 Free Software Foundation, Inc.
-+// Copyright (C) 2000-2015 Free Software Foundation, Inc.
+ // Copyright (C) 2001-2021 Free Software Foundation, Inc.
  //
  // This file is part of the GNU ISO C++ Library.  This library is free
  // software; you can redistribute it and/or modify it under the
  // terms of the GNU General Public License as published by the
- // Free Software Foundation; either version 3, or (at your option)
- // any later version.
-@@ -30,11 +30,14 @@
+@@ -30,11 +30,15 @@
  #ifndef _GLIBCXX_OS_DEFINES
  #define _GLIBCXX_OS_DEFINES 1
  
@@ -384,9 +217,10 @@ index 11c783871accd6e8f9bcbb076654e9c49e27b2cc..346f063958cd7e80ebf97be4acee0bdf
 -// FIXME: should there be '#undef POSIX_SOURCE'?
 +// No ioctl() on AmigaOS
 +#define _GLIBCXX_NO_IOCTL 1
- 
++ 
 +#ifdef __NEWLIB__
 +#define _GLIBCXX_USE_C99_STDINT_TR1 1
+ 
  #endif
  
 -
@@ -412,5 +246,5 @@ index ec32980aa0db898623804980af65dad588e4d9f5..e9789a4981c6fc36c6b660ab768427bb
    cygwin*)
      os_include_dir="os/newlib"
 -- 
-2.34.1
+2.43.0
 

@@ -9,13 +9,13 @@ GCC version 11.
 ---
  gcc/config/rs6000/amigaos.h           | 43 ++++++++++++++++++++-------
  gcc/config/rs6000/t-amigaos           |  4 +--
- libstdc++-v3/configure                | 15 ++++++++++
+ libstdc++-v3/configure                | 12 ++++++++
  libstdc++-v3/crossconfig.m4           | 12 ++++++++
  libstdc++-v3/include/c_global/cstdlib |  4 +--
- 5 files changed, 64 insertions(+), 14 deletions(-)
+ 5 files changed, 61 insertions(+), 14 deletions(-)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 8a549ed05ca4358e30e2bdef6a2b6d2d177fdd14..f92526783393a0ac40d0ea9c08ab932c7f472744 100644
+index f3008387f5174f6b77fb485b9db0638b9da68cac..43f0337f6fbcdb7d16006513efd9445ba2de18cf 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -122,12 +122,17 @@
@@ -65,13 +65,14 @@ index 8a549ed05ca4358e30e2bdef6a2b6d2d177fdd14..f92526783393a0ac40d0ea9c08ab932c
   * paths are added at the end of the gcc default include paths. This is required for
   * fixincludes and libstdc++ to work properly
   */
-@@ -212,12 +207,30 @@
+@@ -211,12 +206,30 @@
+ %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
                   "%{!msoft-float:%(lib_subdir_type)}/crt0.o"
  
  #define ENDFILE_CLIB2_SPEC "\
  %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
                   "%{!msoft-float:%(lib_subdir_type)}/crtend.o"
- 
++ 
 +/* clib4 */
 +
 +#define CPP_CLIB4_SPEC "\
@@ -89,13 +90,12 @@ index 8a549ed05ca4358e30e2bdef6a2b6d2d177fdd14..f92526783393a0ac40d0ea9c08ab932c
 +
 +#define ENDFILE_CLIB4_SPEC "\
 +%{shared: %(base_sdk)clib4/%(lib_subdir_clib4)/shcrtend.o} %{!shared: %(base_sdk)clib4/%(lib_subdir_clib4)/crtend.o}"
-+
+ 
  /* ixemul */
  
  #define CPP_IXEMUL_SPEC "\
  -idirafter %(base_sdk)ixemul/include -idirafter %(base_sdk)local/ixemul/include"
  
- #define LIB_SUBDIR_IXEMUL_SPEC "lib%(lib_subdir_type)"
 @@ -267,12 +280,13 @@
  
  /* End clib specific */
@@ -168,7 +168,7 @@ index 8a549ed05ca4358e30e2bdef6a2b6d2d177fdd14..f92526783393a0ac40d0ea9c08ab932c
    {"startfile_ixemul", STARTFILE_IXEMUL_SPEC}, \
    {"endfile_ixemul", ENDFILE_IXEMUL_SPEC}, \
 diff --git a/gcc/config/rs6000/t-amigaos b/gcc/config/rs6000/t-amigaos
-index 15d9d3fd5a5f0c8109cd158242745fa52b19257e..0d8049f400ca7f0937330ffec4f01546d9d61cc2 100644
+index bc5f0adb882f8d32b7a8f72760e748a41d7db384..9d5b069bb02f4743688006c12a632bd5262d2224 100644
 --- a/gcc/config/rs6000/t-amigaos
 +++ b/gcc/config/rs6000/t-amigaos
 @@ -12,9 +12,9 @@ LIMITS_H_TEST = true
@@ -183,19 +183,18 @@ index 15d9d3fd5a5f0c8109cd158242745fa52b19257e..0d8049f400ca7f0937330ffec4f01546
 +MULTILIB_OPTIONS = mcrt=newlib/mcrt=clib2/mcrt=clib4
 +MULTILIB_DIRNAMES = newlib clib2 clib4
  #MULTILIB_REUSE = =mcrt=newlib
+\ No newline at end of file
 diff --git a/libstdc++-v3/configure b/libstdc++-v3/configure
-index 6f771d0b1bc3a62bb68bd0657bb295b11c005ba6..d566c6173da7da2084d6eed531967c5fead2d779 100755
+index 3a8f2594620ea58f0044505fc2372a29af23be4e..485c2521103659cb9b94372b61c88ded03f521f4 100755
 --- a/libstdc++-v3/configure
 +++ b/libstdc++-v3/configure
-@@ -74119,12 +74119,27 @@ $as_echo "$ac_ld_relro" >&6; }
+@@ -74146,12 +74146,24 @@ $as_echo "$ac_ld_relro" >&6; }
      OPT_LDFLAGS="-Wl,-O1 $OPT_LDFLAGS"
    fi
  
  
  
  
-+
-+
 +    for ac_func in acosf asinf atan2f atanf ceilf cosf coshf expf fabsf floorf fmodf frexpf sqrtf hypotf ldexpf log10f logf modff powf sinf sinhf tanf tanhf fabsl acosl asinl atanl atan2l ceill cosl coshl expl floorl fmodl frexpl sqrtl hypotl ldexpl logl log10l modfl powl sinl sinhl tanl tanhl
 +do :
 +  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -208,13 +207,12 @@ index 6f771d0b1bc3a62bb68bd0657bb295b11c005ba6..d566c6173da7da2084d6eed531967c5f
 +fi
 +done
 +
-+
+ 
+ 
+ 
      ;;
    *)
      as_fn_error $? "No support for this host/target combination." "$LINENO" 5
-    ;;
- esac
- 
 diff --git a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
 index cbbfff770cb1356bf9352ad7e61ef5c77458f262..cb22f046dc2585323e457cde10a7d50a1683863b 100644
 --- a/libstdc++-v3/crossconfig.m4
@@ -266,5 +264,5 @@ index 99325ad0682f2f88bc04ca38a50cc97a2bcea4d5..deae1df7fd4657b48ee9ccd4f0d1781f
  {
  _GLIBCXX_BEGIN_NAMESPACE_VERSION
 -- 
-2.34.1
+2.43.0
 
