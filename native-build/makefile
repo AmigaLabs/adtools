@@ -139,7 +139,7 @@ downloads-done-clib4:
 endif
 
 #
-# Downloads the SDK and libraries necesseary to build the cross compiler
+# Downloads the SDK and libraries necessary to build the cross compiler
 #
 DOWNLOADS_DONE_DEPENDENCY=downloads-done-clib2
 ifneq ($(CLIB4_SUPPORT),)
