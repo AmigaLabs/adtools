@@ -45,7 +45,7 @@ GMP_ARCHIVE=gmp-5.1.3.tar.bz2
 MPFR_ARCHIVE=mpfr-3.1.6.tar.bz2
 MPC_ARCHIVE=mpc-1.0.3.tar.gz
 
-BINUTILS_VERSION=2.23.2
+BINUTILS_VERSION=$(shell cd $(BINUTILS_SRC_DIR) 2>/dev/null && git branch --show-current)
 BINUTILS_SRC_DIR=../binutils/repo
 
 GCC_SRC_DIR=../gcc/repo
@@ -56,7 +56,7 @@ ifneq ($(GCC_DEV_PHASE),)
 GCC_DEV_PHASE:= ($(GCC_DEV_PHASE))
 endif
 
-GCC_BRANCH_NAME:=$(word 1, $(subst ., , $(GCC_VERSION)))
+GCC_MAJOR_VERSION:=$(word 1, $(subst ., , $(GCC_VERSION)))
 
 # Handle SDK version and mapping to necessary file URL
 ifeq (54.16,$(SDK_VERSION))
@@ -88,7 +88,7 @@ COREUTILS_VERSION=5.2.1
 DIST_VERSION=$(shell date +%Y%m%d)-$(shell git rev-list --count HEAD)
 
 # Set up the necessary variables for the CLIBs
-CLIB4_SUPPORT=$(filter 11 8 6,$(GCC_BRANCH_NAME))
+CLIB4_SUPPORT=$(filter 11 8 6,$(GCC_MAJOR_VERSION))
 CLIB4_URL=https://github.com/AmigaLabs/clib4
 CLIB4_DIR=downloads/clib4/
 CLIB4_RELEASE_ARCHIVE_NAME=adtools-os4-clib4-$(DIST_VERSION).lha
@@ -160,7 +160,8 @@ endif
 # Builds the cross binutils package (assembler, etc).
 #
 binutils-cross-build-done-$(BINUTILS_VERSION):
-	$(MAKE) -C ../binutils-build \
+	$(MAKE) -C ../binutils-build cross \
+		BINUTILS_VERSION=$(BINUTILS_VERSION) \
 		SRC_DIR=$(BINUTILS_SRC_DIR) \
 		PREFIX=$(CROSS_PREFIX) \
 		VERSION=$(BINUTILS_VERSION) \
@@ -335,6 +336,7 @@ libraries-done: $(NATIVE_LIBRARY_DEPENDENCIES)
 #
 binutils-native-done-$(BINUTILS_VERSION): libraries-done
 	PATH="$(CROSS_PREFIX)/bin:$(PATH)" $(MAKE) -C ../binutils-build native \
+			BINUTILS_VERSION=$(BINUTILS_VERSION) \
 			SRC_DIR=$(BINUTILS_SRC_DIR) \
 			PREFIX=/gcc \
 			VERSION=$(BINUTILS_VERSION) \
@@ -376,7 +378,7 @@ endif
 	touch $@
 
 
-GCC_BASE_BRANCH_NAME=$(GCC_BRANCH_NAME)-base
+GCC_BASE_BRANCH_NAME=$(GCC_MAJOR_VERSION)-base
 #
 # Build the main docs
 #
@@ -541,7 +543,7 @@ native-strip-really:
 #
 # Native distribution archive
 #
-DIST_FOLDER:=adtools-os4-$(GCC_BRANCH_NAME)-$(DIST_VERSION)
+DIST_FOLDER:=adtools-os4-$(GCC_MAJOR_VERSION)-$(DIST_VERSION)
 
 native-dist: native-strip-really
 	rm -f $(realpath .)/$(DIST_FOLDER).lha
@@ -574,8 +576,8 @@ endif
 #
 .PHONY: upload-release
 upload-release: native-dist
-	ln -s $(DIST_FOLDER).lha adtools-$(GCC_BRANCH_NAME)-os4.lha
-	lftp -e "put adtools-$(GCC_BRANCH_NAME)-os4.lha && put ReadMe -o adtools-$(GCC_BRANCH_NAME)-os4.readme && quit" ftp://main.aminet.net/new
+	ln -s $(DIST_FOLDER).lha adtools-$(GCC_MAJOR_VERSION)-os4.lha
+	lftp -e "put adtools-$(GCC_MAJOR_VERSION)-os4.lha && put ReadMe -o adtools-$(GCC_MAJOR_VERSION)-os4.readme && quit" ftp://main.aminet.net/new
 
 #
 # Cleanup clib
