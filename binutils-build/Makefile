@@ -2,60 +2,93 @@
 # Makefile to compile binutils cross
 #
 # Use SRC_DIR to alter the path of the source (default ../binutils)
-# Use VERSION to specify the version (alters the name of the created drawer)
 #
+# Use BINUTILS_VERSION to specify the version (alters the name of the
+# created drawer)
+
+ifeq ($(BINUTILS_VERSION),)
+$(error BINUTILS_VERSION is a required variable)
+endif
 
 SRC_DIR=../binutils/repo
-VERSION=2.23.2
-CROSS_BUILD_DIR=cross-$(VERSION)
-NATIVE_BUILD_DIR=cross-$(VERSION)
+CROSS_BUILD_DIR=cross-$(BINUTILS_VERSION)
+NATIVE_BUILD_DIR=cross-$(BINUTILS_VERSION)
 PREFIX=/usr/local/amiga
 REAL_SRC_DIR=$(realpath $(SRC_DIR))
 
-all: cross
+############################
+### BEGIN: SETUP OPTIONS ###
+############################
+ifeq ($(BINUTILS_VERSION),2.23.2)
+CROSS_CFLAGS=CFLAGS="					\
+				-Wno-switch		\
+				-Wno-unused		\
+							"
+CROSS_CONFIGURE_ARGUMENTS=				\
+				--enable-plugins	\
+				--target=ppc-amigaos	\
+				--prefix=$(PREFIX)
+NATIVE_CFLAGS=CFLAGS="					\
+				-Wno-switch		\
+				-Wno-unused		\
+							"
+NATIVE_LDFLAGS=LDFLAGS="				\
+				-lunix			\
+							"
+NATIVE_CONFIGURE_ARGUMENTS=				\
+				--target=ppc-amigaos	\
+				--host=ppc-amigaos	\
+				--disable-nls		\
+				--prefix=/gcc
+else
+ifneq ($(BINUTILS_VERSION),2.40)
+$(error Unexpected binutils version)
+else
+CROSS_CFLAGS=CFLAGS="					\
+				-Wno-sign-compare	\
+							"
+CROSS_CONFIGURE_ARGUMENTS=				\
+				--disable-plugins	\
+				--disable-gdb		\
+				--disable-sim		\
+				--target=ppc-amigaos	\
+				--prefix=$(PREFIX)
+NATIVE_CFLAGS=CFLAGS="					\
+				-mcrt=clib4		\
+				-Wno-sign-compare	\
+							"
+NATIVE_LDFLAGS=LDFLAGS="				\
+				-mcrt=clib4		\
+							"
+NATIVE_CONFIGURE_ARGUMENTS=				\
+				--target=ppc-amigaos	\
+				--host=ppc-amigaos	\
+				--disable-plugins	\
+				--disable-gdb		\
+				--disable-sim		\
+				--disable-nls		\
+				--prefix=/gcc
+endif
+endif
+############################
+### ENDER: SETUP OPTIONS ###
+############################
 
-cross-2.23.2:
+.PHONY: cross native
+
+cross:
 	mkdir -p $(CROSS_BUILD_DIR)
-	cd $(CROSS_BUILD_DIR); CFLAGS="-Wno-switch -Wno-unused" $(REAL_SRC_DIR)/configure \
-									--enable-plugins \
-									--target=ppc-amigaos \
-									--prefix=$(PREFIX)
-	make -C $(CROSS_BUILD_DIR)
+	cd $(CROSS_BUILD_DIR);			\
+		$(CROSS_CFLAGS)			\
+		$(REAL_SRC_DIR)/configure	\
+		$(CROSS_CONFIGURE_ARGUMENTS)
+	$(MAKE) -C $(CROSS_BUILD_DIR)
 
-cross-2.40:
-	mkdir -p $(CROSS_BUILD_DIR)
-	cd $(CROSS_BUILD_DIR); CFLAGS="-Wno-sign-compare" $(REAL_SRC_DIR)/configure \
-									--disable-plugins \
-									--disable-gdb \
-									--disable-sim \
-									--target=ppc-amigaos \
-									--prefix=$(PREFIX)
-	make -C $(CROSS_BUILD_DIR)
-
-
-native-2.23.2:
+native:
 	mkdir -p $(NATIVE_BUILD_DIR)
-	cd $(NATIVE_BUILD_DIR);  LDFLAGS="-lunix" CFLAGS="-Wno-switch -Wno-unused" $(REAL_SRC_DIR)/configure \
-									--target=ppc-amigaos \
-									--host=ppc-amigaos \
-									--disable-nls \
-									--prefix=/gcc
-	make -C $(NATIVE_BUILD_DIR)
-
-native-2.40:
-	mkdir -p $(NATIVE_BUILD_DIR)
-	cd $(NATIVE_BUILD_DIR);  LDFLAGS="-mcrt=clib4" CFLAGS="-mcrt=clib4 -Wno-sign-compare" $(REAL_SRC_DIR)/configure \
-									--target=ppc-amigaos \
-									--host=ppc-amigaos \
-									--disable-plugins \
-									--disable-gdb \
-									--disable-sim \
-									--disable-nls \
-									--prefix=/gcc
-	make -C $(NATIVE_BUILD_DIR)
-
-.PHONY: cross
-cross: cross-$(VERSION)
-
-.PHONY: native
-native: native-$(VERSION)
+	cd $(NATIVE_BUILD_DIR);			\
+		$(NATIVE_LDFLAGS)		\
+		$(NATIVE_CFLAGS)		\
+		$(REAL_SRC_DIR)/configure	\
+		$(NATIVE_CONFIGURE_ARGUMENTS)
+	$(MAKE) -C $(NATIVE_BUILD_DIR)
