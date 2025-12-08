@@ -4,6 +4,7 @@ FEATURES=\
 	--enable-languages=c,c++,objc,obj-c++  \
 	--enable-haifa                         \
 	--disable-libstdcxx-pch                \
+	--with-dwarf2						\
 	--disable-tls
 
 # Check, if major version is greater than or equals to 8
