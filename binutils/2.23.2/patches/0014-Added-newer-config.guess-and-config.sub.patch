@@ -1,7 +1,7 @@
-From 5fa271a2f16cfa6e41d5d40bccc46c96eac40eae Mon Sep 17 00:00:00 2001
+From 12e658c0e048596c37e127c4a002c3fabfd02fcb Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Tue, 19 Jul 2022 10:02:46 +0200
-Subject: [PATCH 14/14] Added newer config.guess and config.sub
+Subject: [PATCH 14/16] Added newer config.guess and config.sub
 
 The old versions of config.guess and config.sub in binutils do not
 recognize aarch64-linux as a valid platform. That breaks building
@@ -5593,5 +5593,5 @@ index 88ccfd90050ad0d8d341c091b9920f62fc5996f8..dba16e84c77c7d25871d80c24deff717
  # time-stamp-end: "'"
  # End:
 -- 
-2.25.1
+2.43.0
 

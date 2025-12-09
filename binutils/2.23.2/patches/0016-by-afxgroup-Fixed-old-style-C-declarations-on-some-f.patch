@@ -1,0 +1,216 @@
+From aa1e88ac1be2fea6c17fd87bf93a98a2fa6b4ab8 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Tue, 9 Dec 2025 14:10:08 +0000
+Subject: [PATCH 16/16] (by afxgroup) Fixed 'old style' C declarations on some
+ files that was causing a compilation error due warning treated as errors
+
+---
+ bfd/stab-syms.c       | 3 +--
+ gprof/bsd_callg_bl.c  | 3 +--
+ gprof/cg_print.c      | 9 ++-------
+ gprof/flat_bl.c       | 3 +--
+ gprof/fsf_callg_bl.c  | 3 +--
+ ld/ldfile.c           | 6 ++----
+ opcodes/disassemble.c | 6 ++----
+ opcodes/ppc-dis.c     | 2 +-
+ 8 files changed, 11 insertions(+), 24 deletions(-)
+
+diff --git a/bfd/stab-syms.c b/bfd/stab-syms.c
+index 8e65ddc65c156245a3e340f33f25ccf5913c9626..599e93e4882f9844fd96b0cd3155f05b92a43e17 100644
+--- a/bfd/stab-syms.c
++++ b/bfd/stab-syms.c
+@@ -43,14 +43,13 @@
+   __define_name (N_SETB, "SETB")/* Bss set element symbol */ \
+   __define_name (N_SETV, "SETV")/* Pointer to set vector in data area.  */ \
+   __define_name (N_INDR, "INDR") \
+   __define_name (N_WARNING, "WARNING")
+ 
+ const char *
+-bfd_get_stab_name (code)
+-     int code;
++bfd_get_stab_name (int code)
+ {
+   switch (code)
+     {
+ #define __define_name(val, str) case val: return str;
+ #include "aout/stab.def"
+       EXTRA_SYMBOLS
+diff --git a/gprof/bsd_callg_bl.c b/gprof/bsd_callg_bl.c
+index 149767421fd10afa283e131edc8f5c05c52a0fe9..51e5f95aa8fbcf1cde18483ccfc42a8c130e6e8f 100644
+--- a/gprof/bsd_callg_bl.c
++++ b/gprof/bsd_callg_bl.c
+@@ -3,14 +3,13 @@
+ 
+ #include <stdio.h>
+ #include "ansidecl.h"
+ 
+ void  bsd_callg_blurb (FILE *);
+ void
+-bsd_callg_blurb (file)
+-     FILE *file;
++bsd_callg_blurb (FILE *file)
+ {
+   fputs ("\n", file);
+   fputs ("\n", file);
+   fputs ("\n", file);
+   fputs ("call graph profile:\n", file);
+   fputs ("          The sum of self and descendents is the major sort\n", file);
+diff --git a/gprof/cg_print.c b/gprof/cg_print.c
+index 8ff14714171323ab41dcac78dd6ec59c9d7bc9b6..02aede97e53878db42f4a6add24f20ae8c452a1e 100644
+--- a/gprof/cg_print.c
++++ b/gprof/cg_print.c
+@@ -982,19 +982,14 @@ cg_print_function_ordering (void)
+ 
+    If ALL is nonzero, then place all functions referenced by THE_ARCS,
+    else only place those referenced in the top 99% of the arcs in THE_ARCS.  */
+ 
+ #define MOST 0.99
+ static void
+-order_and_dump_functions_by_arcs (the_arcs, arc_count, all,
+-				  unplaced_arcs, unplaced_arc_count)
+-     Arc **the_arcs;
+-     unsigned long arc_count;
+-     int all;
+-     Arc **unplaced_arcs;
+-     unsigned long *unplaced_arc_count;
++order_and_dump_functions_by_arcs (Arc **the_arcs, unsigned long arc_count, int all,
++				  Arc **unplaced_arcs, unsigned long *unplaced_arc_count)
+ {
+ #ifdef __GNUC__
+   unsigned long long tmp_arcs, total_arcs;
+ #else
+   unsigned long tmp_arcs, total_arcs;
+ #endif
+diff --git a/gprof/flat_bl.c b/gprof/flat_bl.c
+index 8bfe80b91ee186231d9b11839cbd00288a485f04..8379fe6b8886ad2e39cba274239d1795c6d763f6 100644
+--- a/gprof/flat_bl.c
++++ b/gprof/flat_bl.c
+@@ -3,14 +3,13 @@
+ 
+ #include <stdio.h>
+ #include "ansidecl.h"
+ 
+ void  flat_blurb (FILE *);
+ void
+-flat_blurb (file)
+-     FILE *file;
++flat_blurb (FILE *file)
+ {
+   fputs ("\n", file);
+   fputs (" %         the percentage of the total running time of the\n", file);
+   fputs ("time       program used by this function.\n", file);
+   fputs ("\n", file);
+   fputs ("cumulative a running sum of the number of seconds accounted\n", file);
+diff --git a/gprof/fsf_callg_bl.c b/gprof/fsf_callg_bl.c
+index cab2b2fb9f42989722ac2fb7774aa75b538c7210..7b70050cb1ba9f9cbc0bcecaebab074e432151f7 100644
+--- a/gprof/fsf_callg_bl.c
++++ b/gprof/fsf_callg_bl.c
+@@ -3,14 +3,13 @@
+ 
+ #include <stdio.h>
+ #include "ansidecl.h"
+ 
+ void  fsf_callg_blurb (FILE *);
+ void
+-fsf_callg_blurb (file)
+-     FILE *file;
++fsf_callg_blurb (FILE *file)
+ {
+   fputs ("\n", file);
+   fputs (" This table describes the call tree of the program, and was sorted by\n", file);
+   fputs (" the total amount of time spent in each function and its children.\n", file);
+   fputs ("\n", file);
+   fputs (" Each entry in this table consists of several lines.  The line with the\n", file);
+diff --git a/ld/ldfile.c b/ld/ldfile.c
+index 034eb2a7e452623f8c2571f4d6186b981c10c11d..ff4cade86c5f790e2276bcee6efb860ec084272b 100644
+--- a/ld/ldfile.c
++++ b/ld/ldfile.c
+@@ -71,28 +71,26 @@ static search_arch_type **search_arch_tail_ptr = &search_arch_head;
+ static int flavors_cmp PARAMS ((const void *f1, const void *f2));
+ 
+ static int n_flavors, flavors_len;
+ static char **flavors;
+ 
+ static int
+-flavors_cmp (f1, f2)
+-     const void *f1, *f2;
++flavors_cmp (const void *f1, const void *f2)
+ {
+   return strcmp (*(char **)f1, *(char **)f2);
+ }
+ 
+ void
+ ldfile_sort_flavors ()
+ {
+   if (n_flavors > 1)
+     qsort ((void *) flavors, n_flavors, sizeof (char **), flavors_cmp);
+ }
+ 
+ void
+-ldfile_add_flavor (name)
+-     const char *name;
++ldfile_add_flavor (const char *name)
+ {
+   n_flavors++;
+   if (flavors)
+     flavors = (char **) xrealloc ((PTR)flavors, n_flavors * sizeof (char *));
+   else
+     flavors = (char **) xmalloc (sizeof (char *));
+diff --git a/opcodes/disassemble.c b/opcodes/disassemble.c
+index c5887b0504bd473ae7d9947830747406f7e8f670..f706518b717e6c32fcfe16ed06a0c7da30f98cfc 100644
+--- a/opcodes/disassemble.c
++++ b/opcodes/disassemble.c
+@@ -101,14 +101,13 @@
+ 
+ #ifdef ARCH_m32c
+ #include "m32c-desc.h"
+ #endif
+ 
+ disassembler_ftype
+-disassembler (abfd)
+-     bfd *abfd;
++disassembler (bfd *abfd)
+ {
+   enum bfd_architecture a = bfd_get_arch (abfd);
+   disassembler_ftype disassemble;
+ 
+   switch (a)
+     {
+@@ -516,14 +515,13 @@ disassembler (abfd)
+       return 0;
+     }
+   return disassemble;
+ }
+ 
+ void
+-disassembler_usage (stream)
+-     FILE * stream ATTRIBUTE_UNUSED;
++disassembler_usage (FILE * stream ATTRIBUTE_UNUSED)
+ {
+ #ifdef ARCH_aarch64
+   print_aarch64_disassembler_options (stream);
+ #endif
+ #ifdef ARCH_arm
+   print_arm_disassembler_options (stream);
+diff --git a/opcodes/ppc-dis.c b/opcodes/ppc-dis.c
+index 41dce276bfa4a14a8dd11ae4e875bbe3a4e10c98..84c0de987a7f7a72d0c2aa6cd3f8fa83ca9dbcc2 100644
+--- a/opcodes/ppc-dis.c
++++ b/opcodes/ppc-dis.c
+@@ -239,13 +239,13 @@ ppc_parse_cpu (ppc_cpu_t ppc_cpu, ppc_cpu_t *sticky, const char *arg)
+ static void
+ powerpc_init_dialect (struct disassemble_info *info)
+ {
+   ppc_cpu_t dialect = 0;
+   ppc_cpu_t sticky = 0;
+   char *arg;
+-  struct dis_private *priv = calloc (sizeof (*priv), 1);
++  struct dis_private *priv = calloc (1, sizeof (*priv));
+ 
+   if (priv == NULL)
+     priv = &private;
+ 
+   switch (info->mach)
+     {
+-- 
+2.43.0
+
