@@ -1,7 +1,7 @@
-From 1a726f2c22094261ab929462bc51bd250f82e3c4 Mon Sep 17 00:00:00 2001
+From 4bff5b055ad5872d344c0cbf5f35e2866f1113f0 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Fri, 4 May 2018 18:22:24 +0200
-Subject: [PATCH 24/41] Add amigaos thread model.
+Subject: [PATCH 24/42] Add amigaos thread model.
 
 It is work in progress.
 ---
@@ -2003,5 +2003,5 @@ index d182cade8351418e7327e472166aabd130a44465..3a8f2594620ea58f0044505fc2372a29
      posix)	thread_header=gthr-posix.h ;;
      rtems)	thread_header=config/gthr-rtems.h ;;
 -- 
-2.43.0
+2.34.1
 

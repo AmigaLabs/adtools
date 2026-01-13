@@ -1,7 +1,7 @@
-From 874a7d09eb853fe6b5e959a0e60e28636b3f0269 Mon Sep 17 00:00:00 2001
+From bcc0093faf359ddea31e8983d54072214386ab77 Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Thu, 23 Nov 2023 22:12:35 +0000
-Subject: [PATCH 38/41] Provide clib4 as an additional C runtime library.
+Subject: [PATCH 38/42] Provide clib4 as an additional C runtime library.
 
 As well as the existing newlib and clib2 as C runtime library choices,
 clib4 is now introduced. Support for clib4 is currently restricted to
@@ -15,7 +15,7 @@ GCC version 11.
  5 files changed, 61 insertions(+), 14 deletions(-)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index f3008387f5174f6b77fb485b9db0638b9da68cac..43f0337f6fbcdb7d16006513efd9445ba2de18cf 100644
+index 6700c742353d2fc0f36496b54f403edd19191228..171f0f919baa7ba8570376eee42de87745254bd6 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -122,12 +122,17 @@
@@ -264,5 +264,5 @@ index 99325ad0682f2f88bc04ca38a50cc97a2bcea4d5..deae1df7fd4657b48ee9ccd4f0d1781f
  {
  _GLIBCXX_BEGIN_NAMESPACE_VERSION
 -- 
-2.43.0
+2.34.1
 

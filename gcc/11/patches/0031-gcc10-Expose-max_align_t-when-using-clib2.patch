@@ -1,7 +1,7 @@
-From f55c00ae21292b68738143bbf275ef30e94b7efe Mon Sep 17 00:00:00 2001
+From 4eb610725c924cceff83841dc625fc2d7b089c5d Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Fri, 8 Jan 2021 14:03:50 +0100
-Subject: [PATCH 31/41] gcc10: Expose max_align_t when using clib2.
+Subject: [PATCH 31/42] gcc10: Expose max_align_t when using clib2.
 
 ---
  libstdc++-v3/include/c_global/cstddef | 3 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 31/41] gcc10: Expose max_align_t when using clib2.
  2 files changed, 6 deletions(-)
 
 diff --git a/libstdc++-v3/include/c_global/cstddef b/libstdc++-v3/include/c_global/cstddef
-index 7272360eb4eb05bc95671e90acd4eff44ff91fb3..13ef7f03c12584804e4dd1635954723f628addc0 100644
+index 2ff99cbc232be2cd0d6e2212655641f8d0e9a669..58bbdf66be96e4b4879c5519a74844436538c002 100644
 --- a/libstdc++-v3/include/c_global/cstddef
 +++ b/libstdc++-v3/include/c_global/cstddef
 @@ -51,17 +51,14 @@

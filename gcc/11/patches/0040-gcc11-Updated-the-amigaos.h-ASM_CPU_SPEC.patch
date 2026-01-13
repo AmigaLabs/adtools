@@ -1,14 +1,14 @@
-From 0b85334ced2cdf972f806b7f0815ef0e95286dbc Mon Sep 17 00:00:00 2001
+From 250496993eefc677b8111204a2103669e7333538 Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Sat, 10 Aug 2024 12:10:46 +0100
-Subject: [PATCH 40/41] gcc11: Updated the amigaos.h ASM_CPU_SPEC
+Subject: [PATCH 40/42] gcc11: Updated the amigaos.h ASM_CPU_SPEC
 
 ---
  gcc/config/rs6000/amigaos.h | 114 ++++++++++++++++++++----------------
  1 file changed, 64 insertions(+), 50 deletions(-)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 497a792ff41c8ecbaa2a5c02d8d5fd4ad3df7887..3b6ed87d82a4f7fa51ac0dd866241b0b5f25abf4 100644
+index af4e25428afd26502fae782be8b69e9b0225d732..1256bd92425e397a0dd7a13bb8df674192c9cd9b 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -28,62 +28,76 @@

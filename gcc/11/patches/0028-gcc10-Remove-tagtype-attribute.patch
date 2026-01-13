@@ -1,7 +1,7 @@
-From 20b1fd8b7d74b36d7da722bcef98356fea03ec1f Mon Sep 17 00:00:00 2001
+From d4758e059cdf8414ff7af8253aca771bc659929b Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Sat, 2 Jan 2021 22:05:59 +0100
-Subject: [PATCH 28/41] gcc10: Remove tagtype attribute.
+Subject: [PATCH 28/42] gcc10: Remove tagtype attribute.
 
 The 'Add tagtype attribute that can be passed to enum' patch needs
 to be adapted. Temporarily disable the patch since adaptation requires
@@ -11,7 +11,7 @@ in-depth understanding of what the patch does.
  1 file changed, 1 deletion(-)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 19dacdc885e71ef81186b3f990173dade2bd517a..1731d3263ced055f39eb150e375392d055acd125 100644
+index fb0fb13c8f4e789dea40538f4c5b7b2f891efa7a..81c1f13d2b29ece2a3581a832d602a517f5d7ce9 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -394,13 +394,12 @@ do                                   \

@@ -1,14 +1,14 @@
-From 28c0ba8817d98c02e3eaeb4e1f9f0186ff221efe Mon Sep 17 00:00:00 2001
+From 14fcabf8e705ee8e976268639e06bb6b7843c2e8 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Sat, 2 Jan 2021 17:22:55 +0100
-Subject: [PATCH 26/41] gcc10: Don't use poisoned define.
+Subject: [PATCH 26/42] gcc10: Don't use poisoned define.
 
 ---
  gcc/config/rs6000/amigaos.h | 3 ---
  1 file changed, 3 deletions(-)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index ec0146c4b8c05eb300f8928e475641123c3f5632..19dacdc885e71ef81186b3f990173dade2bd517a 100644
+index eb64a964b83759cd31fd38f3a56a738f33a87f2f..fb0fb13c8f4e789dea40538f4c5b7b2f891efa7a 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -16,15 +16,12 @@

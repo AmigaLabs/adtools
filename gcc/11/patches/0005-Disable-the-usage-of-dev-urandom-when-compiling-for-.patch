@@ -1,7 +1,7 @@
-From e6ec2d752903863da6dcf190e18c73e346b6b253 Mon Sep 17 00:00:00 2001
+From c434d41595b884251e3897b4838e00c13eef691e Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Wed, 2 Dec 2015 21:39:42 +0100
-Subject: [PATCH 05/41] Disable the usage of /dev/urandom when compiling for
+Subject: [PATCH 05/42] Disable the usage of /dev/urandom when compiling for
  AmigaOS.
 
 ---
@@ -10,10 +10,10 @@ Subject: [PATCH 05/41] Disable the usage of /dev/urandom when compiling for
  2 files changed, 5 insertions(+)
 
 diff --git a/gcc/gcc.c b/gcc/gcc.c
-index 7bc4e7047573d724e913679cf18fc7649534442f..cf92e18ecdacebad78a6aefc80f727c20c85b63d 100644
+index e2672844e12ecf2a3e07da77905c9a2fca63a674..edc3164f07213c5507b1802a7df426912af01643 100644
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
-@@ -10451,22 +10451,25 @@ print_asm_header_spec_function (int arg ATTRIBUTE_UNUSED,
+@@ -10427,22 +10427,25 @@ print_asm_header_spec_function (int arg ATTRIBUTE_UNUSED,
  /* Get a random number for -frandom-seed */
  
  static unsigned HOST_WIDE_INT
