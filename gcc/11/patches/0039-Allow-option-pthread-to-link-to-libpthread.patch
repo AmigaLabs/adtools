@@ -1,7 +1,7 @@
-From 77656b2f9fe825950b6c399466b0e80d7fa0c723 Mon Sep 17 00:00:00 2001
+From ec1fb5ea73803fd972ae85ea52d67503b66dca84 Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Tue, 14 May 2024 17:54:10 +0100
-Subject: [PATCH 39/41] Allow option -pthread to link to libpthread
+Subject: [PATCH 39/42] Allow option -pthread to link to libpthread
 
 ---
  gcc/config/rs6000/amigaos.h   | 2 +-
@@ -9,7 +9,7 @@ Subject: [PATCH 39/41] Allow option -pthread to link to libpthread
  2 files changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index f92526783393a0ac40d0ea9c08ab932c7f472744..497a792ff41c8ecbaa2a5c02d8d5fd4ad3df7887 100644
+index 171f0f919baa7ba8570376eee42de87745254bd6..af4e25428afd26502fae782be8b69e9b0225d732 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -345,13 +345,13 @@ mcrt=libnix: %(endfile_libnix); \
@@ -28,7 +28,7 @@ index f92526783393a0ac40d0ea9c08ab932c7f472744..497a792ff41c8ecbaa2a5c02d8d5fd4a
  #undef SUBTARGET_EXTRA_SPECS
  #define SUBTARGET_EXTRA_SPECS \
 diff --git a/gcc/config/rs6000/amigaos.opt b/gcc/config/rs6000/amigaos.opt
-index 73107b5ad79109bdb095f7ca0eaee5e725d2f8fc..771caa087fed837124cf2436b800df15d16735c3 100644
+index 9eca30e7da072fb0a25d25ffff6ef9f38ab7f985..e90c41d9ca849ec0f178e25d31013f13c836e29b 100644
 --- a/gcc/config/rs6000/amigaos.opt
 +++ b/gcc/config/rs6000/amigaos.opt
 @@ -29,12 +29,15 @@ Target Mask(BASEREL)

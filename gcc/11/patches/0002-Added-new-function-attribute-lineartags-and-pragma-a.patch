@@ -1,7 +1,7 @@
-From 5901f8aec0e2f6a0f826903cd483cc1b10f63aeb Mon Sep 17 00:00:00 2001
+From d2e9fe9fc44195b75f20b694c649e2a8d26fab80 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Fri, 14 Nov 2014 20:03:56 +0100
-Subject: [PATCH 02/41] Added new function attribute "lineartags" and pragma
+Subject: [PATCH 02/42] Added new function attribute "lineartags" and pragma
  "amigaos tagtype".
 
 Functions that have the lineartags attribute are assumed to be functions
@@ -75,7 +75,7 @@ index 4f8e8e0128c3ddb77450a0d4976d00ad03c6a4c6..71c6d0856f49fe90e2933ebc40e673d0
    global_sso = default_sso;
    c_register_pragma (0, "scalar_storage_order", 
 diff --git a/gcc/c/c-parser.c b/gcc/c/c-parser.c
-index 7690977f6b8590599e54bb0e3b49afe21c322092..aa760c7f9410d67fcaa74e2a0c3d3d354867b0b3 100644
+index 407c22afa6f4912cdc76a2d17e9e95cf702b4645..10f4eec46c9c36c255819d4b59bc40dc13870191 100644
 --- a/gcc/c/c-parser.c
 +++ b/gcc/c/c-parser.c
 @@ -97,12 +97,74 @@ set_c_expr_source_range (c_expr *expr,
@@ -202,7 +202,7 @@ index 7690977f6b8590599e54bb0e3b49afe21c322092..aa760c7f9410d67fcaa74e2a0c3d3d35
     true if we actually parsed such a pragma.  */
  
  static bool
-@@ -12523,12 +12608,56 @@ c_parser_pragma (c_parser *parser, enum pragma_context context, bool *if_p)
+@@ -12524,12 +12609,56 @@ c_parser_pragma (c_parser *parser, enum pragma_context context, bool *if_p)
        break;
      }
  
@@ -260,7 +260,7 @@ index 7690977f6b8590599e54bb0e3b49afe21c322092..aa760c7f9410d67fcaa74e2a0c3d3d35
    c_parser_skip_to_pragma_eol (parser);
  
 diff --git a/gcc/c/c-typeck.c b/gcc/c/c-typeck.c
-index 9a150b910f117a86cf29b5bbb6b3f1fe213c29cc..3b1418c7eb9c479df997f1e4ff758b55ad837075 100644
+index ea34664c02f675b7e1b04087603220bc69dfbdcb..1538ecfa1be1dc483eb2487bf747c3e3f6731ad6 100644
 --- a/gcc/c/c-typeck.c
 +++ b/gcc/c/c-typeck.c
 @@ -3506,12 +3506,14 @@ convert_arguments (location_t loc, vec<location_t> arg_loc, tree typelist,
@@ -329,7 +329,7 @@ index 9a150b910f117a86cf29b5bbb6b3f1fe213c29cc..3b1418c7eb9c479df997f1e4ff758b55
  				      val, valtype, npc, rname, parmnum, argnum,
  				      excess_precision, 0);
 diff --git a/gcc/config/rs6000/amigaos-protos.h b/gcc/config/rs6000/amigaos-protos.h
-index eb5f8fc5f3d546b8d8e1cdd8118a3085079df50e..3b8c994cdbd192eaf7112c780f0106a4d96cbb90 100644
+index b4b48a304724d6deb5f727c288a930c004fd8d21..4d4c01f882b3943cd8c976d87e3d1ecaee4c1a20 100644
 --- a/gcc/config/rs6000/amigaos-protos.h
 +++ b/gcc/config/rs6000/amigaos-protos.h
 @@ -27,12 +27,13 @@ extern void amigaos_function_arg_advance (CUMULATIVE_ARGS *, enum machine_mode,
@@ -347,7 +347,7 @@ index eb5f8fc5f3d546b8d8e1cdd8118a3085079df50e..3b8c994cdbd192eaf7112c780f0106a4
  extern int amigaos_baserel_operand(rtx x);
  extern int amigaos_not_baserel_tree_p(tree decl);
 diff --git a/gcc/config/rs6000/amigaos.c b/gcc/config/rs6000/amigaos.c
-index ad8c0e64c056129afcd8bfa2a656749a2febfaaa..85c03f28e37d64865360692a14fcc8a197b55395 100644
+index 5da34e80ef1d7424d53529f11189a8bc53722664..fca3aa8212900da47d323dd01f91e59c5d8c054f 100644
 --- a/gcc/config/rs6000/amigaos.c
 +++ b/gcc/config/rs6000/amigaos.c
 @@ -346,12 +346,45 @@ amigaos_handle_linearvarargs_attribute (tree *node, tree name,

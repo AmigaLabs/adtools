@@ -1,0 +1,59 @@
+From 35efe8168e29ffcb8e19c3f38238a577bf48dbfc Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Tue, 13 Jan 2026 20:48:52 +0000
+Subject: [PATCH 42/42] Fixing pthread_cond_clockwait call in std_mutex, when
+ this is available
+
+---
+ libstdc++-v3/include/bits/std_mutex.h | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/libstdc++-v3/include/bits/std_mutex.h b/libstdc++-v3/include/bits/std_mutex.h
+index 357c689143892e6a083ff6741c016854d9a999b1..5f29d602e51f4254969b56cffd6e138bf8f7dfbe 100644
+--- a/libstdc++-v3/include/bits/std_mutex.h
++++ b/libstdc++-v3/include/bits/std_mutex.h
+@@ -37,12 +37,16 @@
+ #else
+ 
+ #include <system_error>
+ #include <bits/functexcept.h>
+ #include <bits/gthr.h>
+ 
++#if defined(__amigaos4__) && defined(__CLIB4__)
++#include <pthread.h>
++#endif
++
+ namespace std _GLIBCXX_VISIBILITY(default)
+ {
+ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+   /**
+    * @defgroup mutexes Mutexes
+@@ -163,14 +167,23 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     }
+ 
+ #ifdef _GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT
+     void
+     wait_until(mutex& __m, clockid_t __clock, timespec& __abs_time) noexcept
+     {
++#if defined(__amigaos4__)
++      // On clib4, __gthread types are opaque structs, not direct typedefs
++      // of pthread types, so we need to cast to pthread types.
++      pthread_cond_clockwait(reinterpret_cast<pthread_cond_t*>(&_M_cond), 
++            reinterpret_cast<pthread_mutex_t*>(__m.native_handle()), 
++            __clock,
++            reinterpret_cast<const ::timespec*>(&__abs_time));
++#else
+       pthread_cond_clockwait(&_M_cond, __m.native_handle(), __clock,
+-			     &__abs_time);
++            &__abs_time);
++#endif
+     }
+ #endif
+ 
+     void
+     notify_one() noexcept
+     {
+-- 
+2.34.1
+

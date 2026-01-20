@@ -1,14 +1,14 @@
-From 266f38251b6aa1c7fd3b8429d2d2b95d0c577f5c Mon Sep 17 00:00:00 2001
+From 9007fb56df168370620653b37f0025c9172106a3 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Sat, 2 Jan 2021 22:07:45 +0100
-Subject: [PATCH 29/41] gcc10: Define CC1_SPEC.
+Subject: [PATCH 29/42] gcc10: Define CC1_SPEC.
 
 ---
  gcc/config/rs6000/amigaos.h | 13 +++++++++++++
  1 file changed, 13 insertions(+)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 1731d3263ced055f39eb150e375392d055acd125..eacc455e168c4bf46522151148bc72c09a199485 100644
+index 81c1f13d2b29ece2a3581a832d602a517f5d7ce9..38ba54769051e96740284ebf8fdf7bbddb1ba83a 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -79,12 +79,25 @@

@@ -1,7 +1,7 @@
-From b5b5a3209f4fc3c59198b392b728576612a85f78 Mon Sep 17 00:00:00 2001
+From 378f23604f6e797e1bc951ec029f1857cc5d624b Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Fri, 22 Jan 2016 20:04:50 +0100
-Subject: [PATCH 08/41] Added libstc++ support for AmigaOS.
+Subject: [PATCH 08/42] Added libstc++ support for AmigaOS.
 
 ---
  .../os/{generic => amigaos}/ctype_base.h      |  0
@@ -246,5 +246,5 @@ index ec32980aa0db898623804980af65dad588e4d9f5..e9789a4981c6fc36c6b660ab768427bb
    cygwin*)
      os_include_dir="os/newlib"
 -- 
-2.43.0
+2.34.1
 

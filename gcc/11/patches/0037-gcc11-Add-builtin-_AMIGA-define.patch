@@ -1,7 +1,7 @@
-From 80cd06ee17ebac85775c82d8b884de7ead35f169 Mon Sep 17 00:00:00 2001
+From b0c88f9efd21aa7247984eecaa65bea87111af90 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Ola=20S=C3=B6der?= <rolfkopman@gmail.com>
 Date: Sun, 9 Apr 2023 22:34:16 +0200
-Subject: [PATCH 37/41] gcc11: Add builtin _AMIGA define.
+Subject: [PATCH 37/42] gcc11: Add builtin _AMIGA define.
 
 Define _AMIGA like on AROS, MorphOS and OS3 (SAS/C).
 ---
@@ -9,7 +9,7 @@ Define _AMIGA like on AROS, MorphOS and OS3 (SAS/C).
  1 file changed, 1 insertion(+)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index eacc455e168c4bf46522151148bc72c09a199485..8a549ed05ca4358e30e2bdef6a2b6d2d177fdd14 100644
+index 38ba54769051e96740284ebf8fdf7bbddb1ba83a..6700c742353d2fc0f36496b54f403edd19191228 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -105,12 +105,13 @@

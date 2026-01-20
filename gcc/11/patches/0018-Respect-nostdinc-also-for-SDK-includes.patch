@@ -1,14 +1,14 @@
-From c64cc31006520260c4a23cc23799442e28402415 Mon Sep 17 00:00:00 2001
+From 9ed880080d9fc28243939667e169adb4e62adb9f Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Fri, 20 Apr 2018 20:04:30 +0200
-Subject: [PATCH 18/41] Respect -nostdinc also for SDK includes.
+Subject: [PATCH 18/42] Respect -nostdinc also for SDK includes.
 
 ---
  gcc/config/rs6000/amigaos.h | 4 +---
  1 file changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index d339c4280b67d863ec9c60dd38230d7bb2549345..f88bfe5f879cb4ca09f067d907ec36ef0b4c2da3 100644
+index 3192daff4ab83071c82f14e99319b92fca72ac3a..8536aa48426b68811287e404abf7ffb6e071a5bf 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -261,15 +261,13 @@

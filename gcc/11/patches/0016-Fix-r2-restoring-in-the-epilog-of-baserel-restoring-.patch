@@ -1,7 +1,7 @@
-From a5b8eb192677e48f84822bc15c20ba8975b5fad5 Mon Sep 17 00:00:00 2001
+From da25a17a97d0ba7e41e5ad1e5c537c42fc88a956 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Tue, 17 Apr 2018 22:02:09 +0200
-Subject: [PATCH 16/41] Fix r2 restoring in the epilog of baserel-restoring
+Subject: [PATCH 16/42] Fix r2 restoring in the epilog of baserel-restoring
  functions.
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 16/41] Fix r2 restoring in the epilog of baserel-restoring
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/gcc/config/rs6000/rs6000-logue.c b/gcc/config/rs6000/rs6000-logue.c
-index e1097afdbeea232fb9746a4d872482b54fb412bf..3bfe4699728a6cc25726dc8a193e8b8e4469bcf9 100644
+index 1b4fa45f958d26f4b31d612511a93e144b955447..8ab9384442849682a52da127b822d09ced4cb5fb 100644
 --- a/gcc/config/rs6000/rs6000-logue.c
 +++ b/gcc/config/rs6000/rs6000-logue.c
 @@ -4924,13 +4924,13 @@ rs6000_emit_epilogue (enum epilogue_type epilogue_type)

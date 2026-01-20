@@ -1,7 +1,7 @@
-From f7398a949dd5201e983c7d8188d497e548112123 Mon Sep 17 00:00:00 2001
+From 36ca277f3a855bad380107cf6a8487e22ddbad08 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Wed, 2 Dec 2015 20:56:33 +0100
-Subject: [PATCH 04/41] The default link mode is static for AmigaOS.
+Subject: [PATCH 04/42] The default link mode is static for AmigaOS.
 
 Changed the g++ driver to reflect this.
 ---
@@ -9,7 +9,7 @@ Changed the g++ driver to reflect this.
  1 file changed, 6 insertions(+), 2 deletions(-)
 
 diff --git a/gcc/cp/g++spec.c b/gcc/cp/g++spec.c
-index 3c9bd1490b4ae14462f628a84f5207f1f9cf345f..8039884af0ca0aa105acee03864d0e2ff1687941 100644
+index 984106f10dd108c0bb23ac30df5f5a10abbddf6a..72fac8c105b60ca4a97e913c9437a60ff3f6873e 100644
 --- a/gcc/cp/g++spec.c
 +++ b/gcc/cp/g++spec.c
 @@ -123,14 +123,14 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,

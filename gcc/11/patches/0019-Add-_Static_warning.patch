@@ -1,7 +1,7 @@
-From 7e5ea9debe2babeb92ebd4e6d081599ea8441004 Mon Sep 17 00:00:00 2001
+From 2aa525318b251d5abaab1f3fbe303fc56d76e306 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Tue, 24 Apr 2018 22:46:21 +0200
-Subject: [PATCH 19/41] Add _Static_warning().
+Subject: [PATCH 19/42] Add _Static_warning().
 
 This acts very similar to _Static_assert() but produces a warning
 rather than an compiler error.
@@ -13,7 +13,7 @@ rather than an compiler error.
  4 files changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/gcc/c-family/c-common.c b/gcc/c-family/c-common.c
-index 7b8f49d78dcfddb2c73efd1e8e81316572841b61..cc413b96ddb4cf996160dee07bae2a68187e09a4 100644
+index ae3ef89b05cb8fc9d1b20a6f1d05f2c043c06e46..b6a9cfb46da528a3efc34654d638268bce7def2b 100644
 --- a/gcc/c-family/c-common.c
 +++ b/gcc/c-family/c-common.c
 @@ -357,12 +357,13 @@ const struct c_common_resword c_common_reswords[] =
@@ -49,7 +49,7 @@ index f30b6c6ac33474d27939372c4529e9513804b67e..606e84c0be881daaa3fe2eb55b5eceed
    RID_FLOAT32,
    RID_FLOAT64,
 diff --git a/gcc/c/c-parser.c b/gcc/c/c-parser.c
-index aa760c7f9410d67fcaa74e2a0c3d3d354867b0b3..7e644cf341991336d9a11369f9910c0acd8550ab 100644
+index 10f4eec46c9c36c255819d4b59bc40dc13870191..7df9b9f0f5c3e143b8bf375ec0af052e1641c319 100644
 --- a/gcc/c/c-parser.c
 +++ b/gcc/c/c-parser.c
 @@ -840,13 +840,13 @@ c_token_starts_declspecs (c_token *token)
@@ -104,7 +104,7 @@ index aa760c7f9410d67fcaa74e2a0c3d3d354867b0b3..7e644cf341991336d9a11369f9910c0a
    else
      pedwarn_c99 (assert_loc, OPT_Wpedantic,
 diff --git a/gcc/cp/parser.c b/gcc/cp/parser.c
-index 90d119eaa28025deabc21ef519f9f608a6317c4c..aa7099de9e8822a466f3f459ae10dcb17926a016 100644
+index 4f75f19ac50d5d7647947247459c118a269ae309..cabac1b72d43f630d80d7a4c19e912b6074b2f68 100644
 --- a/gcc/cp/parser.c
 +++ b/gcc/cp/parser.c
 @@ -152,12 +152,13 @@ enum required_token {
@@ -121,7 +121,7 @@ index 90d119eaa28025deabc21ef519f9f608a6317c4c..aa7099de9e8822a466f3f459ae10dcb1
    RT_TEMPLATE, /* template */
    RT_NAMESPACE, /* namespace */
    RT_USING, /* using */
-@@ -14289,13 +14290,13 @@ cp_parser_block_declaration (cp_parser *parser,
+@@ -14292,13 +14293,13 @@ cp_parser_block_declaration (cp_parser *parser,
        cp_parser_skip_to_end_of_statement (parser);
        /* If the next token is now a `;', consume it.  */
        if (cp_lexer_next_token_is (parser->lexer, CPP_SEMICOLON))
