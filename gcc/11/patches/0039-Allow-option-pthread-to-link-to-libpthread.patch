@@ -1,7 +1,7 @@
 From ec1fb5ea73803fd972ae85ea52d67503b66dca84 Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Tue, 14 May 2024 17:54:10 +0100
-Subject: [PATCH 39/42] Allow option -pthread to link to libpthread
+Subject: [PATCH 39/43] Allow option -pthread to link to libpthread
 
 ---
  gcc/config/rs6000/amigaos.h   | 2 +-
@@ -48,5 +48,5 @@ index 9eca30e7da072fb0a25d25ffff6ef9f38ab7f985..e90c41d9ca849ec0f178e25d31013f13
  Enum
  Name(athread) Type(int) UnknownError(argument %qs to %<-athread%> not recognized)
 -- 
-2.34.1
+2.43.0
 

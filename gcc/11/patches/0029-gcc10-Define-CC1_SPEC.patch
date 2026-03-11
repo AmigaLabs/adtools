@@ -1,7 +1,7 @@
 From 9007fb56df168370620653b37f0025c9172106a3 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Sat, 2 Jan 2021 22:07:45 +0100
-Subject: [PATCH 29/42] gcc10: Define CC1_SPEC.
+Subject: [PATCH 29/43] gcc10: Define CC1_SPEC.
 
 ---
  gcc/config/rs6000/amigaos.h | 13 +++++++++++++
@@ -38,5 +38,5 @@ index 81c1f13d2b29ece2a3581a832d602a517f5d7ce9..38ba54769051e96740284ebf8fdf7bbd
  #undef TARGET_OS_CPP_BUILTINS
  #define TARGET_OS_CPP_BUILTINS()                \
 -- 
-2.34.1
+2.43.0
 

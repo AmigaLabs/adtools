@@ -1,7 +1,7 @@
 From 83d35ac81939d40647c9b4b665ef8e0e0fbcbe74 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Fri, 8 Jan 2021 01:02:33 +0100
-Subject: [PATCH 30/42] gcc10: Link lto-dump with -athread=native.
+Subject: [PATCH 30/43] gcc10: Link lto-dump with -athread=native.
 
 ---
  gcc/config/rs6000/x-amigaos | 3 ++-
@@ -30,5 +30,5 @@ index a3dd2195809c2ce1fbab8be854f3c987dccc039b..6d9efb985ff5619c741e44edaf5431b9
 \ No newline at end of file
 +$(ALL_EXECUTABLES) : override LDFLAGS += -athread=native -Wl,--gc-sections
 -- 
-2.34.1
+2.43.0
 
