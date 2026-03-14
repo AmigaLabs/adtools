@@ -1,0 +1,30 @@
+From a7b91940c8b7fe1a46b50e5cd7148a32ad74bd81 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Thu, 12 Mar 2026 19:31:33 +0000
+Subject: [PATCH 43/43] Added --eh-frame-hdr in LINK_SPEC
+
+---
+ gcc/config/rs6000/amigaos.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
+index 1256bd92425e397a0dd7a13bb8df674192c9cd9b..298902b8caafdd07059bfc645b8be89ac1dc7011 100644
+--- a/gcc/config/rs6000/amigaos.h
++++ b/gcc/config/rs6000/amigaos.h
+@@ -307,12 +307,13 @@ mcrt=default|!mcrt=*: %{mcrt=default|!nostdinc: %(cpp_amiga_default)}; \
+ %{mbaserel: %{msdata|msdata=default|msdata=sysv: %e-mbaserel and -msdata options are incompatible}} \
+ %{newlib: %e-newlib is obsolete, use -mcrt=newlib instead}"
+ 
+ #undef LINK_SPEC
+ #define LINK_SPEC "\
+ --defsym __amigaos4__=1 \
++--eh-frame-hdr \
+ %{!shared: %{!use-dynld: -Bstatic}} \
+ -q -d %{h*} %{v:-V} %{G*} \
+ %{Wl,*:%*} %{YP,*} %{R*} \
+ %{Qy:} %{!Qn:-Qy} \
+ %(link_thread) %(link_shlib) %(link_text) \
+ %{mbaserel: %{msdata|msdata=default|msdata=sysv: %e-mbaserel and -msdata options are incompatible}} \
+-- 
+2.43.0
+
