@@ -162,6 +162,19 @@ downloads-done-clib4:
 		(git clone $(CLIB4_URL) clib4 || true) && \
 		cd clib4 && \
 		git checkout $(CLIB4_SHA1)
+# clib4 fixes for GCC 7 compatibility:
+# - Remove -Wno-cast-function-type (GCC 8+ only flag)
+# - Remove -Wno-stringop-overflow (GCC 8+ only flag)
+# - Downgrade -Werror for warnings GCC 7 is stricter about
+# - Fix implicit-fallthrough warning in res_msend_rc.c
+ifneq ($(filter 7,$(GCC_MAJOR_VERSION)),)
+	cd downloads/clib4 && \
+		sed -i 's/-Wno-cast-function-type//g; s/-Wno-stringop-overflow//g' GNUmakefile.os4 && \
+		sed -i 's/-Werror/-Werror -Wno-error=maybe-uninitialized -Wno-error=implicit-fallthrough/' GNUmakefile.os4
+endif
+ifeq ($(SPE),1)
+	$(ROOT_DIR)/../native-build/patch-clib4-spe.sh $(ROOT_DIR)/downloads/clib4
+endif
 	touch $@
 endif
 
