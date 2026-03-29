@@ -1,7 +1,7 @@
 From 30b2709b67326d519fa5f34cf067b680167b7257 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sun, 29 Mar 2026 18:20:06 +0100
-Subject: [PATCH 25/25] Exclude clib2 multilib for SPE targets via
+Subject: [PATCH 25/29] Exclude clib2 multilib for SPE targets via
  MULTILIB_EXCEPTIONS.
 
 clib2's libm unconditionally uses classic FPU assembly (fabs, etc.)

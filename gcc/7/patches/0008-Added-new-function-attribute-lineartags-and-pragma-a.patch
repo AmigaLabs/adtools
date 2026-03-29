@@ -1,7 +1,7 @@
 From e79c0227a6cb2193ed70fea1ac3f3502d840c0fe Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 01:34:33 +0000
-Subject: [PATCH 08/25] Added new function attribute lineartags and pragma
+Subject: [PATCH 08/29] Added new function attribute lineartags and pragma
  amigaos tagtype
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>

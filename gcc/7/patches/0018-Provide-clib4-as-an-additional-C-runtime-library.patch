@@ -1,7 +1,7 @@
 From a798eac9e18ca627260df1a9aab704decf007fe1 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 08:50:11 +0000
-Subject: [PATCH 18/25] Provide clib4 as an additional C runtime library.
+Subject: [PATCH 18/29] Provide clib4 as an additional C runtime library.
 
 ---
  gcc/config/rs6000/amigaos.h           | 43 ++++++++++++++++++++-------

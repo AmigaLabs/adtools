@@ -1,7 +1,7 @@
 From 5d63fe1bc75ee75a02a074a9148f4156e9428f48 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 01:32:13 +0000
-Subject: [PATCH 07/25] Added e500 support for AmigaOS.
+Subject: [PATCH 07/29] Added e500 support for AmigaOS.
 
 ---
  gcc/config.gcc                                           | 2 +-

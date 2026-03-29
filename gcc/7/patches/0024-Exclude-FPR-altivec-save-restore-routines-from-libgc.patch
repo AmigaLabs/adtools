@@ -1,7 +1,7 @@
 From 19a8d589d33294d868e5d0cd2fd3dea8c45cc5cf Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sun, 29 Mar 2026 18:18:20 +0100
-Subject: [PATCH 24/25] Exclude FPR/altivec save/restore routines from libgcc
+Subject: [PATCH 24/29] Exclude FPR/altivec save/restore routines from libgcc
  for SPE targets.
 
 The e500v2 core (used in the A1222 Plus) has no classic FPU or altivec

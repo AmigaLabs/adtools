@@ -1,7 +1,7 @@
 From d991132b2d3fec69286ad0fcdfab70f507296f89 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 08:48:46 +0000
-Subject: [PATCH 17/25] Respect -nostdinc also for SDK includes.
+Subject: [PATCH 17/29] Respect -nostdinc also for SDK includes.
 
 ---
  gcc/config/rs6000/amigaos.h | 4 +---

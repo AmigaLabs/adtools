@@ -1,7 +1,7 @@
 From 80efb0335082e6613e7c82dd4baa945a69b697d9 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 08:44:32 +0000
-Subject: [PATCH 14/25] Define va_startlinear and va_getlinearva.
+Subject: [PATCH 14/29] Define va_startlinear and va_getlinearva.
 
 ---
  gcc/ginclude/stdarg.h | 14 ++++++++++++++

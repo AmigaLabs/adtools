@@ -1,7 +1,7 @@
 From eee5ffede7e6acec90ff92dab265076a1d8ff6b8 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 08:35:50 +0000
-Subject: [PATCH 11/25] Pretend C99 compatibility.
+Subject: [PATCH 11/29] Pretend C99 compatibility.
 
 ---
  libiberty/Makefile.in | 36 ++++++++++++++++++++++--------------

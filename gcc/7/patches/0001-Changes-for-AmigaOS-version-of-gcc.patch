@@ -1,7 +1,7 @@
 From 62227ba59dad8aaa8f199ba49b12ce5501abb4ef Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 01:15:50 +0000
-Subject: [PATCH 01/25] Changes for AmigaOS version of gcc.
+Subject: [PATCH 01/29] Changes for AmigaOS version of gcc.
 
 Adapted from GCC 6 AmigaOS patches for GCC 7.5.0.
 Key changes: c-attribs.c (not c-common.c), info (not info_ptr).

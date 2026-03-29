@@ -1,7 +1,7 @@
 From 89b50627c8b74c1030628072e44835d3806066e7 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 08:39:38 +0000
-Subject: [PATCH 12/25] Add amigaos-stdint.h for libatomic.
+Subject: [PATCH 12/29] Add amigaos-stdint.h for libatomic.
 
 ---
  gcc/config.gcc              | 2 +-

@@ -1,7 +1,7 @@
 From d455b4def597d7f69fd241ad712f856fdaa59de5 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 01:25:09 +0000
-Subject: [PATCH 05/25] Expand arg zero on AmigaOS using the PROGDIR: assign.
+Subject: [PATCH 05/29] Expand arg zero on AmigaOS using the PROGDIR: assign.
 
 ---
  gcc/gcc.c | 10 ++++++++++

@@ -1,7 +1,7 @@
 From fab3695fce108681605052f3f5da95f83bd8e9a3 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 08:53:02 +0000
-Subject: [PATCH 20/25] Add strtold to the std namespace.
+Subject: [PATCH 20/29] Add strtold to the std namespace.
 
 ---
  libstdc++-v3/include/c_global/cstdlib | 10 ++++++----

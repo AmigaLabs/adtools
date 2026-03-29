@@ -1,7 +1,7 @@
 From 87b54bd24326d53e6c41008517c55181a7861785 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Sat, 28 Mar 2026 01:23:51 +0000
-Subject: [PATCH 04/25] Disable the usage of /dev/urandom when compiling for
+Subject: [PATCH 04/29] Disable the usage of /dev/urandom when compiling for
 
 ---
  gcc/gcc.c    | 3 +++
