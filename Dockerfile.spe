@@ -1,0 +1,34 @@
+FROM ubuntu:24.04
+
+LABEL maintainer="derfsss"
+LABEL description="AmigaOS 4 cross-compiler: GCC 7.5.0 with SPE for A1222 Plus (e500v2)"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    make \
+    cmake \
+    lhasa \
+    wget \
+    git \
+    ca-certificates \
+    libmpc3 \
+    libmpfr6 \
+    libgmp10 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install the pre-built GCC 7 SPE cross-compiler toolchain
+COPY gcc7-spe-toolchain.tar.gz /tmp/
+RUN mkdir -p /opt/ppc-amigaos && \
+    tar xzf /tmp/gcc7-spe-toolchain.tar.gz -C /opt/ppc-amigaos && \
+    rm /tmp/gcc7-spe-toolchain.tar.gz
+
+# Add toolchain to PATH
+ENV PATH="/opt/ppc-amigaos/bin:${PATH}"
+
+# Verify installation
+RUN ppc-amigaos-gcc --version && \
+    ppc-amigaos-gcc -dM -E - < /dev/null | grep __SPE__
+
+WORKDIR /work
