@@ -1,0 +1,81 @@
+From 8a57a7223d851774d19cb67ed2e79a58ed7ce690 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 08:47:19 +0000
+Subject: [PATCH 16/25] Avoid section anchors in the baserel mode.
+
+---
+ gcc/config/rs6000/amigaos-protos.h |  1 +
+ gcc/config/rs6000/amigaos.c        | 17 +++++++++++++++++
+ gcc/config/rs6000/amigaos.h        |  7 +++++++
+ 3 files changed, 25 insertions(+)
+
+diff --git a/gcc/config/rs6000/amigaos-protos.h b/gcc/config/rs6000/amigaos-protos.h
+index eb5f8fc5f3d546b8d8e1cdd8118a3085079df50e..3010e3b34f4a27f7442e464dfcfb1cecbe036e67 100644
+--- a/gcc/config/rs6000/amigaos-protos.h
++++ b/gcc/config/rs6000/amigaos-protos.h
+@@ -33,9 +33,10 @@ extern tree amigaos_handle_linearvarargs_attribute (tree *, tree, tree, int, boo
+ extern tree amigaos_handle_baserel_restore_attribute (tree *, tree, tree, int, bool*);
+ extern tree amigaos_handle_force_no_baserel_attribute (tree *, tree, tree, int, bool*);
+ extern tree amigaos_handle_check68kfuncptr_attribute (tree *, tree, tree, int, bool*);
+ extern rtx amigaos_legitimize_baserel_address (rtx addr);
+ extern int amigaos_baserel_operand(rtx x);
+ extern int amigaos_not_baserel_tree_p(tree decl);
++extern bool amigaos_use_anchors_for_symbol_p (const_rtx symbol);
+ 
+ //#endif /* TREE_CODE */
+ //#endif /* RTX_CODE */
+diff --git a/gcc/config/rs6000/amigaos.c b/gcc/config/rs6000/amigaos.c
+index a6da7d543241e2fc8cf51a952633c62e19d7d875..8cc91122359e31451d39f486a1c9fbec449918a4 100644
+--- a/gcc/config/rs6000/amigaos.c
++++ b/gcc/config/rs6000/amigaos.c
+@@ -458,6 +458,23 @@ amigaos_handle_check68kfuncptr_attribute (tree *node, tree name,
+ 	       IDENTIFIER_POINTER (name));
+       *no_add_attrs = true;
+     }
+ 
+   return NULL_TREE;
+ }
++
++/* Addititionally to the normal anchor (optimization) suppression, suppress
++ * it also in the baserel mode because we don't adjust the anchor access yet.
++ * It would make some sence to support anchros also in baserel mode, because
++ * baserel access is 32 bit.
++ */
++bool
++amigaos_use_anchors_for_symbol_p (const_rtx symbol)
++{
++  if (TARGET_BASEREL)
++  {
++    /* FIXME: For force_no_baserel symbols we could possibly go for anchors */
++    return false;
++  }
++  /* Also check the normal reasons for suppressing.  */
++  return default_use_anchors_for_symbol_p (symbol);
++}
+diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
+index 0d06f2dd48c7d97bbd192b26d530b18bc3029665..547b57d03708bb38904bfdf6fd92f7a055027564 100644
+--- a/gcc/config/rs6000/amigaos.h
++++ b/gcc/config/rs6000/amigaos.h
+@@ -398,12 +398,19 @@ do                                   \
+   { "lineartags", 0, 0, false, true, true, amigaos_handle_lineartags_attribute, false}, \
+   { "baserel_restore", 0, 0, false, true, true, amigaos_handle_baserel_restore_attribute, false }, \
+   { "force_no_baserel", 0, 0, true, false, false, amigaos_handle_force_no_baserel_attribute, false }, \
+   { "check68kfuncptr", 0, 0, false, true, true, amigaos_handle_check68kfuncptr_attribute, false }
+ 
+ /* Overrides */
++
++/* We don't want to use section anchors in baserel mode so we have to override
++ * the decision functions
++ */
++#undef TARGET_USE_ANCHORS_FOR_SYMBOL_P
++#define TARGET_USE_ANCHORS_FOR_SYMBOL_P amigaos_use_anchors_for_symbol_p
++
+ /*
+ #undef INIT_CUMULATIVE_ARGS
+ #define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT, N_NAMED_ARGS) \
+   amigaos_init_cumulative_args (&CUM, FNTYPE, LIBNAME, FALSE, N_NAMED_ARGS)
+ 
+ #undef INIT_CUMULATIVE_INCOMING_ARGS
+-- 
+2.43.0
+

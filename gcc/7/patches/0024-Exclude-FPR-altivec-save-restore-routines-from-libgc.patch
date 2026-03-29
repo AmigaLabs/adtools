@@ -1,0 +1,47 @@
+From 19a8d589d33294d868e5d0cd2fd3dea8c45cc5cf Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sun, 29 Mar 2026 18:18:20 +0100
+Subject: [PATCH 24/25] Exclude FPR/altivec save/restore routines from libgcc
+ for SPE targets.
+
+The e500v2 core (used in the A1222 Plus) has no classic FPU or altivec
+registers. The crtsavfpr.S, crtresfpr.S, crtresxfpr.S, crtsavevr.S,
+and crtrestvr.S files use FPU/altivec instructions (stfd, lfd, etc.)
+that do not exist on e500v2, causing assembly errors.
+
+Detect SPE at libgcc build time via __SPE__ predefined macro and
+filter out the incompatible save/restore routines. Also use
+-Wa,-me500 instead of -Wa,-maltivec for the assembler.
+---
+ libgcc/config/rs6000/t-amigaos | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/libgcc/config/rs6000/t-amigaos b/libgcc/config/rs6000/t-amigaos
+index da1e303eed7e60df883971a610e8904db0df3e23..aa9a720b414d27d5c673cc17d5cb6c860e6b12d4 100644
+--- a/libgcc/config/rs6000/t-amigaos
++++ b/libgcc/config/rs6000/t-amigaos
+@@ -1,11 +1,17 @@
+-# We need to enable the altivec in the assembler as
+-# crtsavevr.S needs it. Not sure how this is handled
+-# on other platforms or if this is a limitiation
+-# of our binutils.
++# For SPE targets (e500v2), exclude FPR/altivec save/restore routines
++# since the e500v2 has no FPU or altivec registers, and use -Wa,-me500.
++# For non-SPE targets, enable altivec in the assembler as crtsavevr.S
++# needs it.
++SPE_CHECK := $(shell echo | $(GCC_FOR_TARGET) -E -dM - 2>/dev/null | grep -c __SPE__)
++ifneq ($(SPE_CHECK),0)
++HOST_LIBGCC2_CFLAGS += -Wa,-me500
++LIB2ADD_ST := $(filter-out %crtsavfpr.S %crtresfpr.S %crtresxfpr.S %crtsavevr.S %crtrestvr.S,$(LIB2ADD_ST))
++else
+ HOST_LIBGCC2_CFLAGS += -Wa,-maltivec
++endif
+ 
+ # The shared library needs to be compiled with -fPIC
+ 
+ gcc_s_compile += -fPIC
+ 
+ 
+-- 
+2.43.0
+

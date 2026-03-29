@@ -1,0 +1,32 @@
+From 81e76790a94cb7a175657d16bd5cc37eebee53fe Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 08:59:26 +0000
+Subject: [PATCH 21/25] Fix libiberty Makefile.in: add setenv-amigaos.c to
+ CFILES.
+
+---
+ libiberty/Makefile.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libiberty/Makefile.in b/libiberty/Makefile.in
+index b61171fd641d0adbeaa715af063a451600072f8d..d7c6a7f5cc1e82d80e9a692d6e8e867d259ed589 100644
+--- a/libiberty/Makefile.in
++++ b/libiberty/Makefile.in
+@@ -143,13 +143,13 @@ CFILES = alloca.c argv.c asprintf.c atexit.c				\
+ 	 pex-common.c pex-djgpp.c pex-msdos.c pex-one.c			\
+ 	 pex-unix.c pex-win32.c						\
+ 	 pex-amigaos.c		\
+          physmem.c putenv.c						\
+ 	random.c regex.c rename.c rindex.c				\
+ 	rust-demangle.c							\
+-	safe-ctype.c setenv.c setproctitle.c sha1.c sigsetmask.c        \
++	safe-ctype.c setenv.c setenv-amigaos.c setproctitle.c sha1.c sigsetmask.c        \
+ 	 simple-object.c simple-object-coff.c simple-object-elf.c	\
+ 	 simple-object-mach-o.c simple-object-xcoff.c			\
+          snprintf.c sort.c						\
+ 	 spaces.c splay-tree.c stack-limit.c stpcpy.c stpncpy.c		\
+ 	 strcasecmp.c strchr.c strdup.c strerror.c strncasecmp.c	\
+ 	 strncmp.c strrchr.c strsignal.c strstr.c strtod.c strtol.c	\
+-- 
+2.43.0
+

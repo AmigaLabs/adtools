@@ -33,6 +33,22 @@ SDK_LOC?=
 # Optional (DEFAULT=):
 # Define the path that contains the local version of the SDK to avoid
 # needing to download it
+# ===
+SPE?=0
+# Optional (DEFAULT=0):
+# Define SPE=1 to build a fully-native SPE toolchain for the A1222 Plus
+# (NXP QorIQ P1022 / e500v2). This causes:
+#   - clib2/clib4 to be compiled with SPE floating-point instructions
+#   - GCC runtime libraries (libgcc, libstdc++) configured for -mcpu=8548
+#   - The resulting toolchain produces code using SPE instead of classic FPU
+#
+# When SPE=0 (default), the toolchain targets standard PowerPC with classic
+# FPU (suitable for X1000, X5000, Sam440/460, etc.)
+#
+# Usage:
+#   make gcc-cross SPE=1       # A1222 SPE toolchain
+#   make gcc-cross              # Standard PPC toolchain
+#
 
 ROOT_DIR=$(realpath .)
 
@@ -40,6 +56,17 @@ ROOT_DIR=$(realpath .)
 CCACHE:=$(shell which ccache)
 HOST_GCC:=$(strip $(CCACHE) gcc)
 HOST_GXX:=$(strip $(CCACHE) g++)
+
+# SPE build configuration
+ifeq ($(SPE),1)
+SPE_CPU_FLAGS=-mcpu=8548 -mspe -mfloat-gprs=double
+SPE_CONFIGURE=--with-cpu=8548 --with-spe
+SPE_CLIB4_FLAGS=SPE=1
+else
+SPE_CPU_FLAGS=
+SPE_CONFIGURE=
+SPE_CLIB4_FLAGS=
+endif
 
 GMP_ARCHIVE=gmp-5.1.3.tar.bz2
 MPFR_ARCHIVE=mpfr-3.1.6.tar.bz2
@@ -88,7 +115,7 @@ COREUTILS_VERSION=5.2.1
 DIST_VERSION=$(shell date +%Y%m%d)-$(shell git rev-list --count HEAD)
 
 # Set up the necessary variables for the CLIBs
-CLIB4_SUPPORT=$(filter 11 8 6,$(GCC_MAJOR_VERSION))
+CLIB4_SUPPORT=$(filter 11 8 7 6,$(GCC_MAJOR_VERSION))
 CLIB4_URL=https://github.com/AmigaLabs/clib4
 CLIB4_DIR=downloads/clib4/
 CLIB4_RELEASE_ARCHIVE_NAME=adtools-os4-clib4-$(DIST_VERSION).lha
@@ -245,7 +272,8 @@ xgcc-done-$(GCC_VERSION): includes-done binutils-cross-done-$(BINUTILS_VERSION)
 		SRC_DIR=$(GCC_SRC_DIR) \
 		PREFIX=$(CROSS_PREFIX) \
 		CROSS_BUILD_DIR=$(ROOT_DIR)/gcc-cross-build-$(GCC_VERSION) \
-		VERSION=$(GCC_VERSION)
+		VERSION=$(GCC_VERSION) \
+		SPE_CONFIGURE="$(SPE_CONFIGURE)"
 	$(MAKE) -C $(ROOT_DIR)/gcc-cross-build-$(GCC_VERSION) all-gcc
 	touch $@
 
@@ -261,7 +289,8 @@ clib4-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 		RANLIB="$(XRANLIB)" \
 		STRIP=$(STRIP) \
 		INSTALL_PREFIX=$(CROSS_PREFIX)/ppc-amigaos/SDK/clib4 \
-		SDK_INCLUDE=$(CROSS_PREFIX)/ppc-amigaos/SDK/include
+		SDK_INCLUDE=$(CROSS_PREFIX)/ppc-amigaos/SDK/include \
+		$(SPE_CLIB4_FLAGS)
 # Copy clib libs and includes
 	$(MAKE) -C $(CLIB4_DIR) -f GNUmakefile.os4 install \
 		INSTALL_PREFIX=$(CROSS_PREFIX)/ppc-amigaos/SDK/clib4
@@ -272,7 +301,7 @@ endif
 clib2-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 # Build clib using xgcc that have just been built
 	$(MAKE) -C $(CLIB2_DIR) -f GNUmakefile.os4 \
-		CC="$(XGCC_CC)" \
+		CC="$(XGCC_CC) $(SPE_CPU_FLAGS)" \
 		AR="$(XAR)" \
 		RANLIB="$(XRANLIB)"
 # Copy clib libs and includes
@@ -287,7 +316,12 @@ clib2-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 #
 # Build the cross compiler
 #
+# SPE builds skip clib2 (no SPE support — uses classic FPU asm in libm)
+ifeq ($(SPE),1)
+GCC_CROSS_DONE_DEPENDENCY=
+else
 GCC_CROSS_DONE_DEPENDENCY=clib2-cross-done-$(GCC_VERSION)
+endif
 ifneq ($(CLIB4_SUPPORT),)
 GCC_CROSS_DONE_DEPENDENCY+=clib4-cross-done-$(GCC_VERSION)
 endif

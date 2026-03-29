@@ -1,0 +1,62 @@
+From 30b2709b67326d519fa5f34cf067b680167b7257 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sun, 29 Mar 2026 18:20:06 +0100
+Subject: [PATCH 25/25] Exclude clib2 multilib for SPE targets via
+ MULTILIB_EXCEPTIONS.
+
+clib2's libm unconditionally uses classic FPU assembly (fabs, etc.)
+that is incompatible with the e500v2 SPE core. Rather than trying to
+patch clib2, exclude its multilib variant when configuring for SPE CPUs.
+
+In config.gcc, detect SPE CPUs (8540, 8548, e500mc, e500mc64) via
+--with-cpu and set AMIGAOS_SPE=1 in tm_defines. In t-amigaos, check
+for this define and set MULTILIB_EXCEPTIONS to exclude clib2.
+---
+ gcc/config.gcc              | 7 +++++++
+ gcc/config/rs6000/t-amigaos | 6 ++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index 9b9d1b9b1886fcd38a44e6cb968156b64e42842f..fc84dad9357d94528b62cd6f0ddccb85787b7d95 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -2353,12 +2353,19 @@ powerpc-*-amigaos*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h amigaos-stdint.h rs6000/sysv4.h rs6000/amigaos.h rs6000/e500.h"
+ 	tm_p_file="${tm_p_file} rs6000/amigaos-protos.h"
+ 	extra_options="${extra_options} rs6000/sysv4.opt rs6000/amigaos.opt"
+ 	tmake_file="rs6000/t-amigaos"
+ 	extra_objs=amigaos.o
+ 	use_collect2=no
++	# SPE targets (e500v2): exclude clib2 multilib (no SPE support in
++	# clib2's libm — uses classic FPU asm incompatible with e500v2)
++	case "${with_cpu}" in
++	8540 | 8548 | e500mc | e500mc64)
++		tm_defines="${tm_defines} AMIGAOS_SPE=1"
++		;;
++	esac
+ 	;;
+ # port not yet contributed
+ #powerpc-*-openbsd*)
+ #	tmake_file="${tmake_file} rs6000/t-fprules"
+ #	extra_headers=
+ #	;;
+diff --git a/gcc/config/rs6000/t-amigaos b/gcc/config/rs6000/t-amigaos
+index 0d8049f400ca7f0937330ffec4f01546d9d61cc2..9c801c5018fde76ba29a71bd2d5346b527d25e31 100644
+--- a/gcc/config/rs6000/t-amigaos
++++ b/gcc/config/rs6000/t-amigaos
+@@ -15,6 +15,12 @@ NATIVE_SYSTEM_HEADER_DIR=/gcc/include
+ # Build the libraries for both newlib and clib2
+ # We do not build soft float flavours as none of the
+ # libs support soft floats
+ MULTILIB_OPTIONS = mcrt=newlib/mcrt=clib2/mcrt=clib4
+ MULTILIB_DIRNAMES = newlib clib2 clib4
+ #MULTILIB_REUSE = =mcrt=newlib
++
++# SPE targets: exclude clib2 multilib (no SPE support in clib2's libm).
++# AMIGAOS_SPE is set in config.gcc when --with-cpu is an SPE CPU.
++ifneq (,$(findstring AMIGAOS_SPE,$(tm_defines)))
++MULTILIB_EXCEPTIONS = mcrt=clib2
++endif
+-- 
+2.43.0
+

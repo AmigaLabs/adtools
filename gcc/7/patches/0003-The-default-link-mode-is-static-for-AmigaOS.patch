@@ -1,0 +1,50 @@
+From 2020539ed171a09c64c489bc992e17052aed4c87 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 01:22:36 +0000
+Subject: [PATCH 03/25] The default link mode is static for AmigaOS.
+
+---
+ gcc/cp/g++spec.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/gcc/cp/g++spec.c b/gcc/cp/g++spec.c
+index ffcc87c79c9df760b939c7dc1ba3e6181c67e3c6..01d7e0bd585f97c4a01f91c46e6d9da857797ddb 100644
+--- a/gcc/cp/g++spec.c
++++ b/gcc/cp/g++spec.c
+@@ -101,14 +101,14 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+   /* By default, we throw on the math library if we have one.  */
+   int need_math = (MATH_LIBRARY[0] != '\0');
+ 
+   /* By default, we throw on the time library if we have one.  */
+   int need_time = (TIME_LIBRARY[0] != '\0');
+ 
+-  /* True if we saw -static.  */
+-  int static_link = 0;
++  /* False if we saw -shared.  */
++  int static_link = 1;
+ 
+   /* True if we should add -shared-libgcc to the command-line.  */
+   int shared_libgcc = 1;
+ 
+   /* The total number of arguments with the new stuff.  */
+   unsigned int argc;
+@@ -195,12 +195,16 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 	  break;
+ 
+ 	case OPT_static:
+ 	  static_link = 1;
+ 	  break;
+ 
++	case OPT_shared:
++	  static_link = 0;
++	  break;
++
+ 	case OPT_static_libgcc:
+ 	  shared_libgcc = 0;
+ 	  break;
+ 
+ 	case OPT_static_libstdc__:
+ 	  library = library >= 0 ? 2 : library;
+-- 
+2.43.0
+
