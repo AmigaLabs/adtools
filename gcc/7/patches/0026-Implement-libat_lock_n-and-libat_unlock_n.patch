@@ -1,0 +1,107 @@
+From a730d1bf39ac76343c7d15afaaa6b1bef1f086f3 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sun, 29 Mar 2026 19:58:47 +0100
+Subject: [PATCH 26/29] Implement libat_lock_n() and libat_unlock_n().
+
+Backport from GCC 8 adtools patch 0010. Refactors lock/unlock into
+static helper functions and implements the multi-lock variants that
+were previously stubbed out.
+---
+ libatomic/config/amigaos/lock.c | 58 ++++++++++++++++++++++++++-------
+ 1 file changed, 46 insertions(+), 12 deletions(-)
+
+diff --git a/libatomic/config/amigaos/lock.c b/libatomic/config/amigaos/lock.c
+index 826176b0575fd7f7b1f305e396f4a8738f48864d..0d0b07ab810a1bb64c7bfe3702da9d7e6dc25f06 100644
+--- a/libatomic/config/amigaos/lock.c
++++ b/libatomic/config/amigaos/lock.c
+@@ -62,41 +62,75 @@ static struct lock locks[NLOCKS];
+ static inline uintptr_t
+ addr_hash (void *ptr)
+ {
+   return ((uintptr_t)ptr / WATCH_SIZE) % NLOCKS;
+ }
+ 
+-void
+-libat_lock_1 (void *ptr)
++static void
++libat_lock (struct lock *l)
+ {
+-  struct lock *l = &locks[addr_hash (ptr)];
+   IExec->Forbid();
+   if (!l->initialized)
+   {
+-    IExec->InitSemaphore(&l->sem);
++    IExec->InitSemaphore (&l->sem);
+     l->initialized = 1;
+   }
+   IExec->Permit();
+-  IExec->ObtainSemaphore(&l->sem);
++  IExec->ObtainSemaphore (&l->sem);
++}
++
++static void
++libat_unlock (struct lock *l)
++{
++  IExec->ReleaseSemaphore (&l->sem);
+ }
+ 
+ void
+-libat_unlock_1 (void *ptr)
++libat_lock_1 (void *ptr)
+ {
+-  struct lock *l = &locks[addr_hash (ptr)];
+-  IExec->ReleaseSemaphore(&l->sem);
++  libat_lock (&locks[addr_hash (ptr)]);
+ }
+ 
+-#if 0
++void
++libat_unlock_1 (void *ptr)
++{
++  libat_unlock (&locks[addr_hash (ptr)]);
++}
+ 
+-/* TODO: Implement me when needed */
+ void
+ libat_lock_n (void *ptr, size_t n)
+ {
++  uintptr_t h = addr_hash (ptr);
++  size_t i = 0;
++
++  /* Don't lock more than all the locks we have.  */
++  if (n > PAGE_SIZE)
++    n = PAGE_SIZE;
++
++  do
++    {
++      libat_lock (&locks[h]);
++      if (++h == NLOCKS)
++        h = 0;
++      i += WATCH_SIZE;
++    }
++  while (i < n);
+ }
+ 
+ void
+ libat_unlock_n (void *ptr, size_t n)
+ {
++  uintptr_t h = addr_hash (ptr);
++  size_t i = 0;
++
++  if (n > PAGE_SIZE)
++    n = PAGE_SIZE;
++
++  do
++    {
++      libat_unlock (&locks[h]);
++      if (++h == NLOCKS)
++        h = 0;
++      i += WATCH_SIZE;
++    }
++  while (i < n);
+ }
+-
+-#endif
+-- 
+2.43.0
+

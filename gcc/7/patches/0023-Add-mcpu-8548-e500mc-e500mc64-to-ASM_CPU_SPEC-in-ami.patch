@@ -1,0 +1,36 @@
+From 98287f155c5f7f26e230baf0a56bb4f4d7051e81 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 12:13:57 +0000
+Subject: [PATCH 23/29] Add mcpu=8548/e500mc/e500mc64 to ASM_CPU_SPEC in
+ amigaos.h.
+
+The amigaos.h ASM_CPU_SPEC override only had mcpu=8540 mapped to
+-me500 for the assembler. Without mcpu=8548, the assembler did not
+receive -me500 and rejected SPE instructions (evstdd, efdadd, etc.).
+---
+ gcc/config/rs6000/amigaos.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
+index 3db80cb7f256f49721009d16508d2185c050533e..e078ac7f5d5ac35284ee2158cd7948674afe30b5 100644
+--- a/gcc/config/rs6000/amigaos.h
++++ b/gcc/config/rs6000/amigaos.h
+@@ -80,12 +80,15 @@
+ %{mcpu=821: -mppc} \
+ %{mcpu=823: -mppc} \
+ %{mcpu=860: -mppc} \
+ %{mcpu=970: -mpower4 -maltivec} \
+ %{mcpu=G5: -mpower4 -maltivec} \
+ %{mcpu=8540: -me500} \
++%{mcpu=8548: -me500} \
++%{mcpu=e500mc: -me500mc} \
++%{mcpu=e500mc64: -me500mc64} \
+ %{maltivec: -maltivec}"
+ 
+ #define IS_MCRT(MCRTNAME) \
+   (strcmp(amigaos_crt, MCRTNAME) == 0)
+ 
+ /* Make most of the definitions from other compilers available */
+-- 
+2.43.0
+

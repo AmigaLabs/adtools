@@ -1,0 +1,36 @@
+From a355440d7b3dc74ff64c7028d60e5c1a909664f6 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sun, 29 Mar 2026 19:59:47 +0100
+Subject: [PATCH 27/29] Default to DWARF v2 for AmigaOS.
+
+Backport from GCC 8 adtools patch 0027. Set dwarf_version=2 and
+dwarf_strict=1 as defaults for AmigaOS, matching what the AmigaOS
+debugging tools expect.
+---
+ gcc/config/rs6000/amigaos.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
+index e078ac7f5d5ac35284ee2158cd7948674afe30b5..2cbda127eb3b2ff7897bc0f1062cc3684fec6429 100644
+--- a/gcc/config/rs6000/amigaos.h
++++ b/gcc/config/rs6000/amigaos.h
+@@ -403,12 +403,16 @@ do                                   \
+ {                                    \
+   if (TARGET_ALTIVEC)                \
+   {                                  \
+     rs6000_altivec_abi = 1;          \
+     TARGET_ALTIVEC_VRSAVE = 1;       \
+   }                                  \
++  if (!global_options_set.x_dwarf_strict)	\
++    dwarf_strict = 1;				\
++  if (!global_options_set.x_dwarf_version)	\
++    dwarf_version = 2;				\
+ } while(0)
+ 
+ #undef SUBTARGET_EXPAND_BUILTIN
+ #define SUBTARGET_EXPAND_BUILTIN(EXP, TARGET, SUBTARGET, MODE, IGNORE, SUCCESS) \
+   amigaos_expand_builtin (EXP, TARGET, SUBTARGET, MODE, IGNORE, SUCCESS)
+ 
+-- 
+2.43.0
+

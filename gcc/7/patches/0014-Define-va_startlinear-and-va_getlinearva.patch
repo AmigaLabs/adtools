@@ -1,0 +1,43 @@
+From 80efb0335082e6613e7c82dd4baa945a69b697d9 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 08:44:32 +0000
+Subject: [PATCH 14/29] Define va_startlinear and va_getlinearva.
+
+---
+ gcc/ginclude/stdarg.h | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/gcc/ginclude/stdarg.h b/gcc/ginclude/stdarg.h
+index aa248be5da7bede58125a642dbeae50a46dce285..76848c4d2a78f8813cf06ed7bfa9f94554ae2a14 100644
+--- a/gcc/ginclude/stdarg.h
++++ b/gcc/ginclude/stdarg.h
+@@ -61,12 +61,26 @@ typedef __builtin_va_list __gnuc_va_list;
+    which is safe because it is reserved for the implementation.  */
+ 
+ #ifdef _BSD_VA_LIST
+ #undef _BSD_VA_LIST
+ #endif
+ 
++#if defined(__amigaos4__)
++
++/* AmigaOS4 provides support for var args that all pushed on the stack.
++ * These are the helper macros. */
++#ifndef va_startlinear
++#define va_startlinear(AP,ARG) va_start(AP,ARG)
++#endif
++
++#ifndef va_getlinearva
++#define va_getlinearva(AP,TYPE) ((TYPE)__builtin_getlinearva(AP))
++#endif
++
++#endif
++
+ #if defined(__svr4__) || (defined(_SCO_DS) && !defined(__VA_LIST))
+ /* SVR4.2 uses _VA_LIST for an internal alias for va_list,
+    so we must avoid testing it and setting it here.
+    SVR4 uses _VA_LIST as a flag in stdarg.h, but we should
+    have no conflict with that.  */
+ #ifndef _VA_LIST_
+-- 
+2.43.0
+

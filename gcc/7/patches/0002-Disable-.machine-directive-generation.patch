@@ -1,0 +1,45 @@
+From ba0a75fcfc7b72bba886d2074df4db565e0de179 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 01:21:19 +0000
+Subject: [PATCH 02/29] Disable .machine directive generation.
+
+---
+ gcc/config/rs6000/rs6000.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
+index fd8fbbf188f55c297fd8b81e694061ac6eae2b8c..b6d94c0eca8a5dceda9ba67b79018271e95c1833 100644
+--- a/gcc/config/rs6000/rs6000.c
++++ b/gcc/config/rs6000/rs6000.c
+@@ -6442,12 +6442,14 @@ rs6000_file_start (void)
+     }
+ 
+ #ifdef USING_ELFOS_H
+   if (!(rs6000_default_cpu && rs6000_default_cpu[0])
+       && !global_options_set.x_rs6000_cpu_index)
+     {
++      /* Temporarily disabled as it overrides e.g., -mcpu=440 */
++#if 0
+       fputs ("\t.machine ", asm_out_file);
+       if ((rs6000_isa_flags & OPTION_MASK_MODULO) != 0)
+ 	fputs ("power9\n", asm_out_file);
+       else if ((rs6000_isa_flags & OPTION_MASK_DIRECT_MOVE) != 0)
+ 	fputs ("power8\n", asm_out_file);
+       else if ((rs6000_isa_flags & OPTION_MASK_POPCNTD) != 0)
+@@ -6459,12 +6461,13 @@ rs6000_file_start (void)
+       else if ((rs6000_isa_flags & OPTION_MASK_MFCRF) != 0)
+ 	fputs ("power4\n", asm_out_file);
+       else if ((rs6000_isa_flags & OPTION_MASK_POWERPC64) != 0)
+ 	fputs ("ppc64\n", asm_out_file);
+       else
+ 	fputs ("ppc\n", asm_out_file);
++#endif
+     }
+ #endif
+ 
+   if (DEFAULT_ABI == ABI_ELFv2)
+     fprintf (file, "\t.abiversion 2\n");
+ }
+-- 
+2.43.0
+

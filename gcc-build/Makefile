@@ -19,6 +19,9 @@ REAL_SRC_DIR=$(realpath $(SRC_DIR))
 # Defines FEATURES macro according to the actual gcc version
 include features.mk
 
+# SPE configure options (passed from native-build/makefile when SPE=1)
+SPE_CONFIGURE?=
+
 all: cross
 
 .PHONY: cross-configure
@@ -29,8 +32,8 @@ cross-configure:
 		--with-pkgversion='adtools build $(VERSION)' \
 		--target=ppc-amigaos \
 		--prefix=$(PREFIX) \
-		$(FEATURES) #\
-#		--enable-checking=gc
+		$(FEATURES) \
+		$(SPE_CONFIGURE)
 
 .PHONY: cross
 cross: cross-configure

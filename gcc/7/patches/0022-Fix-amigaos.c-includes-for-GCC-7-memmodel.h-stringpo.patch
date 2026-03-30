@@ -1,0 +1,66 @@
+From 2c4cf9190cabd91cdb27a6009c905da325f1b44d Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 09:29:41 +0000
+Subject: [PATCH 22/29] Fix amigaos.c includes for GCC 7 (memmodel.h,
+ stringpool.h, attribs.h) and fix lineartags attribute handler name.
+
+---
+ gcc/config/rs6000/amigaos.c | 3 +++
+ gcc/config/rs6000/amigaos.h | 2 +-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/gcc/config/rs6000/amigaos.c b/gcc/config/rs6000/amigaos.c
+index 8cc91122359e31451d39f486a1c9fbec449918a4..209ae8ed460b4b36dd0a3efd8e48148c8accb40c 100644
+--- a/gcc/config/rs6000/amigaos.c
++++ b/gcc/config/rs6000/amigaos.c
+@@ -20,12 +20,13 @@
+    MA 02111-1307, USA.  */
+ 
+ 
+ #include "config.h"
+ #include "system.h"
+ #include "coretypes.h"
++#include "memmodel.h"
+ #include "diagnostic-core.h"
+ #include "tm.h"
+ #include "hash-set.h"
+ #include "inchash.h"
+ #include "rtl.h"
+ #include "regs.h"
+@@ -37,12 +38,14 @@
+ #include "insn-attr.h"
+ #include "flags.h"
+ #include "recog.h"
+ #include "obstack.h"
+ #include "symtab.h"
+ #include "tree.h"
++#include "stringpool.h"
++#include "attribs.h"
+ #include "expr.h"
+ #include "optabs.h"
+ #include "except.h"
+ #include "function.h"
+ #include "output.h"
+ #include "tm_p.h"
+diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
+index a212fbcd749337840cb529fb7d8d4f1e16f9ab2e..3db80cb7f256f49721009d16508d2185c050533e 100644
+--- a/gcc/config/rs6000/amigaos.h
++++ b/gcc/config/rs6000/amigaos.h
+@@ -413,13 +413,13 @@ do                                   \
+ #define SUBTARGET_INIT_BUILTINS \
+   amigaos_init_builtins ()
+ 
+ /* AmigaOS specific attribute */
+ #define SUBTARGET_ATTRIBUTE_TABLE \
+   { "linearvarargs", 0, 0, false, true,  true, amigaos_handle_linearvarargs_attribute, false}, \
+-  { "lineartags", 0, 0, false, true, true, amigaos_handle_lineartags_attribute, false}, \
++  { "lineartags", 0, 0, false, true, true, amigaos_handle_linearvarargs_attribute, false}, \
+   { "baserel_restore", 0, 0, false, true, true, amigaos_handle_baserel_restore_attribute, false }, \
+   { "force_no_baserel", 0, 0, true, false, false, amigaos_handle_force_no_baserel_attribute, false }, \
+   { "check68kfuncptr", 0, 0, false, true, true, amigaos_handle_check68kfuncptr_attribute, false }
+ 
+ /* Overrides */
+ 
+-- 
+2.43.0
+

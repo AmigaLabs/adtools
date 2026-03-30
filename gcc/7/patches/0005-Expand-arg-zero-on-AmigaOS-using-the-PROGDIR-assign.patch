@@ -1,0 +1,39 @@
+From d455b4def597d7f69fd241ad712f856fdaa59de5 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Sat, 28 Mar 2026 01:25:09 +0000
+Subject: [PATCH 05/29] Expand arg zero on AmigaOS using the PROGDIR: assign.
+
+---
+ gcc/gcc.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/gcc/gcc.c b/gcc/gcc.c
+index 91c22c2752bfe652a4b1cb97db3bbaf4566143ef..1c6e043e216c69b0df8ad61d81c4dccf9a036196 100644
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
+@@ -7228,12 +7228,22 @@ driver::~driver ()
+ int
+ driver::main (int argc, char **argv)
+ {
+   bool early_exit;
+ 
+   set_progname (argv[0]);
++#ifdef __amigaos4__
++  /* Expand the command name on AmigaOS */
++  char *expanded_progdir = lrealpath("/progdir/");
++  if (expanded_progdir)
++    {
++      char *expanded_argv0 = concat(expanded_progdir,"/",progname,NULL);
++      argv[0] = expanded_argv0; /* FIXME: Leak */
++      free(expanded_progdir);
++    }
++#endif
+   expand_at_files (&argc, &argv);
+   decode_argv (argc, const_cast <const char **> (argv));
+   global_initializations ();
+   build_multilib_strings ();
+   set_up_specs ();
+   putenv_COLLECT_GCC (argv[0]);
+-- 
+2.43.0
+
