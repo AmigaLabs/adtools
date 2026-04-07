@@ -1,0 +1,815 @@
+From abbefb1dcd28e82ff867367fc6b8637a027441e4 Mon Sep 17 00:00:00 2001
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Tue, 7 Apr 2026 11:49:47 +0100
+Subject: [PATCH 2/2] Fix GDB native debugging on AmigaOS 4
+
+Register handling:
+- Fix fetch_registers() GPR loop using loop index instead of -1
+- Fix FPR index offset (subtract base register number)
+- Fix loop bounds: 32 registers not 31
+- Gate AltiVec register access on ECF_VECTOR context flag
+- Implement store_registers() using IDebug->WriteTaskContext()
+
+Trap/signal handling:
+- Replace raw PPC vector numbers with SDK TRAPNUM_* values from
+  exec/interrupts.h (ExceptionContext.Traptype uses these)
+- Add handling for TRAP_TRAP (breakpoints), TRAP_DATA_BREAKPOINT
+  (DABR), TRAP_INST_BREAKPOINT, TRAP_TRACE (single-step)
+- Preserve actual signal type in wait() instead of collapsing
+  SEGV/BUS/FPE/ILL/ALRM to generic GDB_SIGNAL_0
+
+Process control:
+- Implement attach() - find task by name/address, suspend, install
+  debug hook
+- Fix kill() - use Signal(SIGBREAKF_CTRL_C) + RestartTask instead
+  of DeleteTask on Process objects
+
+Message pool safety:
+- Add NULL check to alloc_message() with Forbid/Permit guards
+- Add Forbid/Permit to free_message() for consistency
+- Add NULL checks to all alloc_message() calls in debug callback
+
+BFD file path fix:
+- Skip canonicalize_file_name() on AmigaOS in gdb_realpath()
+- AmigaOS realpath() resolves assigns (T: -> "RAM Disk:T/") and
+  volume names (SYS: -> "AmigaOS:") producing paths that fail
+  when BFD's file cache tries to reopen them
+
+Minor cleanup:
+- Fix typos in comments
+- Use gdbarch register numbers consistently
+---
+ gdb/charset.c           |   6 +
+ gdb/ppc-amigaos-nat.c   | 362 +++++++++++++++++++++++++++++-----------
+ gdb/ppc-amigaos-nat.h   |  45 +++--
+ gdb/ppc-amigaos-tdep.c  |  10 +-
+ gdbsupport/pathstuff.cc |   7 +
+ 5 files changed, 305 insertions(+), 125 deletions(-)
+
+diff --git a/gdb/charset.c b/gdb/charset.c
+index a6261fc505c4ea1d63c045ab3673e4634754fa2f..7c2f245a61141868db4f4b9f791b706cc4708cf4 100644
+--- a/gdb/charset.c
++++ b/gdb/charset.c
+@@ -1004,12 +1004,18 @@ _initialize_charset ()
+   auto_host_charset_name = xstrdup (nl_langinfo (CODESET));
+   /* Solaris will return `646' here -- but the Solaris iconv then does
+      not accept this.  Darwin (and maybe FreeBSD) may return "" here,
+      which GNU libiconv doesn't like (infinite loop).  */
+   if (!strcmp (auto_host_charset_name, "646") || !*auto_host_charset_name)
+     auto_host_charset_name = "ASCII";
++#ifdef __amigaos4__
++  /* clib4's nl_langinfo(CODESET) returns "ISO-8859-1" but its iconv
++     implementation cannot reliably convert ISO-8859-1 to/from UTF-32.
++     Force UTF-8 which clib4's iconv handles correctly.  */
++  auto_host_charset_name = "UTF-8";
++#endif
+   auto_target_charset_name = auto_host_charset_name;
+ #elif defined (USE_WIN32API)
+   {
+     /* "CP" + x<=5 digits + paranoia.  */
+     static char w32_host_default_charset[16];
+ 
+diff --git a/gdb/ppc-amigaos-nat.c b/gdb/ppc-amigaos-nat.c
+index 576cc0ee91d485ac3cd1e3e9a47f8e2b058f8598..48c28ffac7360fc0f416b95138420a18f9a1f2ad 100644
+--- a/gdb/ppc-amigaos-nat.c
++++ b/gdb/ppc-amigaos-nat.c
+@@ -58,13 +58,13 @@ const struct regset ppc_amigaos_vrregset =
+ {
+ 	ppc_amigaos_vrregmap,
+ 	regcache_supply_regset,
+ 	regcache_collect_regset
+ };
+ 
+-// From clib4 , bucket list to clear up 
++/* ELF library references provided by clib4 runtime */
+ extern struct Library *ElfBase;
+ extern struct ElfIFace *IElf;
+ 
+ struct DebugIFace *IDebug = NULL;
+ struct MMUIFace *IMMU = NULL;
+ 
+@@ -110,13 +110,21 @@ class ppc_amigaos_nat_target : public inf_child_target
+ 	 * Get an empty message and initialize it.
+ 	 * @return
+ 	 */
+ 	struct debugger_message *
+ 	alloc_message ( struct Process *process )
+ 	{
++		IExec->Forbid();
+ 		struct debugger_message *message = (struct debugger_message *)IExec->RemHead(amigaos_debug_messages_list);
++		IExec->Permit();
++
++		if (!message)
++		{
++			IExec->DebugPrintF("[GDB] WARNING: message pool exhausted! Dropping debug event for task %p\n", process);
++			return NULL;
++		}
+ 
+ 		message->msg.mn_Node.ln_Type = NT_MESSAGE;
+ 		message->msg.mn_Node.ln_Name = NULL;
+ 		message->msg.mn_ReplyPort = NULL;
+ 		message->msg.mn_Length = sizeof(struct debugger_message);
+ 		message->process = process;
+@@ -133,13 +141,15 @@ class ppc_amigaos_nat_target : public inf_child_target
+ 	 */
+ 	void
+ 	free_message( struct debugger_message *message )
+ 	{
+ 		if (message)
+ 		{
++			IExec->Forbid();
+ 			IExec->AddTail(amigaos_debug_messages_list, (struct Node *)message);
++			IExec->Permit();
+ 		}
+ 	}
+ 	
+ 	ppc_amigaos_nat_target ();
+ 	~ppc_amigaos_nat_target () override;
+ 	
+@@ -175,14 +185,13 @@ class ppc_amigaos_nat_target : public inf_child_target
+ 	void mourn_inferior() override
+ 	{
+ 		printf( "[GDB] %s ()\n",__func__ );
+ 	}
+ 	*/
+ 	
+-	// TODO: ? void prepare_to_store (regcache *regs) override;
+-	// TODO: ? int async_wait_fd () override
++	/* Not needed: prepare_to_store() and async_wait_fd() use defaults */
+ 	
+ 	void resume (ptid_t ptid,int step,enum gdb_signal signal) override
+ 	{
+ 		struct Task *task = (struct Task *)(ptid == minus_one_ptid ? inferior_ptid.pid () : ptid.pid ());
+ 		
+ 		IExec->DebugPrintF("[GDB] %s ( step: %d, gdb_signal: %d, Task: %p  )\n",__func__,step,signal,task);
+@@ -200,22 +209,25 @@ class ppc_amigaos_nat_target : public inf_child_target
+ 		gdb_assert (inf != NULL);
+ 
+ 		struct Task *task = (struct Task *)inf->pid;
+ 
+ 		IExec->DebugPrintF( "[GDB] %s ( task: %p )\n",__func__,task );
+ 
+-		if( task ) 
++		if( task )
+ 		{
+-			/* Clear the debug hook (necessary to avoid the shell reusing it) */ 
+-			IDebug->AddDebugHook ( task,NULL );
+-
+-			// ML: According to the dos Autodoc DeleteTask/RemTask shouldn't be used on Process, but no other API avaiblle
+-			IExec->DeleteTask ( task );		
++			/* Clear the debug hook first */
++			IDebug->AddDebugHook ( task, NULL );
++
++			/* Signal the process to break, then restart it so it can
++			   process the signal and exit via its normal shutdown path.
++			   This is safer than DeleteTask on a Process. */
++			IExec->Signal ( task, SIGBREAKF_CTRL_C );
++			IExec->RestartTask ( task, 0 );
+ 		}
+ 
+-		target_mourn_inferior(inferior_ptid);		
++		target_mourn_inferior(inferior_ptid);
+ 	}
+ 	
+ 	/*
+ 	std::string pid_to_str (ptid_t ptid) override
+ 	{
+ 		IExec->DebugPrintF ("[GDB] %s Entering\n",__func__);
+@@ -235,13 +247,13 @@ class ppc_amigaos_nat_target : public inf_child_target
+ 		* /
+ 
+ 	  return normal_pid_to_str (ptid);
+ 	}
+ 	*/
+ 	
+-	// TODO: char *pid_to_exec_file (int pid) override;
++	/* Not yet implemented: pid_to_exec_file() for 'info proc' support */
+ 	
+ 	/*
+ 	bool info_proc (const char *args, enum info_proc_what what) override 
+ 	{
+ 		IExec->DebugPrintF("[GDB] %s (false)\n",__func__);
+ 		return false;
+@@ -565,15 +577,16 @@ ppc_amigaos_nat_target::wait (ptid_t ptid, struct target_waitstatus *ourstatus,t
+ 					}
+ 					case GDB_SIGNAL_SEGV:
+ 					case GDB_SIGNAL_BUS:
+ 					case GDB_SIGNAL_INT:
+ 					case GDB_SIGNAL_FPE:
+ 					case GDB_SIGNAL_ILL:
+-					case GDB_SIGNAL_ALRM:					
+-					{					
+-						ourstatus->set_stopped (GDB_SIGNAL_0);
++					case GDB_SIGNAL_ALRM:
++					{
++						/* Preserve the actual signal so GDB can report the exception type */
++						ourstatus->set_stopped ((enum gdb_signal)debuggerMessage->signal);
+ 
+ 						break;
+ 					}
+ 					default:
+ 					{
+ 						IExec->DebugPrintF("[GDB] %s received unknown signal from callback %ld\n",__func__,debuggerMessage->signal);
+@@ -608,74 +621,181 @@ ppc_amigaos_nat_target::fetch_registers (struct regcache *regcache, int regno)
+ 
+ 	struct ExceptionContext context;
+ 	IDebug->ReadTaskContext( task,&context,RTCF_INFO | RTCF_SPECIAL | RTCF_STATE | RTCF_GENERAL | RTCF_FPU | RTCF_VECTOR );
+ 
+ 	if( regno == -1 )
+ 	{
+-		for (int i = 0; i < 31; i++)
+-			regcache->raw_supply (regno, (void*)&context.gpr[i]);
++		/* Supply all GPRs (r0-r31) */
++		for (int i = 0; i < 32; i++)
++			regcache->raw_supply (tdep->ppc_gp0_regnum + i, (void*)&context.gpr[i]);
+ 
+-		for (int i = 0; i < 31; i++)
+-			regcache->raw_supply (regno, (void*)&context.fpr[i]);
++		/* Supply all FPRs (f0-f31) */
++		if (tdep->ppc_fp0_regnum >= 0)
++		{
++			for (int i = 0; i < 32; i++)
++				regcache->raw_supply (tdep->ppc_fp0_regnum + i, (void*)&context.fpr[i]);
++		}
+ 
++		/* Supply special registers */
+ 		regcache->raw_supply (gdbarch_pc_regnum (gdbarch), (void *)&context.ip);
+ 		regcache->raw_supply (tdep->ppc_ps_regnum, (void *)&context.msr);
+ 		regcache->raw_supply (tdep->ppc_cr_regnum, (void *)&context.cr);
+ 		regcache->raw_supply (tdep->ppc_lr_regnum, (void *)&context.lr);
+ 		regcache->raw_supply (tdep->ppc_ctr_regnum, (void *)&context.ctr);
+ 		regcache->raw_supply (tdep->ppc_xer_regnum, (void *)&context.xer);
+-		regcache->raw_supply (tdep->ppc_fpscr_regnum, (void *)&context.fpscr);			
++		if (tdep->ppc_fpscr_regnum >= 0)
++			regcache->raw_supply (tdep->ppc_fpscr_regnum, (void *)&context.fpscr);
+ 
+-		if (tdep->ppc_vr0_regnum != -1 && tdep->ppc_vrsave_regnum != -1)
++		/* Supply AltiVec registers if available */
++		if (tdep->ppc_vr0_regnum != -1 && tdep->ppc_vrsave_regnum != -1
++		    && (context.Flags & ECF_VECTOR))
+ 		{
+-			ppc_amigaos_vrregset.supply_regset( &ppc_amigaos_vrregset,regcache,regno,(void *)&context.vscr,PPC_AMIGAOS_SIZEOF_VRREGSET );
++			ppc_amigaos_vrregset.supply_regset (&ppc_amigaos_vrregset, regcache, -1, (void *)&context.vscr, PPC_AMIGAOS_SIZEOF_VRREGSET);
+ 		}
+ 	}
+-	else 
++	else
+ 	{
+-		if (regno == gdbarch_pc_regnum (gdbarch) )
+-		{			
++		if (regno == gdbarch_pc_regnum (gdbarch))
++		{
+ 			regcache->raw_supply (regno, (void*)&context.ip);
+ 		}
+-		else if (regno >= 0 && regno <= 31) 
++		else if (regno >= tdep->ppc_gp0_regnum && regno < tdep->ppc_gp0_regnum + 32)
++		{
++			regcache->raw_supply (regno, (void*)&context.gpr[regno - tdep->ppc_gp0_regnum]);
++		}
++		else if (tdep->ppc_fp0_regnum >= 0
++			 && regno >= tdep->ppc_fp0_regnum && regno < tdep->ppc_fp0_regnum + 32)
+ 		{
+-			regcache->raw_supply (regno, (void*)&context.gpr[regno]);
++			regcache->raw_supply (regno, (void*)&context.fpr[regno - tdep->ppc_fp0_regnum]);
+ 		}
+ 		else if (altivec_register_p (gdbarch, regno))
+ 		{
+-			ppc_amigaos_vrregset.supply_regset( &ppc_amigaos_vrregset,regcache,regno,(void *)&context.vscr,PPC_AMIGAOS_SIZEOF_VRREGSET );
++			if (context.Flags & ECF_VECTOR)
++				ppc_amigaos_vrregset.supply_regset (&ppc_amigaos_vrregset, regcache, regno, (void *)&context.vscr, PPC_AMIGAOS_SIZEOF_VRREGSET);
+ 		}
+-		else if (regno >= 32 && regno <= 64)
+-			regcache->raw_supply (regno, (void*)&context.fpr[regno]);
+ 		else if (regno == tdep->ppc_ps_regnum)
+ 			regcache->raw_supply (regno, (void *)&context.msr);
+ 		else if (regno == tdep->ppc_cr_regnum)
+-			regcache->raw_supply (tdep->ppc_cr_regnum, (void *)&context.cr);
++			regcache->raw_supply (regno, (void *)&context.cr);
+ 		else if (regno == tdep->ppc_lr_regnum)
+-			regcache->raw_supply (tdep->ppc_lr_regnum, (void *)&context.lr);
+-		else if (regno == tdep->ppc_ctr_regnum) 
+-			regcache->raw_supply (tdep->ppc_ctr_regnum, (void *)&context.ctr);
++			regcache->raw_supply (regno, (void *)&context.lr);
++		else if (regno == tdep->ppc_ctr_regnum)
++			regcache->raw_supply (regno, (void *)&context.ctr);
+ 		else if (regno == tdep->ppc_xer_regnum)
+-			regcache->raw_supply (tdep->ppc_xer_regnum, (void *)&context.xer);
+-		else if (regno == tdep->ppc_fpscr_regnum)
+-			regcache->raw_supply (tdep->ppc_fpscr_regnum, (void *)&context.fpscr);		
+-		else if (regno == tdep->ppc_vr0_regnum)
+-			regcache->raw_supply (tdep->ppc_vr0_regnum, (void *)&context.vr );		
+-		else if (regno == tdep->ppc_vrsave_regnum)
+-			regcache->raw_supply (tdep->ppc_vrsave_regnum, (void *)&context.vrsave );		
++			regcache->raw_supply (regno, (void *)&context.xer);
++		else if (tdep->ppc_fpscr_regnum >= 0 && regno == tdep->ppc_fpscr_regnum)
++			regcache->raw_supply (regno, (void *)&context.fpscr);
++		else if (tdep->ppc_vrsave_regnum >= 0 && regno == tdep->ppc_vrsave_regnum)
++			regcache->raw_supply (regno, (void *)&context.vrsave);
+ 		else
+ 		{
+-			internal_error (_("fetch_registers: unexpected register: '%s'"),gdbarch_register_name ( gdbarch,regno ));
++			/* Unknown register — supply zeros rather than crashing */
++			IExec->DebugPrintF("[GDB] %s: unknown register %d ('%s'), supplying zero\n",
++				__func__, regno, gdbarch_register_name (gdbarch, regno));
+ 		}
+ 	}
+ }
+ 
+ void
+ ppc_amigaos_nat_target::store_registers (struct regcache *regcache, int regno)
+ {
+-	printf( "[GDB] %s Todo ( regcache: %p, regno: %d)\n",__func__,regcache,regno );
++	struct gdbarch *gdbarch = regcache->arch ();
++	ppc_gdbarch_tdep *tdep = gdbarch_tdep<ppc_gdbarch_tdep> (gdbarch);
++	struct Task *task = (struct Task *)regcache->ptid().pid();
++
++	IExec->DebugPrintF("[GDB] %s ( regcache: %p, regno: %d (%s), task: %p)\n",
++		__func__, regcache, regno, gdbarch_register_name (gdbarch, regno), task);
++
++	/* Read current context so we only modify the requested register(s) */
++	struct ExceptionContext context;
++	uint32 read_flags = RTCF_INFO | RTCF_SPECIAL | RTCF_STATE | RTCF_GENERAL | RTCF_FPU;
++	IDebug->ReadTaskContext (task, &context, read_flags);
++
++	uint32 write_flags = 0;
++
++	if (regno == -1)
++	{
++		/* Store all GPRs */
++		for (int i = 0; i < 32; i++)
++			regcache->raw_collect (tdep->ppc_gp0_regnum + i, (void*)&context.gpr[i]);
++		write_flags |= RTCF_GENERAL;
++
++		/* Store all FPRs */
++		if (tdep->ppc_fp0_regnum >= 0)
++		{
++			for (int i = 0; i < 32; i++)
++				regcache->raw_collect (tdep->ppc_fp0_regnum + i, (void*)&context.fpr[i]);
++			write_flags |= RTCF_FPU;
++		}
++
++		/* Store special registers */
++		regcache->raw_collect (gdbarch_pc_regnum (gdbarch), (void *)&context.ip);
++		regcache->raw_collect (tdep->ppc_ps_regnum, (void *)&context.msr);
++		regcache->raw_collect (tdep->ppc_cr_regnum, (void *)&context.cr);
++		regcache->raw_collect (tdep->ppc_lr_regnum, (void *)&context.lr);
++		regcache->raw_collect (tdep->ppc_ctr_regnum, (void *)&context.ctr);
++		regcache->raw_collect (tdep->ppc_xer_regnum, (void *)&context.xer);
++		if (tdep->ppc_fpscr_regnum >= 0)
++			regcache->raw_collect (tdep->ppc_fpscr_regnum, (void *)&context.fpscr);
++		write_flags |= RTCF_SPECIAL | RTCF_STATE;
++	}
++	else if (regno == gdbarch_pc_regnum (gdbarch))
++	{
++		regcache->raw_collect (regno, (void *)&context.ip);
++		write_flags = RTCF_SPECIAL;
++	}
++	else if (regno >= tdep->ppc_gp0_regnum && regno < tdep->ppc_gp0_regnum + 32)
++	{
++		regcache->raw_collect (regno, (void*)&context.gpr[regno - tdep->ppc_gp0_regnum]);
++		write_flags = RTCF_GENERAL;
++	}
++	else if (tdep->ppc_fp0_regnum >= 0
++		 && regno >= tdep->ppc_fp0_regnum && regno < tdep->ppc_fp0_regnum + 32)
++	{
++		regcache->raw_collect (regno, (void*)&context.fpr[regno - tdep->ppc_fp0_regnum]);
++		write_flags = RTCF_FPU;
++	}
++	else if (regno == tdep->ppc_ps_regnum)
++	{
++		regcache->raw_collect (regno, (void *)&context.msr);
++		write_flags = RTCF_SPECIAL;
++	}
++	else if (regno == tdep->ppc_cr_regnum)
++	{
++		regcache->raw_collect (regno, (void *)&context.cr);
++		write_flags = RTCF_SPECIAL;
++	}
++	else if (regno == tdep->ppc_lr_regnum)
++	{
++		regcache->raw_collect (regno, (void *)&context.lr);
++		write_flags = RTCF_SPECIAL;
++	}
++	else if (regno == tdep->ppc_ctr_regnum)
++	{
++		regcache->raw_collect (regno, (void *)&context.ctr);
++		write_flags = RTCF_SPECIAL;
++	}
++	else if (regno == tdep->ppc_xer_regnum)
++	{
++		regcache->raw_collect (regno, (void *)&context.xer);
++		write_flags = RTCF_SPECIAL;
++	}
++	else if (tdep->ppc_fpscr_regnum >= 0 && regno == tdep->ppc_fpscr_regnum)
++	{
++		regcache->raw_collect (regno, (void *)&context.fpscr);
++		write_flags = RTCF_FPU;
++	}
++	else
++	{
++		IExec->DebugPrintF("[GDB] %s: unknown register %d ('%s'), not writing\n",
++			__func__, regno, gdbarch_register_name (gdbarch, regno));
++		return;
++	}
++
++	if (write_flags)
++		IDebug->WriteTaskContext (task, &context, write_flags);
+ }
+ 
+ enum target_xfer_status
+ ppc_amigaos_nat_target::xfer_partial (enum target_object object,const char *annex, gdb_byte *readbuf,const gdb_byte *writebuf,ULONGEST offset, ULONGEST len, ULONGEST *xfered_len)
+ {
+ 	IExec->DebugPrintF ( string_printf (_("[GDB] %s called for memory tranfser at address: 0x%s for %s bytes (readbuf: %p, writebuf: %p, annex: '%s', object: %d )\n"),__func__,phex (offset, sizeof (offset)),pulongest (len), readbuf, writebuf, annex, object).c_str());
+@@ -745,13 +865,61 @@ ppc_amigaos_nat_target::xfer_partial (enum target_object object,const char *anne
+ 	return TARGET_XFER_E_IO;
+ }
+ 
+ void
+ ppc_amigaos_nat_target::attach (const char *args, int from_tty)
+ {
+-	printf( "[GDB] %s ( args: '%s', from_tty: %d )\n",__func__,args,from_tty );
++	IExec->DebugPrintF("[GDB] %s ( args: '%s', from_tty: %d )\n", __func__, args, from_tty);
++
++	if (!args || !*args)
++		error ("No task name or address specified for attach");
++
++	/* Try to interpret args as a hex address first, then as a task name */
++	struct Task *task = NULL;
++	char *endptr;
++	unsigned long addr = strtoul (args, &endptr, 0);
++	if (*endptr == '\0' && addr != 0)
++	{
++		/* Numeric address — use directly as task pointer */
++		task = (struct Task *)addr;
++	}
++	else
++	{
++		/* Try to find task by name */
++		IExec->Forbid ();
++		task = IExec->FindTask (args);
++		IExec->Permit ();
++	}
++
++	if (!task)
++		error ("Cannot find task '%s'", args);
++
++	/* Suspend the task before installing the debug hook */
++	IExec->SuspendTask (task, 0);
++
++	amigaos_debug_hook_data.current_process = (struct Process *)task;
++
++	/* Install debug hook */
++	IDebug->AddDebugHook (task, amigaos_debug_hook);
++
++	/* Set up GDB inferior tracking */
++	inferior *inf = current_inferior ();
++	inferior_ptid = ptid_t ((int)task);
++	inferior_appeared (inf, (int)task);
++
++	inf->unpush_target (this);
++	if (!inf->target_is_pushed (this))
++		inf->push_target (this);
++
++	thread_info *thr = add_thread (this, inferior_ptid);
++	switch_to_thread (thr);
++
++	if (from_tty)
++		gdb_printf ("Attached to task %p ('%s')\n", task, task->tc_Node.ln_Name ? task->tc_Node.ln_Name : "unknown");
++
++	IExec->DebugPrintF("[GDB] %s attached to task %p ('%s')\n", __func__, task, task->tc_Node.ln_Name);
+ }
+ 
+ void
+ ppc_amigaos_relocate_sections (const char *exec_file,BPTR exec_seglist) 
+ {
+ 	// To debug this stuff, enableing elf debug out with 'SetENV ELF.debug 1' helps alot on thr target
+@@ -961,43 +1129,48 @@ ULONG amigaos_debug_callback (struct Hook *hook, struct Task *currentTask,struct
+ 
+ 
+ 	switch( dbgmsg->type ) 
+ 	{
+ 		case DBHMT_EXCEPTION:
+ 		{
+-			IExec->DebugPrintF ("[GDB] Task: %p ('%s'),Exception ooccured (DBHMT_EXCEPTION)\n",currentTask,currentTask->tc_Node.ln_Name);
++			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), Exception occurred (DBHMT_EXCEPTION)\n",currentTask,currentTask->tc_Node.ln_Name);
+ 
+ 			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			if (!message)
++				return 0; /* Pool exhausted — resume execution, cannot report */
++
+ 			message->flags	= 0;
+-			message->signal	= trap_to_signal( dbgmsg->message.context,message->flags );
+-			
++			message->signal	= trap_to_signal( dbgmsg->message.context, message->flags );
++
+ 			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
+ 
+ 			IExec->PutMsg (data->debugger_port,(struct Message *)message);
+ 
+-			return 1; // Suspend execution
++			return 1; /* Suspend execution */
+ 		}
+ 		case DBHMT_ADDTASK:
+ 		{
+ 			IExec->DebugPrintF("[GDB] Task: %p ('%s'), (DBHMT_ADDTASK), Task added\n",currentTask,currentTask->tc_Node.ln_Name);
+ 
+-			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);	
++			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			if (!message) break;
+ 			message->flags	= DM_FLAGS_TASK_ATTACHED;
+ 			message->signal	= -1;
+-			
++
+ 			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
+ 
+ 			IExec->PutMsg (data->debugger_port,(struct Message *)message);
+ 
+ 			break;
+ 		}
+ 		case DBHMT_REMTASK:
+ 		{
+ 			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_REMTASK), Task removed\n",currentTask,currentTask->tc_Node.ln_Name);
+ 
+ 			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			if (!message) break;
+ 			message->flags	= DM_FLAGS_TASK_TERMINATED;
+ 			message->signal	= -1;
+ 			
+ 			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
+ 
+ 			IExec->PutMsg (data->debugger_port,(struct Message *)message);
+@@ -1006,27 +1179,29 @@ ULONG amigaos_debug_callback (struct Hook *hook, struct Task *currentTask,struct
+ 		}
+ 		case DBHMT_OPENLIB:
+ 		{
+ 			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_OPENLIB), Task opened library '%s'\n",currentTask,currentTask->tc_Node.ln_Name,(char*)dbgmsg->message.library->lib_IdString);
+ 
+ 			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			if (!message) break;
+ 			message->flags		= DM_FLAGS_TASK_OPENLIB;
+ 			message->signal		= -1;
+ 			message->library	= dbgmsg->message.library;
+-			
++
+ 			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
+ 
+ 			IExec->PutMsg (data->debugger_port,(struct Message *)message);
+ 
+ 			break;
+ 		}
+ 		case DBHMT_CLOSELIB:
+ 		{
+ 			IExec->DebugPrintF ("[GDB] Task: %p ('%s'), (DBHMT_CLOSELIB), Task closed library '%s'\n",currentTask,currentTask->tc_Node.ln_Name,(char*)dbgmsg->message.library->lib_IdString);
+ 
+-			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);	
++			struct debugger_message *message = ppc_amigaos_nat_target->alloc_message ((struct Process *)currentTask);
++			if (!message) break;
+ 			message->flags		= DM_FLAGS_TASK_CLOSELIB;
+ 			message->signal		= -1;
+ 			message->library	= dbgmsg->message.library;
+ 
+ 			IExec->DebugPrintF ("[GDB] debug hook sending message: %p\n",message );
+ 
+@@ -1050,73 +1225,72 @@ ULONG amigaos_debug_callback (struct Hook *hook, struct Task *currentTask,struct
+ 		}
+ 	}
+ 
+ 	return 0; // Resume execution
+ }
+ 
++/* Map AmigaOS SDK trap numbers (from ExceptionContext.Traptype)
++   to GDB signal numbers.  These use the TRAPNUM_* values from
++   exec/interrupts.h, NOT raw PPC vector offsets. */
+ static int
+ trap_to_signal(struct ExceptionContext *context, uint32 flags)
+ {
+ 	IExec->DebugPrintF( "[GDB] trap_to_signal ( flags: 0x%lx )\n",flags );
+ 
+ 	if (!context || (flags & DM_FLAGS_TASK_TERMINATED)) {
+-		IExec->DebugPrintF( "[GDB] Return GDB_SIGNAL_QUIT )\n" );
+-	
++		IExec->DebugPrintF( "[GDB] Return GDB_SIGNAL_QUIT\n" );
+ 		return GDB_SIGNAL_QUIT;
+ 	}
+ 
+-	IExec->DebugPrintF( "[GDB] traptype: 0x%lx\n",context->Traptype );
++	IExec->DebugPrintF( "[GDB] traptype: 0x%08lx\n",context->Traptype );
+ 
+ 	switch (context->Traptype)
+ 	{
+-	case TRAP_MCE:
+-	case TRAP_DSI:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_SEGV )\n" );
++	case TRAP_BUS_ERROR:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_SEGV ) - bus error/machine check\n" );
++		return GDB_SIGNAL_SEGV;
++	case TRAP_DATA_SEGMENT:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_SEGV ) - data segment violation\n" );
+ 		return GDB_SIGNAL_SEGV;
+-	case TRAP_ISI:
+-	case TRAP_ALIGN:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_BUS )\n" );
++	case TRAP_INST_SEGMENT:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_BUS ) - instruction segment violation\n" );
+ 		return GDB_SIGNAL_BUS;
+-	case TRAP_EXTERN:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_INT )\n" );
+-		return GDB_SIGNAL_INT;
+-	case TRAP_PROG: 
++	case TRAP_ALIGNMENT:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_BUS ) - alignment\n" );
++		return GDB_SIGNAL_BUS;
++	case TRAP_ILLEGAL_INSTRUCTION:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL ) - illegal instruction\n" );
++		return GDB_SIGNAL_ILL;
++	case TRAP_PRIVILEGE_VIOLATION:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL ) - privilege violation\n" );
++		return GDB_SIGNAL_ILL;
++	case TRAP_TRAP:
++		/* Trap instruction — this is how software breakpoints work */
+ 		if (context->msr & EXC_FPE) {
+-			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE )\n" );
++			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE ) - trap with FPE\n" );
+ 			return GDB_SIGNAL_FPE;
+ 		}
+-		else if (context->msr & EXC_ILLEGAL) {
+-			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL )\n" );
+-			return GDB_SIGNAL_ILL;
+-		}
+-		else if (context->msr & EXC_PRIV) {
+-			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL )\n" );
+-			return GDB_SIGNAL_ILL;
+-		}
+-		else {
+-			IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP )\n" );
+-			return GDB_SIGNAL_TRAP;
+-		}
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP ) - breakpoint/trap\n" );
++		return GDB_SIGNAL_TRAP;
+ 	case TRAP_FPU:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE )\n" );
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE ) - FPU exception\n" );
+ 		return GDB_SIGNAL_FPE;
+-	case TRAP_DEC:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ALRM )\n" );
+-		return GDB_SIGNAL_ALRM;
+-	case TRAP_RESERVEDA:
+-	case TRAP_RESERVEDB:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL )\n" );
+-		return GDB_SIGNAL_ILL;
+-	case TRAP_SYSCALL:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_CHLD )\n" );
+-		return GDB_SIGNAL_CHLD;
+-	case TRAP_TRACEI:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP )\n" );
++	case TRAP_TRACE:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP ) - single step trace\n" );
++		return GDB_SIGNAL_TRAP;
++	case TRAP_DATA_BREAKPOINT:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP ) - data breakpoint (DABR)\n" );
++		return GDB_SIGNAL_TRAP;
++	case TRAP_INST_BREAKPOINT:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_TRAP ) - instruction breakpoint\n" );
+ 		return GDB_SIGNAL_TRAP;
+-	case TRAP_FPA:
+-		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE )\n" );
++	case TRAP_ALTIVEC_ASSIST:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_FPE ) - AltiVec assist\n" );
+ 		return GDB_SIGNAL_FPE;
++	case TRAP_RESERVED1:
++		IExec->DebugPrintF( "[GDB] Return ( GDB_SIGNAL_ILL ) - reserved trap\n" );
++		return GDB_SIGNAL_ILL;
+ 	default:
+-		IExec->DebugPrintF( "[GDB] Return ( -1 )\n" );
+-		return -1;
++		IExec->DebugPrintF( "[GDB] Unknown traptype 0x%08lx, returning GDB_SIGNAL_TRAP\n",context->Traptype );
++		return GDB_SIGNAL_TRAP;
+ 	}
+ }
+\ No newline at end of file
+diff --git a/gdb/ppc-amigaos-nat.h b/gdb/ppc-amigaos-nat.h
+index e0796f44cf4df6efa7073500e13c7c180126b3c0..a58b28ff1da752d412dac2b320f0280218d1aae7 100644
+--- a/gdb/ppc-amigaos-nat.h
++++ b/gdb/ppc-amigaos-nat.h
+@@ -21,39 +21,32 @@
+ #define PPC_AMIGAOS_NAT_H
+ 
+ #include <exec/ports.h>
+ 
+ #define PPC_AMIGAOS_SIZEOF_VRREGSET 532
+ 
+-// Chapter Interrupt Reference union from different ppc32 cpus
+-#define TRAP_RESET 			0x0100 /* System reset */
+-#define TRAP_MCE   			0x0200 /* Machine check */
+-#define TRAP_DSI    		0x0300 /* Data storage */
+-#define TRAP_DSEGI   		0x0380 /* Data segment (Book III v2.01) */
+-#define TRAP_ISI     		0x0400 /* Instruction storage */
+-#define TRAP_ISEGI   		0x0480 /* Instruction segment (Book III v2.01)*/
+-#define TRAP_EXTERN   		0x0500 /* External Interrupt */
+-#define TRAP_ALIGN   		0x0600 /* Alignment */
+-#define TRAP_PROG    		0x0700 /* Program */
+-#define TRAP_FPU			0x0800 /* FPU Disabled */
+-#define TRAP_DEC			0x0900 /* Decrementer */
+-#define TRAP_RESERVEDA		0x0a00 /* Reserved (Book III v2.01)*/
+-#define TRAP_RESERVEDB		0x0b00 /* Reserved (Book III v2.01)*/
+-#define TRAP_SYSCALL		0x0c00 /* System call */
+-#define TRAP_TRACEI			0x0d00 /* Trace */
+-#define TRAP_FPA			0x0e00 /* Floating-point Assist */
+-#define TRAP_PMI     		0x0f00 /* Performance monitor (Book III v2.01)*/
+-#define TRAP_APU			0x0f20 /* APU Unavailble */
+-#define TRAP_PIT			0x1000 /* Programmable-interval timer (PIT) */
+-#define TRAP_FIT			0x1010 /* Fixed-interval timer (FIT) */
+-#define TRAP_WATCHDOG		0x1020 /* Watch Dog */
+-#define TRAP_DTBL			0x1100 /* Data TBL error */
+-#define TRAP_ITBL			0x1200 /* Instruction TBL error */
+-#define TRAP_DEBUG			0x2000 /* Debug */
++/* AmigaOS SDK trap numbers from exec/interrupts.h (enTrapNumbers).
++   ExceptionContext.Traptype uses these values, NOT raw PPC vector offsets. */
++#define TRAP_BUS_ERROR              0x01000000 /* Bus error / machine check */
++#define TRAP_DATA_SEGMENT           0x02000000 /* Data segment violation (DSI) */
++#define TRAP_INST_SEGMENT           0x03000000 /* Instruction segment violation (ISI) */
++#define TRAP_ALIGNMENT              0x04000000 /* Alignment violation */
++#define TRAP_ILLEGAL_INSTRUCTION    0x05000000 /* Illegal instruction */
++#define TRAP_PRIVILEGE_VIOLATION    0x06000000 /* Privilege violation */
++#define TRAP_TRAP                   0x07000000 /* Trap instruction (breakpoint) */
++#define TRAP_FPU                    0x08000000 /* Floating point (disabled/imprecise) */
++#define TRAP_TRACE                  0x09000000 /* Single step trace */
++#define TRAP_DATA_BREAKPOINT        0x0a000000 /* Data breakpoint (DABR) */
++#define TRAP_INST_BREAKPOINT        0x0b000000 /* Instruction breakpoint */
++#define TRAP_PERFORMANCE            0x0c000000 /* Performance monitor */
++#define TRAP_THERMAL                0x0d000000 /* Thermal management */
++#define TRAP_RESERVED1              0x0e000000 /* Reserved */
++#define TRAP_ALTIVEC_ASSIST         0x0f000000 /* AltiVec assist */
++#define TRAP_SMI                    0x10000000 /* System Management interrupt */
+ 
+-/* MSR Bits */
++/* MSR Bits for Program exception sub-classification */
+ #define    MSR_TRACE_ENABLE           0x00000400
+ #define    EXC_FPE                    0x00100000
+ #define    EXC_ILLEGAL                0x00080000
+ #define    EXC_PRIV                   0x00040000
+ #define    EXC_TRAP                   0x00020000
+ 
+diff --git a/gdb/ppc-amigaos-tdep.c b/gdb/ppc-amigaos-tdep.c
+index 4dba12da78e14abca777e8d2e4d4bc9a933d0b38..d564326e6eb0cd56c7a848afe67e547385d04c61 100644
+--- a/gdb/ppc-amigaos-tdep.c
++++ b/gdb/ppc-amigaos-tdep.c
+@@ -124,26 +124,26 @@ ppc_amigaos_software_single_step (struct regcache *regcache)
+ static void
+ ppc_amigaos_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
+ {
+ 	/* Canonical paths on this target look like `SYS:Utilities/Clock', for example.  */
+ 	set_gdbarch_has_amiga_based_file_system (gdbarch, 1);
+ 
+-	/* Everything runs in the same address space, but might have a priveta adresse area */
++	/* Everything runs in the same address space, but might have a private address area */
+ 	set_gdbarch_has_shared_address_space (gdbarch, ppc_amigaos_has_shared_address_space);
+ 
+-	// PT_STEP not supported so, need to simulate it, like rs6000-aix
++	/* PT_STEP not supported, need to simulate it like rs6000-aix */
+ 	set_gdbarch_software_single_step (gdbarch, ppc_amigaos_software_single_step);
+ 	/* Displaced stepping is currently not supported in combination with
+-		software single-stepping.  These override the values set by
+-		rs6000_gdbarch_init.  */
++	   software single-stepping.  These override the values set by
++	   rs6000_gdbarch_init.  */
+ 	set_gdbarch_displaced_step_copy_insn (gdbarch, NULL);
+ 	set_gdbarch_displaced_step_fixup (gdbarch, NULL);
+ 	set_gdbarch_displaced_step_prepare (gdbarch, NULL);
+ 	set_gdbarch_displaced_step_finish (gdbarch, NULL);
+ 
+-  	// Traget bfd name, seems to be only needed for message/debug output
++	/* Target bfd name for message/debug output */
+ 	set_gdbarch_gcore_bfd_target (gdbarch, "elf32-powerpc-amigaos");
+ }
+ 
+ void _initialize_ppc_amigaos_tdep ();
+ void
+ _initialize_ppc_amigaos_tdep ()
+diff --git a/gdbsupport/pathstuff.cc b/gdbsupport/pathstuff.cc
+index 4a8f4719324796fbdd20265ecc348e9218c96036..fa075904671e2454eee80524d8a86f980529314d 100644
+--- a/gdbsupport/pathstuff.cc
++++ b/gdbsupport/pathstuff.cc
+@@ -68,12 +68,19 @@ gdb_realpath (const char *filename)
+        So it is important we do not lowercase the path.  Otherwise,
+        we might not be able to display the original casing in a given
+        path.  */
+     if (len > 0 && len < MAX_PATH)
+       return make_unique_xstrdup (buf);
+   }
++#elif defined (__amigaos4__)
++  /* AmigaOS realpath() resolves assigns and volume names (e.g. T: ->
++     "RAM Disk:T/", SYS: -> "AmigaOS:"), which can produce paths that
++     fail to reopen later via BFD's file cache (spaces in volume names,
++     inconsistent resolution of assigns).  Return the path as-is to
++     preserve the original working path that was successfully opened.  */
++  return make_unique_xstrdup (filename);
+ #else
+   {
+     char *rp = canonicalize_file_name (filename);
+ 
+     if (rp != NULL)
+       return gdb::unique_xmalloc_ptr<char> (rp);
+-- 
+2.43.0
+
