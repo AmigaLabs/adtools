@@ -1,7 +1,7 @@
-From 063184c10762d5b798671bb49a55cf2308b3c134 Mon Sep 17 00:00:00 2001
+From 339887c0d26d3b2578c05023db2691bed08c0e7d Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Fri, 29 Nov 2024 19:58:52 +0000
-Subject: [PATCH] Changes for compiling for AmigaOS 4 using clib4
+Subject: [PATCH 1/2] Changes for compiling for AmigaOS 4 using clib4
 
 ---
  .gitignore                            |   10 +
@@ -3427,7 +3427,7 @@ index 0000000000000000000000000000000000000000..4dba12da78e14abca777e8d2e4d4bc9a
 +	gdbarch_register_osabi (bfd_arch_powerpc, 0, GDB_OSABI_AMIGAOS, ppc_amigaos_init_abi);
 +}
 diff --git a/gdb/source.c b/gdb/source.c
-index d0f2d1c763523da801eb77736b7c141267ba25ad..ed5c1ae25593411e08224ee55883b7a9da2db0f8 100644
+index d0f2d1c763523da801eb77736b7c141267ba25ad..fabe869802b9eb079f71246bf45c146273f910d1 100644
 --- a/gdb/source.c
 +++ b/gdb/source.c
 @@ -828,13 +828,17 @@ openp (const char *path, openp_flags opts, const char *string,
