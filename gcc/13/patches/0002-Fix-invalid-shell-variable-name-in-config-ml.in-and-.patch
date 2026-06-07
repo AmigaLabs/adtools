@@ -1,0 +1,61 @@
+From cabe1790f25e33c1c974a5d015349741a7dc6559 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sun, 7 Jun 2026 18:43:03 +0000
+Subject: [PATCH 2/2] Fix invalid shell variable name in config-ml.in and
+ prevent largefile-config.h generation failure due to missing directory in
+ parallel builds.
+
+---
+ config-ml.in                     | 4 ++--
+ libstdc++-v3/include/Makefile.in | 1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/config-ml.in b/config-ml.in
+index 68854a4f16c2bfcd48a8d721d4c28f0a602148cf..42066f8d03be703ed4a63c01a49cbe7dbd41802b 100644
+--- a/config-ml.in
++++ b/config-ml.in
+@@ -126,21 +126,21 @@ scan_arguments ()
+ 	optarg=`echo $option | sed -e 's/^[^=]*=//'`
+ 	;;
+     esac
+ 
+     case $option in
+       --disable-*)
+-	enableopt=`echo ${option} | sed 's:^--disable-:enable_:;s:-:_:g'`
++	enableopt=`echo ${option} | sed 's:^--disable-:enable_:;s:-:_:g;s:+:_:g'`
+ 	eval $enableopt=no
+ 	;;
+       --enable-*)
+ 	case "$option" in
+ 	*=*)	;;
+ 	*)	optarg=yes ;;
+ 	esac
+-	enableopt=`echo ${option} | sed 's:^--::;s:=.*$::;s:-:_:g'`
++	enableopt=`echo ${option} | sed 's:^--::;s:=.*$::;s:-:_:g;s:+:_:g'`
+ 	# enable_shared and enable_static are handled by configure.
+ 	# Don't undo its work.
+ 	case $enableopt in
+ 	enable_shared | enable_static) ;;
+ 	*) eval $enableopt='$optarg' ;;
+ 	esac
+diff --git a/libstdc++-v3/include/Makefile.in b/libstdc++-v3/include/Makefile.in
+index bdbf015e5442db62dc9dc74d31124f28f2fce7f2..f9208216b85915407b9cdb61652392a1d62faf34 100644
+--- a/libstdc++-v3/include/Makefile.in
++++ b/libstdc++-v3/include/Makefile.in
+@@ -1811,12 +1811,13 @@ stamp-host: ${host_headers} ${bits_host_headers} ${ext_host_headers} ${host_head
+ @ENABLE_FLOAT128_TRUE@	echo 'define _GLIBCXX_USE_FLOAT128 1' > stamp-float128
+ @ENABLE_FLOAT128_FALSE@stamp-float128:
+ @ENABLE_FLOAT128_FALSE@	echo 'undef _GLIBCXX_USE_FLOAT128' > stamp-float128
+ 
+ # This header is not installed, it's only used to build libstdc++ itself.
+ ${host_builddir}/largefile-config.h: ${CONFIG_HEADER} stamp-${host_alias}
++	@mkdir -p $(dir $@)
+ 	@rm -f $@.tmp
+ 	@-grep 'define _DARWIN_USE_64_BIT_INODE' ${CONFIG_HEADER} >> $@.tmp
+ 	@-grep 'define _FILE_OFFSET_BITS' ${CONFIG_HEADER} >> $@.tmp
+ 	@-grep 'define _LARGE_FILES' ${CONFIG_HEADER} >> $@.tmp
+ 	@mv $@.tmp $@
+ 
+-- 
+2.53.0
+
