@@ -1,7 +1,7 @@
 From cabe1790f25e33c1c974a5d015349741a7dc6559 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Sun, 7 Jun 2026 18:43:03 +0000
-Subject: [PATCH 2/2] Fix invalid shell variable name in config-ml.in and
+Subject: [PATCH 2/3] Fix invalid shell variable name in config-ml.in and
  prevent largefile-config.h generation failure due to missing directory in
  parallel builds.
 
