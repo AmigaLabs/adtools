@@ -1,10 +1,13 @@
-From b5d30afe99ace6b07d9aeb9198004574ac2120aa Mon Sep 17 00:00:00 2001
+From cf0edcb46b952956e7249b39fd62728cc2d1d591 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
-Date: Sun, 7 Jun 2026 17:05:17 +0000
-Subject: [PATCH 1/3] Patches from previous gcc versions
+Date: Tue, 9 Jun 2026 21:08:44 +0000
+Subject: [PATCH] amigaos 4 native and cross compiler changes
 
 ---
+ config-ml.in                                  |    4 +-
  config/gthr.m4                                |    1 +
+ fixincludes/Makefile.in                       |    2 +-
+ fixincludes/configure                         |    1 +
  fixincludes/configure.ac                      |    1 +
  gcc/Makefile.in                               |    1 +
  gcc/c-family/c-attribs.cc                     |   26 +
@@ -57,9 +60,9 @@ Subject: [PATCH 1/3] Patches from previous gcc versions
  libgcc/libgcov.h                              |    2 +
  libiberty/Makefile.in                         |   27 +-
  libiberty/basename.c                          |   21 +-
- libiberty/configure                           |   11 +
+ libiberty/configure                           |   12 +
  libiberty/configure.ac                        |    7 +
- libiberty/lrealpath.c                         |    3 +-
+ libiberty/lrealpath.c                         |    5 +-
  libiberty/make-relative-prefix.c              |   34 +-
  libiberty/make-temp-file.c                    |   13 +-
  libiberty/pex-amigaos.c                       |  325 ++++++
@@ -74,6 +77,7 @@ Subject: [PATCH 1/3] Patches from previous gcc versions
  libstdc++-v3/configure.ac                     |    2 +
  libstdc++-v3/configure.host                   |    3 +
  libstdc++-v3/crossconfig.m4                   |   32 +
+ libstdc++-v3/include/Makefile.in              |    1 +
  libstdc++-v3/include/bits/basic_string.h      |    3 +
  libstdc++-v3/include/bits/std_mutex.h         |   11 +
  libstdc++-v3/include/c_global/cfenv           |    2 +-
@@ -82,7 +86,7 @@ Subject: [PATCH 1/3] Patches from previous gcc versions
  .../src/c++17/fast_float/fast_float.h         |    3 +-
  libstdc++-v3/src/c++17/fs_ops.cc              |   13 +-
  libstdc++-v3/src/c++17/fs_path.cc             |  100 +-
- 78 files changed, 4681 insertions(+), 67 deletions(-)
+ 82 files changed, 4688 insertions(+), 71 deletions(-)
  create mode 100644 gcc/config/amigaos-stdint.h
  create mode 100644 gcc/config/rs6000/amigaos-protos.h
  create mode 100644 gcc/config/rs6000/amigaos.c
@@ -106,6 +110,34 @@ Subject: [PATCH 1/3] Patches from previous gcc versions
  create mode 100644 libstdc++-v3/config/os/amigaos/error_constants.h
  create mode 100644 libstdc++-v3/config/os/amigaos/os_defines.h
 
+diff --git a/config-ml.in b/config-ml.in
+index 68854a4f16c2bfcd48a8d721d4c28f0a602148cf..42066f8d03be703ed4a63c01a49cbe7dbd41802b 100644
+--- a/config-ml.in
++++ b/config-ml.in
+@@ -126,21 +126,21 @@ scan_arguments ()
+ 	optarg=`echo $option | sed -e 's/^[^=]*=//'`
+ 	;;
+     esac
+ 
+     case $option in
+       --disable-*)
+-	enableopt=`echo ${option} | sed 's:^--disable-:enable_:;s:-:_:g'`
++	enableopt=`echo ${option} | sed 's:^--disable-:enable_:;s:-:_:g;s:+:_:g'`
+ 	eval $enableopt=no
+ 	;;
+       --enable-*)
+ 	case "$option" in
+ 	*=*)	;;
+ 	*)	optarg=yes ;;
+ 	esac
+-	enableopt=`echo ${option} | sed 's:^--::;s:=.*$::;s:-:_:g'`
++	enableopt=`echo ${option} | sed 's:^--::;s:=.*$::;s:-:_:g;s:+:_:g'`
+ 	# enable_shared and enable_static are handled by configure.
+ 	# Don't undo its work.
+ 	case $enableopt in
+ 	enable_shared | enable_static) ;;
+ 	*) eval $enableopt='$optarg' ;;
+ 	esac
 diff --git a/config/gthr.m4 b/config/gthr.m4
 index 11996247f150f99a9eb6720b33f8f72bacb8bf8c..7ee4521d2c61f32e091987eb20ed64e510130ab5 100644
 --- a/config/gthr.m4
@@ -124,6 +156,43 @@ index 11996247f150f99a9eb6720b33f8f72bacb8bf8c..7ee4521d2c61f32e091987eb20ed64e5
      mipssde)	thread_header=config/mips/gthr-mipssde.h ;;
      posix)	thread_header=gthr-posix.h ;;
      rtems)	thread_header=config/gthr-rtems.h ;;
+diff --git a/fixincludes/Makefile.in b/fixincludes/Makefile.in
+index 1937dcaa32d5f53b8f811d84f8836b7d5b2bce1c..a3dc056e48b6d4fe763f2fa049287b49f39137f6 100644
+--- a/fixincludes/Makefile.in
++++ b/fixincludes/Makefile.in
+@@ -92,13 +92,13 @@ LIBIBERTY=../libiberty/libiberty.a
+ ALLOBJ = fixincl.o fixtests.o fixfixes.o server.o procopen.o \
+       fixlib.o fixopts.o
+ 
+ TESTOBJ = fixincl.o fixlib.o fixtests.o fixopts.o
+ FIXOBJ  = fixfixes.o fixlib.o fixopts.o
+ 
+-HDR = server.h fixlib.h
++HDR = config.h server.h fixlib.h
+ FI  = fixincl@EXEEXT@
+ AF  = applyfix@EXEEXT@
+ 
+ all : @TARGET@ fixinc.sh mkheaders
+ gen : $(srcdir)/fixincl.x
+ 
+diff --git a/fixincludes/configure b/fixincludes/configure
+index bdcc41f6ddc8d20ab8a56ee0ccc5d69cd395c469..bfd4ecff39157db83140b69d8b2eaa1f7bc87cef 100755
+--- a/fixincludes/configure
++++ b/fixincludes/configure
+@@ -4813,12 +4813,13 @@ else
+ fi
+ else
+   case $host in
+ 	i?86-*-msdosdjgpp* | \
+ 	i?86-*-mingw32* | \
+ 	x86_64-*-mingw32* | \
++	*-*-amigaos* | \
+ 	*-*-beos* | \
+         *-*-*vms*)
+ 		TARGET=twoprocess
+ 		;;
+ 
+ 	* )
 diff --git a/fixincludes/configure.ac b/fixincludes/configure.ac
 index ef2227e3c9385fabd2073cd9a53fed99047b2f38..c8b0b8618bc38c43044afc0bac63d622f7768201 100644
 --- a/fixincludes/configure.ac
@@ -5116,7 +5185,7 @@ index 0f2c069f0ccf5a7d91e4913548e068c247e12efb..6ba5c4aa4f814fbc28f03127d22e9125
    const char *base;
  
 diff --git a/libiberty/configure b/libiberty/configure
-index 860f981fa18354dfec7d23461079e9ebb8d388a4..419701f01416a118038946c5cea57a3897e568d6 100755
+index 860f981fa18354dfec7d23461079e9ebb8d388a4..438669041e1757623c304900231060e65d39e90e 100755
 --- a/libiberty/configure
 +++ b/libiberty/configure
 @@ -6602,12 +6602,23 @@ if test -z "${setobjs}"; then
@@ -5143,6 +5212,20 @@ index 860f981fa18354dfec7d23461079e9ebb8d388a4..419701f01416a118038946c5cea57a38
    *" snprintf.$ac_objext "* ) ;;
    *) LIBOBJS="$LIBOBJS snprintf.$ac_objext"
   ;;
+@@ -7399,12 +7410,13 @@ fi
+ 
+ # Figure out which version of pexecute to use.
+ case "${host}" in
+      *-*-mingw* | *-*-winnt*)	pexecute=pex-win32  ;;
+      *-*-msdosdjgpp*)		pexecute=pex-djgpp  ;;
+      *-*-msdos*)		pexecute=pex-msdos  ;;
++     *-*-amigaos*)		pexecute=pex-amigaos ;;
+      *)				pexecute=pex-unix   ;;
+ esac
+ 
+ 
+ 
+ 
 diff --git a/libiberty/configure.ac b/libiberty/configure.ac
 index 28d996f9cf7b7c84247a81b0fbcb3a1ae6adcb9e..4b2ab042c8ecbfe4d9cb9add8ca250383bb73a27 100644
 --- a/libiberty/configure.ac
@@ -5181,7 +5264,7 @@ index 28d996f9cf7b7c84247a81b0fbcb3a1ae6adcb9e..4b2ab042c8ecbfe4d9cb9add8ca25038
  libiberty_AC_FUNC_STRNCMP
  
 diff --git a/libiberty/lrealpath.c b/libiberty/lrealpath.c
-index 2578288e8acef49d0f4ac624fdc81dfbff7befce..a283a75ae733f37d60f1df50fc7b236819ac3f72 100644
+index 2578288e8acef49d0f4ac624fdc81dfbff7befce..47b291ddb7cc5ff2461c959f496e0029e792ef6c 100644
 --- a/libiberty/lrealpath.c
 +++ b/libiberty/lrealpath.c
 @@ -33,12 +33,13 @@ components will be simplified.  The returned value will be allocated using
@@ -5213,8 +5296,23 @@ index 2578288e8acef49d0f4ac624fdc81dfbff7befce..a283a75ae733f37d60f1df50fc7b2368
      if (rp == NULL)
        rp = filename;
      return strdup (rp);
+@@ -233,13 +234,13 @@ lrealpath (const char *filename)
+      compile time buffer size and no alternative function.  Query the
+      OS, using pathconf(), for the buffer limit.  Care is needed
+      though, some systems do not limit PATH_MAX (return -1 for
+      pathconf()) making it impossible to pass a correctly sized buffer
+      to realpath() (it could always overflow).  On those systems, we
+      skip this.  */
+-#if defined (HAVE_REALPATH) && defined (HAVE_UNISTD_H)
++#if !defined (REALPATH_LIMIT) && defined (HAVE_REALPATH) && defined (HAVE_UNISTD_H)
+   {
+     /* Find out the max path size.  */
+     long path_max = pathconf ("/", _PC_PATH_MAX);
+     if (path_max > 0)
+       {
+ 	/* PATH_MAX is bounded.  */
 diff --git a/libiberty/make-relative-prefix.c b/libiberty/make-relative-prefix.c
-index 1b970e7a773af5e26df87706a9689b07e9a6a504..ad10c5e248faead8a01e3a7cfa6309a9e6337dad 100644
+index 1b970e7a773af5e26df87706a9689b07e9a6a504..fc45a08cadffe5de98d5ae96aa5b9b1a25e72dbe 100644
 --- a/libiberty/make-relative-prefix.c
 +++ b/libiberty/make-relative-prefix.c
 @@ -62,44 +62,40 @@ relative prefix can be found, return @code{NULL}.
@@ -5236,10 +5334,10 @@ index 1b970e7a773af5e26df87706a9689b07e9a6a504..ad10c5e248faead8a01e3a7cfa6309a9
 -#  define DIR_SEPARATOR '/'
 +#ifdef __amigaos__
 +#  ifndef PATH_SEPARATOR
-+#    define PATH_SEPARATOR ';'
++#    define PATH_SEPARATOR ':'
 +#  endif
 +#  ifndef DIR_UP
-+#    define DIR_UP "/"
++#    define DIR_UP ".."
 +#  endif
  #endif
  
@@ -6334,6 +6432,24 @@ index b3269cb88e077425be95bfe6c424b08106cab93f..2db10f38bc2f0db8ec3a82422bddf052
     ;;
  esac
  ])
+ 
+diff --git a/libstdc++-v3/include/Makefile.in b/libstdc++-v3/include/Makefile.in
+index bdbf015e5442db62dc9dc74d31124f28f2fce7f2..f9208216b85915407b9cdb61652392a1d62faf34 100644
+--- a/libstdc++-v3/include/Makefile.in
++++ b/libstdc++-v3/include/Makefile.in
+@@ -1811,12 +1811,13 @@ stamp-host: ${host_headers} ${bits_host_headers} ${ext_host_headers} ${host_head
+ @ENABLE_FLOAT128_TRUE@	echo 'define _GLIBCXX_USE_FLOAT128 1' > stamp-float128
+ @ENABLE_FLOAT128_FALSE@stamp-float128:
+ @ENABLE_FLOAT128_FALSE@	echo 'undef _GLIBCXX_USE_FLOAT128' > stamp-float128
+ 
+ # This header is not installed, it's only used to build libstdc++ itself.
+ ${host_builddir}/largefile-config.h: ${CONFIG_HEADER} stamp-${host_alias}
++	@mkdir -p $(dir $@)
+ 	@rm -f $@.tmp
+ 	@-grep 'define _DARWIN_USE_64_BIT_INODE' ${CONFIG_HEADER} >> $@.tmp
+ 	@-grep 'define _FILE_OFFSET_BITS' ${CONFIG_HEADER} >> $@.tmp
+ 	@-grep 'define _LARGE_FILES' ${CONFIG_HEADER} >> $@.tmp
+ 	@mv $@.tmp $@
  
 diff --git a/libstdc++-v3/include/bits/basic_string.h b/libstdc++-v3/include/bits/basic_string.h
 index 4afe9419c1fd0e66b677ca38d04ae2aacd0b0c2e..a59e7b9495b6619f9c75e9a6d140f80a9add48d4 100644
