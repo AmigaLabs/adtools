@@ -19,7 +19,10 @@ CLIB2_SHA1?=1a42c693e03881f6f969c43ab36ce20d2569751d
 # Optional (DEFAULT 1a42c693e03881f6f969c43ab36ce20d2569751d)
 # Define CLIB2_SHA1 to be the value of the branch or commit to use for clib2
 # ===
-CLIB4_SHA1?=HEAD
+# This sha1 is from the latest development branch which has fixes
+# related to gcc13, but it is not yet merged into the main branch.
+CLIB4_SHA1?=128547a92b9e74dcdb1c4aaf9ede06d2045397c5
+# CLIB4_SHA1?=HEAD
 # Optional (DEFAULT HEAD)
 # Define CLIB4_SHA1 to be the value of the branch or commit to use for clib4
 #
@@ -88,7 +91,7 @@ COREUTILS_VERSION=5.2.1
 DIST_VERSION=$(shell date +%Y%m%d)-$(shell git rev-list --count HEAD)
 
 # Set up the necessary variables for the CLIBs
-CLIB4_SUPPORT=$(filter 11 8 6,$(GCC_MAJOR_VERSION))
+CLIB4_SUPPORT=$(filter 13 11 8 6,$(GCC_MAJOR_VERSION))
 CLIB4_URL=https://github.com/AmigaLabs/clib4
 CLIB4_DIR=downloads/clib4/
 CLIB4_RELEASE_ARCHIVE_NAME=adtools-os4-clib4-$(DIST_VERSION).lha
