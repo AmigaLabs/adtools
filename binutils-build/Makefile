@@ -23,6 +23,7 @@ ifeq ($(BINUTILS_VERSION),2.23.2)
 CROSS_CFLAGS=CFLAGS="					\
 				-Wno-switch		\
 				-Wno-unused		\
+				-Wno-error=discarded-qualifiers \
 							"
 CROSS_CONFIGURE_ARGUMENTS=				\
 				--enable-plugins	\
