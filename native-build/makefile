@@ -29,8 +29,8 @@ CLIB4_SHA1?=128547a92b9e74dcdb1c4aaf9ede06d2045397c5
 # Note that CLIB4 is only supported for certain version of GCC, see
 # the variable named "CLIB4_SUPPORT" below
 # ===
-SDK_VERSION?=54.16
-# Optional (DEFAULT=54.16):
+SDK_VERSION?=54.25
+# Optional (DEFAULT=54.25):
 # Define SDK_VERSION to specify which version of the Amiga SDK is desired
 SDK_LOC?=
 # Optional (DEFAULT=):
@@ -62,6 +62,9 @@ endif
 GCC_MAJOR_VERSION:=$(word 1, $(subst ., , $(GCC_VERSION)))
 
 # Handle SDK version and mapping to necessary file URL
+ifeq (54.25,$(SDK_VERSION))
+SDK_URL_FILE=137
+else
 ifeq (54.16,$(SDK_VERSION))
 SDK_URL_FILE=127
 else
@@ -76,6 +79,7 @@ SDK_URL_FILE=69
 else
 ifneq (54.16,$(SDK_VERSION))
 $(error Unexpected SDK_VERSION supplied)
+endif
 endif
 endif
 endif
