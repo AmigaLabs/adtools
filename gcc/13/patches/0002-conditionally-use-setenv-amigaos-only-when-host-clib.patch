@@ -1,0 +1,335 @@
+From 8afc5af644ec62109e992dac17454cdda5ad8e45 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Tue, 16 Jun 2026 15:06:23 +0000
+Subject: [PATCH 2/2] conditionally use setenv-amigaos only when host clib
+ lacks unsetenv, and add atexit cleanup to restore env vars on exit
+
+---
+ libiberty/configure        |  68 ++++++++++++--
+ libiberty/configure.ac     |   7 +-
+ libiberty/setenv-amigaos.c | 175 +++++++++++++++++++++++++++----------
+ 3 files changed, 196 insertions(+), 54 deletions(-)
+
+diff --git a/libiberty/configure b/libiberty/configure
+index 438669041e1757623c304900231060e65d39e90e..b6d40e6a1dbd063ed47c51006d47cd1a3cc129ea 100755
+--- a/libiberty/configure
++++ b/libiberty/configure
+@@ -6603,20 +6603,74 @@ if test -z "${setobjs}"; then
+     # On android, getpagesize is defined in unistd.h as a static inline
+     # function, which AC_CHECK_FUNCS does not handle properly.
+     ac_cv_func_getpagesize=yes
+     ;;
+ 
+    *-*-amigaos*)
+-     # current newlib lacks unsetenv(), so we custom versions
+-     # of setenv() and unsetenv().
+-     case " $LIBOBJS " in
+-   *" setenv-amigaos.$ac_objext "* ) ;;
+-   *) LIBOBJS="$LIBOBJS setenv-amigaos.$ac_objext"
+-  ;;
+- esac
++     # Use our setenv-amigaos fallback only when the host clib lacks unsetenv().
++     # Modern clib2, clib4, and newlib all provide it and handle shell environment
++     # cleanup correctly on exit, so prefer those over our implementation.
++     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for unsetenv" >&5
++$as_echo_n "checking for unsetenv... " >&6; }
++if ${ac_cv_func_unsetenv+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++/* Define unsetenv to an innocuous variant, in case <limits.h> declares unsetenv.
++   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
++#define unsetenv innocuous_unsetenv
++
++/* System header to define __stub macros and hopefully few prototypes,
++    which can conflict with char unsetenv (); below.
++    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
++    <limits.h> exists even on freestanding compilers.  */
++
++#ifdef __STDC__
++# include <limits.h>
++#else
++# include <assert.h>
++#endif
++
++#undef unsetenv
+ 
++/* Override any GCC internal prototype to avoid an error.
++   Use char because int might match the return type of a GCC
++   builtin and then its argument prototype would still apply.  */
++#ifdef __cplusplus
++extern "C"
++#endif
++char unsetenv ();
++int
++main ()
++{
++return unsetenv ();
++  ;
++  return 0;
++}
++_ACEOF
++if ac_fn_c_try_link "$LINENO"; then :
++  ac_cv_func_unsetenv=yes
++else
++  ac_cv_func_unsetenv=no
++fi
++rm -f core conftest.err conftest.$ac_objext \
++    conftest$ac_exeext conftest.$ac_ext
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_func_unsetenv" >&5
++$as_echo "$ac_cv_func_unsetenv" >&6; }
++if test "x$ac_cv_func_unsetenv" = xyes; then :
++
++else
++  case " $LIBOBJS " in
++  *" setenv-amigaos.$ac_objext "* ) ;;
++  *) LIBOBJS="$LIBOBJS setenv-amigaos.$ac_objext"
++ ;;
++esac
++
++fi
+      ;;
+ 
+   hppa*-*-hpux*)
+     # Replace system snprintf and vsnprintf with libiberty implementations.
+     case " $LIBOBJS " in
+   *" snprintf.$ac_objext "* ) ;;
+diff --git a/libiberty/configure.ac b/libiberty/configure.ac
+index 4b2ab042c8ecbfe4d9cb9add8ca250383bb73a27..8b62d812781f8cb483faf03566f80d443de9011e 100644
+--- a/libiberty/configure.ac
++++ b/libiberty/configure.ac
+@@ -622,15 +622,16 @@ if test -z "${setobjs}"; then
+     # On android, getpagesize is defined in unistd.h as a static inline
+     # function, which AC_CHECK_FUNCS does not handle properly.
+     ac_cv_func_getpagesize=yes
+     ;;
+ 
+   *-*-amigaos*)
+-    # current newlib lacks unsetenv(), so we custom versions
+-    # of setenv() and unsetenv().
+-    AC_LIBOBJ([setenv-amigaos])
++    # Use our setenv-amigaos fallback only when the host clib lacks unsetenv().
++    # Modern clib2, clib4, and newlib all provide it and handle shell environment
++    # cleanup correctly on exit, so prefer those over our implementation.
++    AC_CHECK_FUNC([unsetenv], [], [AC_LIBOBJ([setenv-amigaos])])
+     ;;
+ 
+   hppa*-*-hpux*)
+     # Replace system snprintf and vsnprintf with libiberty implementations.
+     AC_LIBOBJ([snprintf])
+     AC_LIBOBJ([vsnprintf])
+diff --git a/libiberty/setenv-amigaos.c b/libiberty/setenv-amigaos.c
+index 6ec12b89c740874d0b7a83f322f80d5cd6f7a05e..e1954c3d4bde5feffbabc0179c187ef405551474 100644
+--- a/libiberty/setenv-amigaos.c
++++ b/libiberty/setenv-amigaos.c
+@@ -1,74 +1,161 @@
+ /* A custom implementation of various env functions
+  *
+- * This is necessary as no official clib supports unsetenv()
+- * but setenv().
++ * Used as a fallback when the host clib lacks unsetenv().  Modern clib2,
++ * clib4, and newlib all provide setenv()/unsetenv() with proper cleanup, so
++ * this file is only compiled when configure detects unsetenv() is absent.
++ *
++ * On the native AmigaOS shell, programs run within the same process as the
++ * shell, so SetVar(GVF_LOCAL_ONLY) changes persist after the program exits.
++ * An atexit handler therefore saves each variable's original state before
++ * the first modification and restores everything on process exit.
+  */
+ #define __USE_INLINE__
+ 
+ #include <proto/dos.h>
+ #include <proto/exec.h>
+ 
++#include <stdlib.h>
+ #include <string.h>
+ 
+-
+ #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ 
++struct saved_var {
++    char *name;
++    char *value;   /* original value, or NULL if the variable did not exist */
++    LONG  len;     /* lv_Len of the original value (0 when value == NULL) */
++    struct saved_var *next;
++};
++
++static struct saved_var *saved_list = NULL;
++static int atexit_registered = 0;
++
++static void
++restore_vars_on_exit (void)
++{
++    struct saved_var *v = saved_list;
++    while (v)
++    {
++        struct saved_var *next = v->next;
++        if (v->value)
++        {
++            SetVar(v->name, v->value, v->len, GVF_LOCAL_ONLY);
++            FreeVec(v->value);
++        }
++        else
++        {
++            DeleteVar(v->name, GVF_LOCAL_ONLY);
++        }
++        FreeVec(v->name);
++        FreeVec(v);
++        v = next;
++    }
++    saved_list = NULL;
++}
++
++/* Record the current value of 'name' the first time we are about to change it. */
++static void
++save_original (const char *name)
++{
++    struct LocalVar *lvar;
++    struct saved_var *entry;
++    struct saved_var *v = saved_list;
++
++    while (v)
++    {
++        if (strcmp(v->name, name) == 0)
++            return;   /* already saved — keep only the oldest value */
++        v = v->next;
++    }
++
++    entry = (struct saved_var *)AllocVec(sizeof(struct saved_var), MEMF_CLEAR);
++    if (!entry)
++        return;
++
++    entry->name = (char *)AllocVec(strlen(name) + 1, MEMF_ANY);
++    if (!entry->name)
++    {
++        FreeVec(entry);
++        return;
++    }
++    strcpy(entry->name, name);
++
++    lvar = FindVar(name, GVF_LOCAL_ONLY);
++    if (lvar)
++    {
++        entry->len   = lvar->lv_Len;
++        entry->value = (char *)AllocVec(lvar->lv_Len + 1, MEMF_ANY);
++        if (entry->value)
++        {
++            memcpy(entry->value, lvar->lv_Value, lvar->lv_Len);
++            entry->value[lvar->lv_Len] = '\0';
++        }
++    }
++    /* else: entry->value stays NULL — variable did not exist before */
++
++    entry->next = saved_list;
++    saved_list  = entry;
++
++    if (!atexit_registered)
++    {
++        atexit(restore_vars_on_exit);
++        atexit_registered = 1;
++    }
++}
++
+ int
+ setenv (const char *name, const char *value, int replace)
+ {
+-   if (!replace)
+-   {
+-       if (FindVar(name, GVF_LOCAL_ONLY))
+-       {
+-           return 0;
+-       }
+-   }
+-
+-   return !SetVar(name, value, -1, GVF_LOCAL_ONLY);
++    if (!replace)
++    {
++        if (FindVar(name, GVF_LOCAL_ONLY))
++            return 0;
++    }
++
++    save_original(name);
++    return !SetVar(name, value, -1, GVF_LOCAL_ONLY);
+ }
+ 
+-void
++int
+ unsetenv (const char *name)
+ {
+-   DeleteVar(name, GVF_LOCAL_ONLY);
++    save_original(name);
++    DeleteVar(name, GVF_LOCAL_ONLY);
++    return 0;
+ }
+ 
+-void
++int
+ putenv (char *str)
+ {
+-   int i;
+-
+-   if (str[0] == '=')
+-   {
+-       return;
+-   }
+-
+-   for (i=0; str[i]; i++)
+-   {
+-       if (str[i] == '=')
+-       {
+-           char *name = (char*)AllocVec(i + 1, MEMF_ANY);
+-           if (name)
+-           {
+-               strncpy(name, str, i);
+-               name[i] = 0;
+-
+-               setenv(name, &str[i] + 1, 1);
+-               FreeVec(name);
+-               return;
+-           }
+-       }
+-   }
++    int i;
++
++    if (str[0] == '=')
++        return -1;
++
++    for (i = 0; str[i]; i++)
++    {
++        if (str[i] == '=')
++        {
++            char *name = (char *)AllocVec(i + 1, MEMF_ANY);
++            if (name)
++            {
++                strncpy(name, str, i);
++                name[i] = 0;
++                setenv(name, &str[i] + 1, 1);
++                FreeVec(name);
++                return 0;
++            }
++            return -1;
++        }
++    }
++    return -1;
+ }
+ 
+ char *
+ getenv (const char *name)
+ {
+-   struct LocalVar *lvar;
++    struct LocalVar *lvar;
+ 
+-   if (!(lvar = FindVar(name, GVF_LOCAL_ONLY)))
+-   {
+-       return NULL;
+-   }
+-   return lvar->lv_Value;
++    if (!(lvar = FindVar(name, GVF_LOCAL_ONLY)))
++        return NULL;
++    return lvar->lv_Value;
+ }
+-- 
+2.34.1
+
