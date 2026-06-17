@@ -68,21 +68,7 @@ else
 ifeq (54.16,$(SDK_VERSION))
 SDK_URL_FILE=127
 else
-ifeq (53.34,$(SDK_VERSION))
-SDK_URL_FILE=125
-else
-ifeq (53.30,$(SDK_VERSION))
-SDK_URL_FILE=82
-else
-ifeq (53.24,$(SDK_VERSION))
-SDK_URL_FILE=69
-else
-ifneq (54.16,$(SDK_VERSION))
 $(error Unexpected SDK_VERSION supplied)
-endif
-endif
-endif
-endif
 endif
 endif
 SDK_URL=https://www.hyperion-entertainment.biz/index.php?option=com_registration&amp;view=download&amp;format=raw&amp;file=$(SDK_URL_FILE)
