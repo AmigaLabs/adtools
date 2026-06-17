@@ -215,7 +215,7 @@ XAR=$(CROSS_PREFIX)/bin/ppc-amigaos-ar -q
 XRANLIB=$(CROSS_PREFIX)/bin/ppc-amigaos-ranlib
 STRIP=$(CROSS_PREFIX)/bin/ppc-amigaos-strip
 
-CLIB_CROSS_DONE_DEPENDENCY=xgcc-done-$(GCC_VERSION) includes-done
+CLIB_CROSS_DONE_DEPENDENCY=xgcc-done-$(GCC_VERSION)
 
 endif
 
@@ -243,7 +243,7 @@ xgcc-done-$(GCC_VERSION): includes-done binutils-cross-done-$(BINUTILS_VERSION)
 # Build clib via xgcc
 #
 ifneq ($(CLIB4_SUPPORT),)
-clib4-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
+clib4-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY) includes-done
 # Build clib using xgcc that have just been built
 	$(MAKE) -C $(CLIB4_DIR) -f GNUmakefile.os4 \
 		CC="$(XGCC_CC)" \
