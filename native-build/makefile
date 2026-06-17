@@ -94,7 +94,6 @@ CROSS_PREFIX?=$(ROOT_DIR)/root-cross
 # This assumes that cross prefix is absolute
 DESTDIR?=
 
-STRIP=$(CROSS_PREFIX)/bin/ppc-amigaos-strip
 STRIPFLAGS=--strip-all --strip-unneeded-rel-relocs -R.comment
 
 all: gcc-native-done-$(GCC_VERSION)
@@ -182,11 +181,7 @@ includes-done: downloads-done
 	cd downloads && lha x SDK_$(SDK_VERSION).lha
 	cd downloads/SDK_Install && lha xf newlib*.lha
 	cd downloads/SDK_Install && lha xf base.lha
-ifneq (53.30,$(SDK_VERSION))
-ifneq (53.24,$(SDK_VERSION))
 	cd downloads/SDK_Install && lha xf execsg*.lha
-endif
-endif
 	cd downloads/SDK_Install && rm -Rf *.lha
 	cd downloads/SDK_Install && mv newlib* $(CROSS_PREFIX)/ppc-amigaos/SDK
 	cd downloads/SDK_Install && mv Include/* $(CROSS_PREFIX)/ppc-amigaos/SDK/include
@@ -204,6 +199,7 @@ XGCC=ppc-amigaos-gcc
 XGCC_CC=ppc-amigaos-gcc
 XAR=ppc-amigaos-ar -q
 XRANLIB=ppc-amigaos-ranlib
+STRIP=ppc-amigaos-strip
 
 CLIB_CROSS_DONE_DEPENDENCY=downloads-done-clib2
 ifneq ($(CLIB4_SUPPORT),)
@@ -217,8 +213,9 @@ XGCC=$(XGCC_DIR)/xgcc
 XGCC_CC=$(XGCC) -B $(XGCC_DIR)
 XAR=$(CROSS_PREFIX)/bin/ppc-amigaos-ar -q
 XRANLIB=$(CROSS_PREFIX)/bin/ppc-amigaos-ranlib
+STRIP=$(CROSS_PREFIX)/bin/ppc-amigaos-strip
 
-CLIB_CROSS_DONE_DEPENDENCY=xgcc-done-$(GCC_VERSION)
+CLIB_CROSS_DONE_DEPENDENCY=xgcc-done-$(GCC_VERSION) includes-done
 
 endif
 
