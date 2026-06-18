@@ -1,7 +1,7 @@
-From 1aa95d994f4de69667e276c8557365eaeb957d04 Mon Sep 17 00:00:00 2001
+From ba39ae0e74d865df5db0b101fd776f33a123420c Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Wed, 15 May 2024 19:20:02 +0100
-Subject: [PATCH 29/30] Allow option -pthread to link to libpthread
+Subject: [PATCH 29/31] Allow option -pthread to link to libpthread
 
 ---
  gcc/config/rs6000/amigaos.h   | 2 +-
