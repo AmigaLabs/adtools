@@ -179,7 +179,7 @@ binutils-install: binutils-cross-done-$(BINUTILS_VERSION)
 #
 includes-done: downloads-done
 	mkdir -p $(CROSS_PREFIX)/ppc-amigaos/SDK/include
-	cd downloads && lha x SDK_$(SDK_VERSION).lha
+	cd downloads && lha xf SDK_$(SDK_VERSION).lha
 	cd downloads/SDK_Install && lha xf newlib*.lha
 	cd downloads/SDK_Install && lha xf base.lha
 ifneq (53.30,$(SDK_VERSION))
@@ -187,10 +187,12 @@ ifneq (53.24,$(SDK_VERSION))
 	cd downloads/SDK_Install && lha xf execsg*.lha
 endif
 endif
-	cd downloads/SDK_Install && rm -Rf *.lha
-	cd downloads/SDK_Install && mv newlib* $(CROSS_PREFIX)/ppc-amigaos/SDK
-	cd downloads/SDK_Install && mv Include/* $(CROSS_PREFIX)/ppc-amigaos/SDK/include
-	rm -Rf downloads/SDK_Install downloads/SDK_Install.info
+	cd downloads/SDK_Install && rm -rf *.lha
+	rm -rf $(CROSS_PREFIX)/ppc-amigaos/SDK/newlib && \
+		cd downloads/SDK_Install && mv newlib* $(CROSS_PREFIX)/ppc-amigaos/SDK
+	rm -rf $(CROSS_PREFIX)/ppc-amigaos/SDK/include/* && \
+		cd downloads/SDK_Install && mv Include/* $(CROSS_PREFIX)/ppc-amigaos/SDK/include
+	rm -rf downloads/SDK_Install downloads/SDK_Install.info
 	touch $@
 
 #
