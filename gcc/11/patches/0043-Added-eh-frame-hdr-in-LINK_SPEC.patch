@@ -1,7 +1,7 @@
 From a7b91940c8b7fe1a46b50e5cd7148a32ad74bd81 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Thu, 12 Mar 2026 19:31:33 +0000
-Subject: [PATCH 43/43] Added --eh-frame-hdr in LINK_SPEC
+Subject: [PATCH 43/44] Added --eh-frame-hdr in LINK_SPEC
 
 ---
  gcc/config/rs6000/amigaos.h | 1 +
@@ -26,5 +26,5 @@ index 1256bd92425e397a0dd7a13bb8df674192c9cd9b..298902b8caafdd07059bfc645b8be89a
  %(link_thread) %(link_shlib) %(link_text) \
  %{mbaserel: %{msdata|msdata=default|msdata=sysv: %e-mbaserel and -msdata options are incompatible}} \
 -- 
-2.43.0
+2.34.1
 

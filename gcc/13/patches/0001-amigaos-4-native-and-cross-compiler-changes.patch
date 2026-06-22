@@ -1,7 +1,7 @@
 From cf0edcb46b952956e7249b39fd62728cc2d1d591 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Tue, 9 Jun 2026 21:08:44 +0000
-Subject: [PATCH] amigaos 4 native and cross compiler changes
+Subject: [PATCH 1/2] amigaos 4 native and cross compiler changes
 
 ---
  config-ml.in                                  |    4 +-
@@ -6940,5 +6940,5 @@ index d65b5482e8b969b3609b278bf7fd82b5e25ce4ac..a66f92027fd572cc5100dc8e4e2e25ed
      }
    }
 -- 
-2.53.0
+2.34.1
 
