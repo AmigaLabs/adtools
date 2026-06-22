@@ -1,7 +1,7 @@
-From 453dd2da2f155112ed74ae2b9252a1411e02ea07 Mon Sep 17 00:00:00 2001
+From 49d6fc066400424ffcd98e7aa9055785a80a6590 Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Tue, 7 Apr 2026 11:49:47 +0100
-Subject: [PATCH 2/2] Fix GDB native debugging on AmigaOS 4
+Subject: [PATCH 2/3] Fix GDB native debugging on AmigaOS 4
 
 Register handling:
 - Fix fetch_registers() GPR loop using loop index instead of -1
@@ -44,7 +44,8 @@ Minor cleanup:
  gdb/ppc-amigaos-nat.h   |  45 ++---
  gdb/ppc-amigaos-tdep.c  |  10 +-
  gdbsupport/pathstuff.cc |   7 +
- 5 files changed, 311 insertions(+), 131 deletions(-)
+ include/filenames.h     |   5 +-
+ 6 files changed, 314 insertions(+), 133 deletions(-)
 
 diff --git a/gdb/charset.c b/gdb/charset.c
 index a6261fc505c4ea1d63c045ab3673e4634754fa2f..7c2f245a61141868db4f4b9f791b706cc4708cf4 100644
@@ -823,6 +824,51 @@ index 4a8f4719324796fbdd20265ecc348e9218c96036..fa075904671e2454eee80524d8a86f98
  
      if (rp != NULL)
        return gdb::unique_xmalloc_ptr<char> (rp);
+diff --git a/include/filenames.h b/include/filenames.h
+index 3a12e2d025dc651e0faf16f9682f16976bdfd5a6..656a550dcd20da154c8533929791f9190987db0a 100644
+--- a/include/filenames.h
++++ b/include/filenames.h
+@@ -24,12 +24,13 @@ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
+ 
+ #ifndef FILENAMES_H
+ #define FILENAMES_H
+ 
+ #include "hashtab.h" /* for hashval_t */
++#include <string.h> /* for strchr */
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+ #if defined(__MSDOS__) || (defined(_WIN32) && ! defined(__CYGWIN__)) || \
+@@ -71,24 +72,24 @@ extern "C" {
+ #define HAS_DRIVE_SPEC_1(dos_based, f)			\
+   ((f)[0] && ((f)[1] == ':') && (dos_based))
+ 
+ /* Remove the drive spec from F, assuming HAS_DRIVE_SPEC (f).
+    The result is a pointer to the remainder of F.  */
+ #if defined(__amigaos4__)
+-#define STRIP_DRIVE_SPEC(f)	(index( &(f)[0],':') + 1 )
++#define STRIP_DRIVE_SPEC(f)	(strchr (&(f)[0],':') + 1 )
+ #else
+ #define STRIP_DRIVE_SPEC(f)	((f) + 2)
+ #endif
+ 
+ #define IS_DOS_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (1, c)
+ #define IS_DOS_ABSOLUTE_PATH(f) IS_ABSOLUTE_PATH_1 (1, f)
+ #define HAS_DOS_DRIVE_SPEC(f) HAS_DRIVE_SPEC_1 (1, f)
+ 
+ #define IS_AMIGOS_DIR_SEPARATOR(c) ( ((c) == '/') || ((c) == ':') )
+ #define IS_AMIGOS_ABSOLUTE_PATH(f) HAS_AMIGOS_DRIVE_SPEC(f)
+-#define HAS_AMIGOS_DRIVE_SPEC(f) (index (&(f)[0], ':') != NULL ) 
++#define HAS_AMIGOS_DRIVE_SPEC(f) (strchr (&(f)[0], ':') != NULL ) 
+ 
+ #define IS_UNIX_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (0, c)
+ #define IS_UNIX_ABSOLUTE_PATH(f) IS_ABSOLUTE_PATH_1 (0, f)
+ 
+ /* Note that when DOS_BASED is true, IS_ABSOLUTE_PATH accepts d:foo as
+    well, although it is only semi-absolute.  This is because the users
 -- 
-2.43.0
+2.47.3
 

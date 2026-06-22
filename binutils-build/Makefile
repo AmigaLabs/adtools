@@ -52,10 +52,14 @@ CROSS_CONFIGURE_ARGUMENTS=				\
 				--disable-plugins	\
 				--disable-sim		\
 				--target=ppc-amigaos	\
+				--with-python=no	\
 				--prefix=$(PREFIX)
 NATIVE_CFLAGS=CFLAGS="					\
 				-mcrt=clib4		\
 				-Wno-sign-compare	\
+							"
+NATIVE_CXXFLAGS=CXXFLAGS="				\
+				-mcrt=clib4		\
 							"
 NATIVE_LDFLAGS=LDFLAGS="				\
 				-mcrt=clib4		\
@@ -89,6 +93,7 @@ native:
 	cd $(NATIVE_BUILD_DIR);			\
 		$(NATIVE_LDFLAGS)		\
 		$(NATIVE_CFLAGS)		\
+		$(NATIVE_CXXFLAGS)		\
 		$(REAL_SRC_DIR)/configure	\
 		$(NATIVE_CONFIGURE_ARGUMENTS)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)

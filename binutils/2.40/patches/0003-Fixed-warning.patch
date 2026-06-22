@@ -1,0 +1,32 @@
+From 25fab4333553f2bb49b44e72fb1a456f75eb1dd1 Mon Sep 17 00:00:00 2001
+From: Josef Wegner <josef.wegner@outlook.com>
+Date: Sat, 20 Jun 2026 19:04:32 +0200
+Subject: [PATCH 3/3] Fixed warning: warning: template-id not allowed for
+ constructor in C++20 [-Wtemplate-id-cdtor]
+
+---
+ gdb/ui-out.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gdb/ui-out.h b/gdb/ui-out.h
+index 5390c23fe799bf58fa54dde742589ec1429cef7a..1140d559c5e220cc4d73a2caaa3abf0505e5fbca 100644
+--- a/gdb/ui-out.h
++++ b/gdb/ui-out.h
+@@ -406,13 +406,13 @@ class ui_out_emit_type
+ 
+   ~ui_out_emit_type ()
+   {
+     m_uiout->end (Type);
+   }
+ 
+-  DISABLE_COPY_AND_ASSIGN (ui_out_emit_type<Type>);
++  DISABLE_COPY_AND_ASSIGN (ui_out_emit_type);
+ 
+ private:
+ 
+   struct ui_out *m_uiout;
+ };
+ 
+-- 
+2.47.3
+
