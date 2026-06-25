@@ -1,0 +1,81 @@
+From 75a9517dec836877e41053a820c9274eccae4e18 Mon Sep 17 00:00:00 2001
+From: Josef Wegner <josef.wegner@outlook.com>
+Date: Thu, 25 Jun 2026 08:07:23 +0200
+Subject: [PATCH 4/4] Fixed compiling of binutils with newlib - do not include
+ memory.h in testsuite/gentestdlls.c - newlib has fseeko64 but not the type
+ off64_t - and newlib has no _PC_PATH_MAX
+
+---
+ binutils/readelf.c               | 4 ++++
+ binutils/testsuite/gentestdlls.c | 2 ++
+ libiberty/lrealpath.c            | 6 ++++++
+ 3 files changed, 12 insertions(+)
+
+diff --git a/binutils/readelf.c b/binutils/readelf.c
+index 0439e7af16bd78c35d57187d4af414df3e3404ce..6e9df7a956ec1c6c8d644c318425812cea695670 100644
+--- a/binutils/readelf.c
++++ b/binutils/readelf.c
+@@ -367,13 +367,17 @@ enum versioned_symbol_info
+ };
+ 
+ static int
+ fseek64 (FILE *stream, int64_t offset, int whence)
+ {
+ #if defined (HAVE_FSEEKO64)
++#if defined (__amigaos4__) && defined (__NEWLIB__)
++  _off64_t o = offset;
++#else
+   off64_t o = offset;
++#endif
+   if (o != offset)
+     {
+       errno = EINVAL;
+       return -1;
+     }
+   return fseeko64 (stream, o, whence);
+diff --git a/binutils/testsuite/gentestdlls.c b/binutils/testsuite/gentestdlls.c
+index b362fb49c5315dc24c0cd18ca0b3feaac6d01166..80efd09f0935d3a53573d9cf7fff090333a0f22a 100644
+--- a/binutils/testsuite/gentestdlls.c
++++ b/binutils/testsuite/gentestdlls.c
+@@ -22,13 +22,15 @@
+    used on Windows) that we can then utilize in various tests to
+    ensure objdump can parse these file correctly.
+ 
+    See:
+    https://www.ecma-international.org/publications/files/ECMA-ST/ECMA-335.pdf  */
+ 
++#if !defined(__amigaos4__) || !defined(__NEWLIB__)
+ #include <memory.h>
++#endif
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+ 
+diff --git a/libiberty/lrealpath.c b/libiberty/lrealpath.c
+index c662f8fd37edf9e1fe21b2670ef4bf1f555da365..bca8111370ab7c6bff7afaa207ed3a0faa65cb22 100644
+--- a/libiberty/lrealpath.c
++++ b/libiberty/lrealpath.c
+@@ -69,12 +69,18 @@ extern char *canonicalize_file_name (const char *);
+ # if defined (_WIN32)
+ #  define WIN32_LEAN_AND_MEAN
+ #  include <windows.h> /* for GetFullPathName */
+ # endif
+ #endif
+ 
++/* OS4 newlib does not have _PC_PATH_MAX so we use the
++   REALPATH_LIMIT method only */
++#if defined (__amigaos4__) && defined (__NEWLIB__)
++#undef HAVE_REALPATH
++#endif
++
+ char *
+ lrealpath (const char *filename)
+ {
+   /* Method 1: The system has a compile time upper bound on a filename
+      path.  Use that and realpath() to canonicalize the name.  This is
+      the most common case.  Note that, if there isn't a compile time
+-- 
+2.47.3
+

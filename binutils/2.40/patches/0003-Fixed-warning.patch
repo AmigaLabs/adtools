@@ -1,7 +1,7 @@
 From 25fab4333553f2bb49b44e72fb1a456f75eb1dd1 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Sat, 20 Jun 2026 19:04:32 +0200
-Subject: [PATCH 3/3] Fixed warning: warning: template-id not allowed for
+Subject: [PATCH 3/4] Fixed warning: warning: template-id not allowed for
  constructor in C++20 [-Wtemplate-id-cdtor]
 
 ---
