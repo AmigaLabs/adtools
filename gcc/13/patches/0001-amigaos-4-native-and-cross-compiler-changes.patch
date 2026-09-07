@@ -79,7 +79,6 @@ Subject: [PATCH 1/2] amigaos 4 native and cross compiler changes
  libstdc++-v3/crossconfig.m4                   |   32 +
  libstdc++-v3/include/Makefile.in              |    1 +
  libstdc++-v3/include/bits/basic_string.h      |    3 +
- libstdc++-v3/include/bits/std_mutex.h         |   11 +
  libstdc++-v3/include/c_global/cfenv           |    2 +-
  libstdc++-v3/include/c_global/cstdlib         |    8 +
  libstdc++-v3/include/std/mutex                |   20 +-
@@ -6474,49 +6473,6 @@ index 4afe9419c1fd0e66b677ca38d04ae2aacd0b0c2e..a59e7b9495b6619f9c75e9a6d140f80a
  
    _GLIBCXX_NODISCARD
    inline string
-diff --git a/libstdc++-v3/include/bits/std_mutex.h b/libstdc++-v3/include/bits/std_mutex.h
-index 4693055269d5e7e04d31d58e073c5578fddb877f..aa4bcab5efb21616fdd0de3442b45ad649b5b0cd 100644
---- a/libstdc++-v3/include/bits/std_mutex.h
-+++ b/libstdc++-v3/include/bits/std_mutex.h
-@@ -37,12 +37,16 @@
- #else
- 
- #include <errno.h> // EBUSY
- #include <bits/functexcept.h>
- #include <bits/gthr.h>
- 
-+#if defined(__amigaos4__) && defined(__CLIB4__)
-+#include <pthread.h>
-+#endif
-+
- namespace std _GLIBCXX_VISIBILITY(default)
- {
- _GLIBCXX_BEGIN_NAMESPACE_VERSION
- 
-   /**
-    * @defgroup mutexes Mutexes
-@@ -179,14 +183,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
-     }
- 
- #ifdef _GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT
-     void
-     wait_until(mutex& __m, clockid_t __clock, timespec& __abs_time)
-     {
-+#if defined(__amigaos4__)
-+      pthread_cond_clockwait(reinterpret_cast<pthread_cond_t*>(&_M_cond),
-+            reinterpret_cast<pthread_mutex_t*>(__m.native_handle()),
-+            __clock,
-+            reinterpret_cast<const ::timespec*>(&__abs_time));
-+#else
-       pthread_cond_clockwait(&_M_cond, __m.native_handle(), __clock,
- 			     &__abs_time);
-+#endif
-     }
- #endif
- 
-     void
-     notify_one() noexcept
-     {
 diff --git a/libstdc++-v3/include/c_global/cfenv b/libstdc++-v3/include/c_global/cfenv
 index 6704dc5423ed8e0abb36fb5ffdc05b39fc5bc309..f5ea502d2aa0d8f30ec3bdc21cced7415696b4b9 100644
 --- a/libstdc++-v3/include/c_global/cfenv

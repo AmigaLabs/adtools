@@ -80,6 +80,14 @@ COREUTILS_VERSION=5.2.1
 # Distribution version, used as middle part of a distribution archive
 DIST_VERSION=$(shell date +%Y%m%d)-$(shell git rev-list --count HEAD)
 
+# libstdc++ configures each C runtime separately and turns on
+# pthread_cond_clockwait() wherever that function links, which it does for
+# clib4. Under the amigaos thread model, though, __gthread_cond_t and
+# __gthread_mutex_t are native objects rather than pthread ones, so handing
+# them to a pthread entry point misreads them. Presetting the cache variable
+# answers the probe, leaving condition_variable on __gthread_cond_timedwait().
+export glibcxx_cv_PTHREAD_COND_CLOCKWAIT=no
+
 # Set up the necessary variables for the CLIBs
 CLIB4_SUPPORT=$(filter 13 11 8 6,$(GCC_MAJOR_VERSION))
 CLIB4_URL=https://github.com/AmigaLabs/clib4
