@@ -1,17 +1,17 @@
-From dac404b10f8cb811385b733834a361b5dbe13a5c Mon Sep 17 00:00:00 2001
+From 4d610b2e2a965f7cb87b9e698cd2384135958c42 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Tue, 15 Sep 2026 20:20:43 +0200
 Subject: [PATCH 3/3] Added better handling of Amiga file paths: - Use SDK: and
- GCC: instead of /SDK/ and /GCC/ - Some fixes to the clib4 spec - Prevent gcc
- to add a directory separator after drive separator - Added xm-amigaos.h for
- gcc to understand Amiga file paths better
+ GCC: instead of /SDK/ and /GCC/ - Some fixes to the newlib, clib2 and clib4
+ specs - Prevent gcc to add a directory separator after drive separator -
+ Added xm-amigaos.h for gcc to understand Amiga file paths better
 
 ---
  gcc/config.host                               |  2 +-
- gcc/config/rs6000/amigaos.h                   |  9 ++++--
+ gcc/config/rs6000/amigaos.h                   | 13 +++++----
  .../xm-mingw32.h => rs6000/xm-amigaos.h}      | 29 +++++++++----------
  libiberty/make-temp-file.c                    |  6 +++-
- 4 files changed, 26 insertions(+), 20 deletions(-)
+ 4 files changed, 28 insertions(+), 22 deletions(-)
  copy gcc/config/{i386/xm-mingw32.h => rs6000/xm-amigaos.h} (52%)
 
 diff --git a/gcc/config.host b/gcc/config.host
@@ -34,7 +34,7 @@ index 2a11c603aad2857322b391d9c5d8638a3047de0c..cc73de723d6f585eb8ba33c013c44a54
      host_xmake_file="${host_xmake_file} rs6000/x-darwin"
      ;;
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 802d22903609042c3aef95233eb2344ef135b368..d328df7c4f8ddc3a528c9d32759374ec29ac42b1 100644
+index 802d22903609042c3aef95233eb2344ef135b368..e0e635b88f741ad06420bc752ee55eb9ede125a6 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -171,14 +171,17 @@ ASM_OPT_ANY
@@ -57,6 +57,21 @@ index 802d22903609042c3aef95233eb2344ef135b368..d328df7c4f8ddc3a528c9d32759374ec
  #endif
  
  #define LIB_SUBDIR_TYPE_SPEC "\
+@@ -212,13 +215,13 @@ ASM_OPT_ANY
+ -idirafter %(base_sdk)clib2/include -idirafter %(base_sdk)local/clib2/include"
+ 
+ #define LIB_SUBDIR_CLIB2_SPEC "%{mcrt=clib2-ts:lib.threadsafe; :lib}%(lib_subdir_type)"
+ 
+ #define LINK_CLIB2_SPEC "\
+ -L%(base_sdk)clib2/%(lib_subdir_clib2) \
+--L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/%{mcrt=clib2-ts:clib2-ts; :clib2}/lib%(lib_subdir_type) \
++-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/%{mcrt=clib2-ts:clib2-ts; :clib2}%(lib_subdir_type) \
+ -L%(base_sdk)local/clib2/%(lib_subdir_clib2)"
+ 
+ #define STARTFILE_CLIB2_SPEC "\
+ %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
+                  "%{!msoft-float:%(lib_subdir_type)}/crtbegin.o \
+ %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
 @@ -234,13 +237,13 @@ ASM_OPT_ANY
  -idirafter %(base_sdk)clib4/include -idirafter %(base_sdk)local/clib4/include"
  
@@ -72,6 +87,21 @@ index 802d22903609042c3aef95233eb2344ef135b368..d328df7c4f8ddc3a528c9d32759374ec
  %{shared: %(base_sdk)clib4/%(lib_subdir_clib4)/shcrtbegin.o} %{!shared: %(base_sdk)clib4/%(lib_subdir_clib4)/crtbegin.o} %{!shared: %(base_sdk)clib4/%(lib_subdir_clib4)/crt0.o}"
  
  #define ENDFILE_CLIB4_SPEC "\
+@@ -283,13 +286,13 @@ ASM_OPT_ANY
+ -idirafter %(base_sdk)newlib/include -idirafter %(base_sdk)local/newlib/include"
+ 
+ #define LIB_SUBDIR_NEWLIB_SPEC "lib%(lib_subdir_type)"
+ 
+ #define LINK_NEWLIB_SPEC "\
+ -L%(base_sdk)newlib/%(lib_subdir_newlib) \
+--L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/newlib/%(lib_subdir_newlib) \
++-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/newlib%(lib_subdir_type) \
+ -L%(base_sdk)local/newlib/%(lib_subdir_newlib)"
+ 
+ /* newlib startfile should work for all library flavours */
+ #define STARTFILE_NEWLIB_SPEC "\
+ %{shared: %(base_sdk)newlib/%(lib_subdir_newlib)/shcrtbegin.o} %{!shared: %(base_sdk)newlib/%(lib_subdir_newlib)/crtbegin.o}"
+ 
 diff --git a/gcc/config/i386/xm-mingw32.h b/gcc/config/rs6000/xm-amigaos.h
 similarity index 52%
 copy from gcc/config/i386/xm-mingw32.h
