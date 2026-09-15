@@ -1,7 +1,7 @@
 From 75a9517dec836877e41053a820c9274eccae4e18 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Thu, 25 Jun 2026 08:07:23 +0200
-Subject: [PATCH 4/4] Fixed compiling of binutils with newlib - do not include
+Subject: [PATCH 4/5] Fixed compiling of binutils with newlib - do not include
  memory.h in testsuite/gentestdlls.c - newlib has fseeko64 but not the type
  off64_t - and newlib has no _PC_PATH_MAX
 
