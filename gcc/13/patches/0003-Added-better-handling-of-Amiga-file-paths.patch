@@ -1,4 +1,4 @@
-From 4d610b2e2a965f7cb87b9e698cd2384135958c42 Mon Sep 17 00:00:00 2001
+From 6a8b307b59e294f5e7cf4f8e80a34e858a0ffe8d Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Tue, 15 Sep 2026 20:20:43 +0200
 Subject: [PATCH 3/3] Added better handling of Amiga file paths: - Use SDK: and
@@ -34,7 +34,7 @@ index 2a11c603aad2857322b391d9c5d8638a3047de0c..cc73de723d6f585eb8ba33c013c44a54
      host_xmake_file="${host_xmake_file} rs6000/x-darwin"
      ;;
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 802d22903609042c3aef95233eb2344ef135b368..e0e635b88f741ad06420bc752ee55eb9ede125a6 100644
+index 802d22903609042c3aef95233eb2344ef135b368..8b817bff704daa442d0c0396b53230767f551bf8 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -171,14 +171,17 @@ ASM_OPT_ANY
@@ -95,7 +95,7 @@ index 802d22903609042c3aef95233eb2344ef135b368..e0e635b88f741ad06420bc752ee55eb9
  #define LINK_NEWLIB_SPEC "\
  -L%(base_sdk)newlib/%(lib_subdir_newlib) \
 --L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/newlib/%(lib_subdir_newlib) \
-+-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/newlib%(lib_subdir_type) \
++-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)%(lib_subdir_type) \
  -L%(base_sdk)local/newlib/%(lib_subdir_newlib)"
  
  /* newlib startfile should work for all library flavours */
