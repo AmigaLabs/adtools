@@ -1,0 +1,212 @@
+From 1582276d76a30160ac69c7d3254e4f1f6268139b Mon Sep 17 00:00:00 2001
+From: Josef Wegner <josef.wegner@outlook.com>
+Date: Tue, 15 Sep 2026 20:21:30 +0200
+Subject: [PATCH 5/5] Make binutils 2.40 work with AmigaOS C libraries -
+ workaround for binutils' fseek after EOF (causes error under CLIB4 and
+ NEWLIB) - Some smaller improvements to the Amiga file path handling
+
+Signed-off-by: Josef Wegner <josef.wegner@outlook.com>
+---
+ bfd/cache.c                | 40 ++++++++++++++++++++++++++++++++++++++
+ include/filenames.h        |  4 ++--
+ libiberty/lrealpath.c      |  4 ++--
+ libiberty/make-temp-file.c | 17 +++++++++++-----
+ libiberty/pex-common.c     |  1 +
+ opcodes/ppc-dis.c          |  2 +-
+ 6 files changed, 58 insertions(+), 10 deletions(-)
+
+diff --git a/bfd/cache.c b/bfd/cache.c
+index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..23636cbc3208178b4107475b56f56fcf863e4f97 100644
+--- a/bfd/cache.c
++++ b/bfd/cache.c
+@@ -289,12 +289,52 @@ cache_btell (struct bfd *abfd)
+ static int
+ cache_bseek (struct bfd *abfd, file_ptr offset, int whence)
+ {
+   FILE *f = bfd_cache_lookup (abfd, whence != SEEK_CUR ? CACHE_NO_SEEK : CACHE_NORMAL);
+   if (f == NULL)
+     return -1;
++#if defined (__amigaos4__)
++  if (abfd->direction != read_direction && abfd->direction != no_direction)
++    {
++      file_ptr current = _bfd_real_ftell (f);
++      file_ptr target = current;
++      static const unsigned char zeroes[4096];
++
++      if (current < 0)
++	return -1;
++      if (whence == SEEK_SET)
++	target = offset;
++      else if (whence == SEEK_CUR)
++	target += offset;
++
++      if (target > current)
++	{
++	  if (_bfd_real_fseek (f, 0, SEEK_END) == 0)
++            {
++              file_ptr end = _bfd_real_ftell (f);
++              if (end < 0)
++                return -1;
++              if (target > end)
++                {
++                  file_ptr missing = target - end;
++                  while (missing != 0)
++                    {
++                      file_ptr chunk = missing > (file_ptr) sizeof zeroes
++                                       ? (file_ptr) sizeof zeroes : missing;
++                      if (fwrite (zeroes, 1, chunk, f) != (size_t) chunk)
++                        return -1;
++                      missing -= chunk;
++                    }
++                  return 0;
++                }
++              if (_bfd_real_fseek (f, current, SEEK_SET) != 0)
++                return -1;
++            }
++	}
++    }
++#endif
+   return _bfd_real_fseek (f, offset, whence);
+ }
+ 
+ /* Note that archive entries don't have streams; they share their parent's.
+    This allows someone to play with the iostream behind BFD's back.
+ 
+diff --git a/include/filenames.h b/include/filenames.h
+index 656a550dcd20da154c8533929791f9190987db0a..32795f9e3c27ad6f8a4ff1e5e7d6360dca0d3fdc 100644
+--- a/include/filenames.h
++++ b/include/filenames.h
+@@ -74,22 +74,22 @@ extern "C" {
+ 
+ /* Remove the drive spec from F, assuming HAS_DRIVE_SPEC (f).
+    The result is a pointer to the remainder of F.  */
+ #if defined(__amigaos4__)
+ #define STRIP_DRIVE_SPEC(f)	(strchr (&(f)[0],':') + 1 )
+ #else
+-#define STRIP_DRIVE_SPEC(f)	((f) + 2)
++#define STRIP_DRIVE_SPEC(f) 	((f) + 2)
+ #endif
+ 
+ #define IS_DOS_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (1, c)
+ #define IS_DOS_ABSOLUTE_PATH(f) IS_ABSOLUTE_PATH_1 (1, f)
+ #define HAS_DOS_DRIVE_SPEC(f) HAS_DRIVE_SPEC_1 (1, f)
+ 
+ #define IS_AMIGOS_DIR_SEPARATOR(c) ( ((c) == '/') || ((c) == ':') )
+ #define IS_AMIGOS_ABSOLUTE_PATH(f) HAS_AMIGOS_DRIVE_SPEC(f)
+-#define HAS_AMIGOS_DRIVE_SPEC(f) (strchr (&(f)[0], ':') != NULL ) 
++#define HAS_AMIGOS_DRIVE_SPEC(f) (strchr (&(f)[0], ':') != NULL )
+ 
+ #define IS_UNIX_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (0, c)
+ #define IS_UNIX_ABSOLUTE_PATH(f) IS_ABSOLUTE_PATH_1 (0, f)
+ 
+ /* Note that when DOS_BASED is true, IS_ABSOLUTE_PATH accepts d:foo as
+    well, although it is only semi-absolute.  This is because the users
+diff --git a/libiberty/lrealpath.c b/libiberty/lrealpath.c
+index bca8111370ab7c6bff7afaa207ed3a0faa65cb22..5b83717bfaf18d10b245f2f5d3c40f3359f659ec 100644
+--- a/libiberty/lrealpath.c
++++ b/libiberty/lrealpath.c
+@@ -149,14 +149,14 @@ lrealpath (const char *filename)
+       return strdup (filename);
+     else
+       {
+ 	/* The file system is case-preserving but case-insensitive,
+ 	   Canonicalize to lowercase, using the codepage associated
+ 	   with the process locale.  */
+-        CharLowerBuff (buf, len);
+-        return strdup (buf);
++	CharLowerBuff (buf, len);
++	return strdup (buf);
+       }
+   }
+ #endif
+ 
+   /* This system is a lost cause, just duplicate the filename.  */
+   return strdup (filename);
+diff --git a/libiberty/make-temp-file.c b/libiberty/make-temp-file.c
+index 5f66abacc55f0dde71d19e7543f7e1a6453496a9..cf3450646905bfdbbfff223920ec7bb4ca0d80a5 100644
+--- a/libiberty/make-temp-file.c
++++ b/libiberty/make-temp-file.c
+@@ -115,13 +115,15 @@ files in.
+ 
+ const char *
+ choose_tmpdir (void)
+ {
+   if (!memoized_tmpdir)
+     {
+-#if !defined(_WIN32) || defined(__CYGWIN__)
++#if defined(__amigaos4__)
++      memoized_tmpdir = xstrdup ("T:");
++#elif !defined(_WIN32) || defined(__CYGWIN__)
+       const char *base = 0;
+       char *tmpdir;
+       unsigned int len;
+       
+ #ifdef VMS
+       /* Try VMS standard temp logical.  */
+@@ -150,17 +152,22 @@ choose_tmpdir (void)
+ 	base = ".";
+       /* Append DIR_SEPARATOR to the directory we've chosen
+ 	 and return it.  */
+       len = strlen (base);
+       tmpdir = XNEWVEC (char, len + 2);
+       strcpy (tmpdir, base);
+-      tmpdir[len] = DIR_SEPARATOR;
+-      tmpdir[len+1] = '\0';
++      /* An Amiga assign already ends in ':'.  Unlike POSIX and DOS
++	 directory names, it must not be followed by '/'.  */
++      if (len != 0 && base[len - 1] == ':')
++	tmpdir[len] = '\0';
++      else
++	{
++	  tmpdir[len] = DIR_SEPARATOR;
++	  tmpdir[len+1] = '\0';
++	}
+       memoized_tmpdir = tmpdir;
+-#elif __amigaos4__
+-    memoized_tmpdir = xstrdup ("T:");
+ #else /* defined(_WIN32) && !defined(__CYGWIN__) */
+       DWORD len;
+ 
+       /* Figure out how much space we need.  */
+       len = GetTempPath(0, NULL);
+       if (len)
+diff --git a/libiberty/pex-common.c b/libiberty/pex-common.c
+index 41d741df753da95abc20b815727953f310d6fa25..41fe20cd4226cb6e8974dd55c14637b46fcaff57 100644
+--- a/libiberty/pex-common.c
++++ b/libiberty/pex-common.c
+@@ -24,12 +24,13 @@ Boston, MA 02110-1301, USA.  */
+ 
+ #include <stdio.h>
+ #include <errno.h>
+ #ifdef NEED_DECLARATION_ERRNO
+ extern int errno;
+ #endif
++
+ #ifdef HAVE_STDLIB_H
+ #include <stdlib.h>
+ #endif
+ #ifdef HAVE_STRING_H
+ #include <string.h>
+ #endif
+diff --git a/opcodes/ppc-dis.c b/opcodes/ppc-dis.c
+index d97137d8b71837b74875e44dc935753092838dbc..4d5652ebfebd957fea0185714f95eb55e06657d3 100644
+--- a/opcodes/ppc-dis.c
++++ b/opcodes/ppc-dis.c
+@@ -345,13 +345,13 @@ ppc_parse_cpu (ppc_cpu_t ppc_cpu, ppc_cpu_t *sticky, const char *arg)
+ 
+ static void
+ powerpc_init_dialect (struct disassemble_info *info)
+ {
+   ppc_cpu_t dialect = 0;
+   ppc_cpu_t sticky = 0;
+-  struct dis_private *priv = calloc (sizeof (*priv), 1);
++  struct dis_private *priv = calloc (1, sizeof (*priv));
+ 
+   if (priv == NULL)
+     return;
+ 
+   switch (info->mach)
+     {
+-- 
+2.43.0
+
