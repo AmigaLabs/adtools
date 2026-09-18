@@ -50,8 +50,8 @@ CROSS_CFLAGS=CFLAGS="					\
 				-Wno-sign-compare	\
 							"
 CROSS_CONFIGURE_ARGUMENTS=				\
-				--disable-gdb		\
 				--disable-plugins	\
+				--disable-gdb		\
 				--disable-sim		\
 				--target=ppc-amigaos	\
 				--with-python=no	\
