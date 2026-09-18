@@ -1,24 +1,25 @@
-From d50598120e08a2fef48353fc3bc84bcecb8b6978 Mon Sep 17 00:00:00 2001
+From 182403f11e90e3094a2bdf8339dfaf37969bf2c9 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Tue, 15 Sep 2026 20:21:30 +0200
 Subject: [PATCH 5/5] Make binutils 2.40 work with AmigaOS C libraries -
- workaround for binutils' fseek after EOF (causes error under CLIB4 and  
+ workaround for binutils' fseek after EOF (causes error under CLIB4 and
  NEWLIB) - Some smaller improvements to the Amiga file path handling
 
+Signed-off-by: Josef Wegner <josef.wegner@outlook.com>
 ---
- bfd/cache.c                | 36 ++++++++++++++++++++++++++++++++++++
+ bfd/cache.c                | 40 ++++++++++++++++++++++++++++++++++++++
  include/filenames.h        |  6 +++---
  libiberty/lrealpath.c      |  4 ++--
- libiberty/make-temp-file.c | 17 ++++++++++++-----
+ libiberty/make-temp-file.c | 17 +++++++++++-----
  libiberty/pex-common.c     |  1 +
  opcodes/ppc-dis.c          |  2 +-
- 6 files changed, 55 insertions(+), 11 deletions(-)
+ 6 files changed, 59 insertions(+), 11 deletions(-)
 
 diff --git a/bfd/cache.c b/bfd/cache.c
-index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..0fafe11ce4892d18cc709e1d6f555e3541d7d0be 100644
+index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..23636cbc3208178b4107475b56f56fcf863e4f97 100644
 --- a/bfd/cache.c
 +++ b/bfd/cache.c
-@@ -289,12 +289,48 @@ cache_btell (struct bfd *abfd)
+@@ -289,12 +289,52 @@ cache_btell (struct bfd *abfd)
  static int
  cache_bseek (struct bfd *abfd, file_ptr offset, int whence)
  {
@@ -39,25 +40,29 @@ index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..0fafe11ce4892d18cc709e1d6f555e35
 +      else if (whence == SEEK_CUR)
 +	target += offset;
 +
-+      if (target > current
-+	  && _bfd_real_fseek (f, 0, SEEK_END) == 0)
++      if (target > current)
 +	{
-+	  file_ptr end = _bfd_real_ftell (f);
-+	  if (end < 0)
-+	    return -1;
-+	  if (target > end)
-+	    {
-+	      file_ptr missing = target - end;
-+	      while (missing != 0)
-+		{
-+		  file_ptr chunk = missing > (file_ptr) sizeof zeroes
-+				   ? (file_ptr) sizeof zeroes : missing;
-+		  if (fwrite (zeroes, 1, chunk, f) != (size_t) chunk)
-+		    return -1;
-+		  missing -= chunk;
-+		}
-+	      return 0;
-+	    }
++	  if (_bfd_real_fseek (f, 0, SEEK_END) == 0)
++            {
++              file_ptr end = _bfd_real_ftell (f);
++              if (end < 0)
++                return -1;
++              if (target > end)
++                {
++                  file_ptr missing = target - end;
++                  while (missing != 0)
++                    {
++                      file_ptr chunk = missing > (file_ptr) sizeof zeroes
++                                       ? (file_ptr) sizeof zeroes : missing;
++                      if (fwrite (zeroes, 1, chunk, f) != (size_t) chunk)
++                        return -1;
++                      missing -= chunk;
++                    }
++                  return 0;
++                }
++              if (_bfd_real_fseek (f, current, SEEK_SET) != 0)
++                return -1;
++            }
 +	}
 +    }
 +#endif
@@ -206,5 +211,5 @@ index d97137d8b71837b74875e44dc935753092838dbc..4d5652ebfebd957fea0185714f95eb55
    switch (info->mach)
      {
 -- 
-2.47.3
+2.43.0
 

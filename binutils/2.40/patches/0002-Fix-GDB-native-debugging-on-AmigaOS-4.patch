@@ -1,4 +1,4 @@
-From 49d6fc066400424ffcd98e7aa9055785a80a6590 Mon Sep 17 00:00:00 2001
+From 51f23a3da15f946848e5948bad2e8081a73550ff Mon Sep 17 00:00:00 2001
 From: Richard Gibbs <rich_gibbs@hotmail.com>
 Date: Tue, 7 Apr 2026 11:49:47 +0100
 Subject: [PATCH 2/5] Fix GDB native debugging on AmigaOS 4
@@ -870,5 +870,5 @@ index 3a12e2d025dc651e0faf16f9682f16976bdfd5a6..656a550dcd20da154c8533929791f919
  /* Note that when DOS_BASED is true, IS_ABSOLUTE_PATH accepts d:foo as
     well, although it is only semi-absolute.  This is because the users
 -- 
-2.47.3
+2.43.0
 
