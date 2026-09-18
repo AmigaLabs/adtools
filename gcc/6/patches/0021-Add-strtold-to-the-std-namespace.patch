@@ -1,7 +1,7 @@
-From 705d741627ecdb228eb36aa880c76067915e9f28 Mon Sep 17 00:00:00 2001
+From 390a72d9d7d7abee1fa5bcde7aa23c86a0a5bd59 Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Wed, 20 Nov 2024 20:11:23 +0000
-Subject: [PATCH 21/21] Add strtold to the std namespace.
+Subject: [PATCH 21/22] Add strtold to the std namespace.
 
 strtold is provided by both NEWLIB and CLIB4. Previously,
 std::strtold was not available for C++.
@@ -10,7 +10,7 @@ std::strtold was not available for C++.
  1 file changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/libstdc++-v3/include/c_global/cstdlib b/libstdc++-v3/include/c_global/cstdlib
-index 09d99212541ff9d456e5c7f0d11632fe5e1b67c4..8f87a546ad0756fed29bf8249bc00c020e7e21c6 100644
+index 09d99212541ff9d456e5c7f0d11632fe5e1b67c4..79a528e1b15421aa54790780a6abb0c0af87a443 100644
 --- a/libstdc++-v3/include/c_global/cstdlib
 +++ b/libstdc++-v3/include/c_global/cstdlib
 @@ -208,14 +208,14 @@ _GLIBCXX_END_NAMESPACE_VERSION
@@ -19,14 +19,14 @@ index 09d99212541ff9d456e5c7f0d11632fe5e1b67c4..8f87a546ad0756fed29bf8249bc00c02
  #undef strtoll
  #undef strtoull
  #undef strtof
-
+ 
 -/* clib2 and newlib do not provide an implementation of strtold */
 -#if !defined (__amigaos4__) || defined(__CLIB4__)
 +/* AmigaOS4: clib2 does not provide an implementation of strtold */
 +#ifndef __CLIB2__
  #undef strtold
  #endif
-
+ 
  namespace __gnu_cxx _GLIBCXX_VISIBILITY(default)
  {
  _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -42,10 +42,10 @@ index 09d99212541ff9d456e5c7f0d11632fe5e1b67c4..8f87a546ad0756fed29bf8249bc00c02
 +#ifndef __CLIB2__
    using ::strtold;
  #endif
-
+ 
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace __gnu_cxx
-
+ 
 @@ -272,13 +273,14 @@ namespace std
    using ::__gnu_cxx::lldiv;
  #endif
@@ -59,8 +59,9 @@ index 09d99212541ff9d456e5c7f0d11632fe5e1b67c4..8f87a546ad0756fed29bf8249bc00c02
    using ::__gnu_cxx::strtold;
  #endif
  } // namespace std
-
+ 
  #endif // _GLIBCXX_USE_C99_STDLIB
-
---
+ 
+-- 
 2.34.1
+
