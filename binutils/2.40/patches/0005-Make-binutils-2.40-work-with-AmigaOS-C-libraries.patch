@@ -1,4 +1,4 @@
-From 182403f11e90e3094a2bdf8339dfaf37969bf2c9 Mon Sep 17 00:00:00 2001
+From 1582276d76a30160ac69c7d3254e4f1f6268139b Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Tue, 15 Sep 2026 20:21:30 +0200
 Subject: [PATCH 5/5] Make binutils 2.40 work with AmigaOS C libraries -
@@ -8,12 +8,12 @@ Subject: [PATCH 5/5] Make binutils 2.40 work with AmigaOS C libraries -
 Signed-off-by: Josef Wegner <josef.wegner@outlook.com>
 ---
  bfd/cache.c                | 40 ++++++++++++++++++++++++++++++++++++++
- include/filenames.h        |  6 +++---
+ include/filenames.h        |  4 ++--
  libiberty/lrealpath.c      |  4 ++--
  libiberty/make-temp-file.c | 17 +++++++++++-----
  libiberty/pex-common.c     |  1 +
  opcodes/ppc-dis.c          |  2 +-
- 6 files changed, 59 insertions(+), 11 deletions(-)
+ 6 files changed, 58 insertions(+), 10 deletions(-)
 
 diff --git a/bfd/cache.c b/bfd/cache.c
 index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..23636cbc3208178b4107475b56f56fcf863e4f97 100644
@@ -73,18 +73,15 @@ index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..23636cbc3208178b4107475b56f56fcf
     This allows someone to play with the iostream behind BFD's back.
  
 diff --git a/include/filenames.h b/include/filenames.h
-index 656a550dcd20da154c8533929791f9190987db0a..485dba5bb113a6e072d68c1b1edbdefbc7e6f365 100644
+index 656a550dcd20da154c8533929791f9190987db0a..32795f9e3c27ad6f8a4ff1e5e7d6360dca0d3fdc 100644
 --- a/include/filenames.h
 +++ b/include/filenames.h
-@@ -72,24 +72,24 @@ extern "C" {
- #define HAS_DRIVE_SPEC_1(dos_based, f)			\
-   ((f)[0] && ((f)[1] == ':') && (dos_based))
+@@ -74,22 +74,22 @@ extern "C" {
  
  /* Remove the drive spec from F, assuming HAS_DRIVE_SPEC (f).
     The result is a pointer to the remainder of F.  */
  #if defined(__amigaos4__)
--#define STRIP_DRIVE_SPEC(f)	(strchr (&(f)[0],':') + 1 )
-+#define STRIP_DRIVE_SPEC(f)	(index( &(f)[0],':') + 1 )
+ #define STRIP_DRIVE_SPEC(f)	(strchr (&(f)[0],':') + 1 )
  #else
 -#define STRIP_DRIVE_SPEC(f)	((f) + 2)
 +#define STRIP_DRIVE_SPEC(f) 	((f) + 2)
@@ -97,7 +94,7 @@ index 656a550dcd20da154c8533929791f9190987db0a..485dba5bb113a6e072d68c1b1edbdefb
  #define IS_AMIGOS_DIR_SEPARATOR(c) ( ((c) == '/') || ((c) == ':') )
  #define IS_AMIGOS_ABSOLUTE_PATH(f) HAS_AMIGOS_DRIVE_SPEC(f)
 -#define HAS_AMIGOS_DRIVE_SPEC(f) (strchr (&(f)[0], ':') != NULL ) 
-+#define HAS_AMIGOS_DRIVE_SPEC(f) (index (&(f)[0], ':') != NULL )
++#define HAS_AMIGOS_DRIVE_SPEC(f) (strchr (&(f)[0], ':') != NULL )
  
  #define IS_UNIX_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (0, c)
  #define IS_UNIX_ABSOLUTE_PATH(f) IS_ABSOLUTE_PATH_1 (0, f)
