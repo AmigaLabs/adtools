@@ -1,6 +1,6 @@
-From 6a8b307b59e294f5e7cf4f8e80a34e858a0ffe8d Mon Sep 17 00:00:00 2001
+From 6c102c17d90c4c11b89951680dd6873e33b8e54d Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
-Date: Tue, 15 Sep 2026 20:20:43 +0200
+Date: Sun, 20 Sep 2026 17:05:38 +0200
 Subject: [PATCH 3/3] Added better handling of Amiga file paths: - Use SDK: and
  GCC: instead of /SDK/ and /GCC/ - Some fixes to the newlib, clib2 and clib4
  specs - Prevent gcc to add a directory separator after drive separator -
@@ -10,8 +10,8 @@ Subject: [PATCH 3/3] Added better handling of Amiga file paths: - Use SDK: and
  gcc/config.host                               |  2 +-
  gcc/config/rs6000/amigaos.h                   | 13 +++++----
  .../xm-mingw32.h => rs6000/xm-amigaos.h}      | 29 +++++++++----------
- libiberty/make-temp-file.c                    |  6 +++-
- 4 files changed, 28 insertions(+), 22 deletions(-)
+ libiberty/make-temp-file.c                    |  2 +-
+ 4 files changed, 24 insertions(+), 22 deletions(-)
  copy gcc/config/{i386/xm-mingw32.h => rs6000/xm-amigaos.h} (52%)
 
 diff --git a/gcc/config.host b/gcc/config.host
@@ -34,7 +34,7 @@ index 2a11c603aad2857322b391d9c5d8638a3047de0c..cc73de723d6f585eb8ba33c013c44a54
      host_xmake_file="${host_xmake_file} rs6000/x-darwin"
      ;;
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 802d22903609042c3aef95233eb2344ef135b368..8b817bff704daa442d0c0396b53230767f551bf8 100644
+index a24d3da29a0afa073056021ab200c4ba9df0806b..89b032d2e3c95f20f76959c7a25c367960576fb4 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -171,14 +171,17 @@ ASM_OPT_ANY
@@ -70,7 +70,7 @@ index 802d22903609042c3aef95233eb2344ef135b368..8b817bff704daa442d0c0396b5323076
  
  #define STARTFILE_CLIB2_SPEC "\
  %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
-                  "%{!msoft-float:%(lib_subdir_type)}/crtbegin.o \
+ 		 "%{!msoft-float:%(lib_subdir_type)}/crtbegin.o \
  %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
 @@ -234,13 +237,13 @@ ASM_OPT_ANY
  -idirafter %(base_sdk)clib4/include -idirafter %(base_sdk)local/clib4/include"
@@ -160,28 +160,24 @@ index c005449bce7dee0c6395ddb37a79b858e101f916..ce3ab3b9a4da5c1529b4aae85d3045d7
 +# define HAVE_CASE_INSENSITIVE_FILE_SYSTEM 1
  #endif
 diff --git a/libiberty/make-temp-file.c b/libiberty/make-temp-file.c
-index dfb7b916ec56cad63081e3609730e59b8cbff18b..14dd881c3a0f6fceea9b4999226921999c83c187 100644
+index 70e6386df97ea50b41af9779dee85cadd86377b6..d87403a72ca67ec321cc3861d4062ccf8fa8c6b8 100644
 --- a/libiberty/make-temp-file.c
 +++ b/libiberty/make-temp-file.c
-@@ -155,13 +155,17 @@ choose_tmpdir (void)
- 	base = ".";
-       /* Append DIR_SEPARATOR to the directory we've chosen
- 	 and return it (skip if the path already ends with a separator).  */
+@@ -157,13 +157,13 @@ choose_tmpdir (void)
+ 	 and return it.  */
        len = strlen (base);
        tmpdir = XNEWVEC (char, len + 2);
        strcpy (tmpdir, base);
+ #ifdef __amigaos__
+       /* skip if the path already ends with a separator.  */
 -      if (!IS_DIR_SEPARATOR (tmpdir[len - 1]))
-+      if (!IS_DIR_SEPARATOR (tmpdir[len - 1])
-+#ifdef __amigaos__
-+	  && tmpdir[len - 1] != ':'
-+#endif
-+	  )
++      if (!IS_DIR_SEPARATOR (tmpdir[len - 1]) && tmpdir[len - 1] != ':')
  	{
  	  tmpdir[len] = DIR_SEPARATOR;
- 	  tmpdir[len + 1] = '\0';
+ 	  tmpdir[len+1] = '\0';
  	}
-       memoized_tmpdir = tmpdir;
- #else /* defined(_WIN32) && !defined(__CYGWIN__) */
+ #else
+       tmpdir[len] = DIR_SEPARATOR;
 -- 
 2.47.3
 
