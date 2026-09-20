@@ -1,7 +1,7 @@
-From 9f395e8dcede6fc6eab6ca376e46b5aefa08bbea Mon Sep 17 00:00:00 2001
+From 7d785639fe190891f29c939729606c4b4a6d6e4e Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Thu, 25 Jan 2024 20:40:13 +0000
-Subject: [PATCH 28/31] Provide clib4 as an additional C runtime library.
+Subject: [PATCH 28/32] Provide clib4 as an additional C runtime library.
 
 As well as the existing newlib and clib2 as C runtime library choices,
 clib4 is now introduced.
@@ -263,5 +263,5 @@ index fb5ae1889b288097f793396f35a9b65c2acf9fbb..4975c6070fbf120a0061dab496918566
  {
  _GLIBCXX_BEGIN_NAMESPACE_VERSION
 -- 
-2.34.1
+2.43.0
 
