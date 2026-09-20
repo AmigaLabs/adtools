@@ -45,6 +45,7 @@ else
 ifneq ($(BINUTILS_VERSION),2.40)
 $(error Unexpected binutils version)
 else
+CLIB ?= newlib
 CROSS_CFLAGS=CFLAGS="					\
 				-Wno-sign-compare	\
 							"
@@ -56,26 +57,30 @@ CROSS_CONFIGURE_ARGUMENTS=				\
 				--with-python=no	\
 				--prefix=$(PREFIX)
 NATIVE_CFLAGS=CFLAGS="					\
-				-mcrt=clib4		\
+				-mcrt=$(CLIB)		\
 				-Wno-sign-compare	\
 							"
 NATIVE_CXXFLAGS=CXXFLAGS="				\
-				-mcrt=clib4		\
+				-mcrt=$(CLIB)		\
 							"
 NATIVE_LDFLAGS=LDFLAGS="				\
-				-mcrt=clib4		\
+				-mcrt=$(CLIB)		\
 							"
 NATIVE_CONFIGURE_ARGUMENTS=				\
 				--target=ppc-amigaos	\
 				--host=ppc-amigaos	\
 				--disable-plugins	\
+				--disable-gdb		\
 				--disable-sim		\
 				--disable-nls		\
 				--enable-shared=no	\
 				--with-python=no	\
-				--prefix=/gcc		\
+				--prefix=/gcc
+ifeq ($(CLIB),clib4)
+NATIVE_CONFIGURE_ARGUMENTS+=								\
 				--with-gmp=$(abspath ../native-build/root-cross/clib4)	\
 				--with-mpfr=$(abspath ../native-build/root-cross/clib4)
+endif
 endif
 endif
 ############################
