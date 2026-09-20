@@ -1,7 +1,7 @@
-From 2dd943273743a316666045ea9158e51ae54cb6db Mon Sep 17 00:00:00 2001
+From da75ff8d80625afec4dfc05428dcb2eaed8e46c8 Mon Sep 17 00:00:00 2001
 From: Marcus Comstedt <marcus@mc.pp.se>
 Date: Wed, 31 Jul 2019 22:10:48 +0200
-Subject: [PATCH 27/31] Default to DWARF v2
+Subject: [PATCH 27/32] Default to DWARF v2
 
 ---
  gcc/config/rs6000/amigaos.h | 4 ++++
@@ -29,5 +29,5 @@ index ec0146c4b8c05eb300f8928e475641123c3f5632..a8724d3f3efdfe759565828190426c18
    amigaos_expand_builtin (EXP, TARGET, SUBTARGET, MODE, IGNORE, SUCCESS)
  
 -- 
-2.34.1
+2.43.0
 

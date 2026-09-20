@@ -1,4 +1,4 @@
-From b0c88f9efd21aa7247984eecaa65bea87111af90 Mon Sep 17 00:00:00 2001
+From 53c5ecf9195a0cf0c6347f99b1dd981c4f656dd3 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Ola=20S=C3=B6der?= <rolfkopman@gmail.com>
 Date: Sun, 9 Apr 2023 22:34:16 +0200
 Subject: [PATCH 37/44] gcc11: Add builtin _AMIGA define.
@@ -27,5 +27,5 @@ index 38ba54769051e96740284ebf8fdf7bbddb1ba83a..6700c742353d2fc0f36496b54f403edd
        builtin_define_std ("amigaos4");		\
        builtin_assert ("system=amigaos");	\
 -- 
-2.34.1
+2.43.0
 

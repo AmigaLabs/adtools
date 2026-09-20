@@ -1,7 +1,7 @@
-From 390a72d9d7d7abee1fa5bcde7aa23c86a0a5bd59 Mon Sep 17 00:00:00 2001
+From 2c6575b4444f00543bd0fff9f8e3dd9e231f7072 Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Wed, 20 Nov 2024 20:11:23 +0000
-Subject: [PATCH 21/22] Add strtold to the std namespace.
+Subject: [PATCH 21/23] Add strtold to the std namespace.
 
 strtold is provided by both NEWLIB and CLIB4. Previously,
 std::strtold was not available for C++.
@@ -63,5 +63,5 @@ index 09d99212541ff9d456e5c7f0d11632fe5e1b67c4..79a528e1b15421aa54790780a6abb0c0
  #endif // _GLIBCXX_USE_C99_STDLIB
  
 -- 
-2.34.1
+2.43.0
 

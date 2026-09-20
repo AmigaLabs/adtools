@@ -1,7 +1,7 @@
-From 2b0143578e9c819b8638fbf483ed46c8534e1928 Mon Sep 17 00:00:00 2001
+From 68d27b3c6e2709aafae0f279c495d2641f3b164a Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Wed, 4 Apr 2018 22:48:33 +0200
-Subject: [PATCH 13/22] Rerun make maint-deps in libiberty.
+Subject: [PATCH 13/23] Rerun make maint-deps in libiberty.
 
 ---
  libiberty/Makefile.in | 36 ++++++++++++++++++++++--------------
@@ -161,5 +161,5 @@ index 7151e59e38eb126f3962cd2370aef45c6be042ea..bc954c353775b59b904dd5a9d8648083
  	  $(COMPILE.c) $(PICFLAG) $(NOASANFLAG) $(srcdir)/xmalloc.c -o noasan/$@; \
  	else true; fi
 -- 
-2.34.1
+2.43.0
 

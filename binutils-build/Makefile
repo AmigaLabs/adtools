@@ -45,6 +45,7 @@ else
 ifneq ($(BINUTILS_VERSION),2.40)
 $(error Unexpected binutils version)
 else
+CLIB ?= newlib
 CROSS_CFLAGS=CFLAGS="					\
 				-Wno-sign-compare	\
 							"
@@ -53,13 +54,17 @@ CROSS_CONFIGURE_ARGUMENTS=				\
 				--disable-gdb		\
 				--disable-sim		\
 				--target=ppc-amigaos	\
+				--with-python=no	\
 				--prefix=$(PREFIX)
 NATIVE_CFLAGS=CFLAGS="					\
-				-mcrt=clib4		\
+				-mcrt=$(CLIB)		\
 				-Wno-sign-compare	\
 							"
+NATIVE_CXXFLAGS=CXXFLAGS="				\
+				-mcrt=$(CLIB)		\
+							"
 NATIVE_LDFLAGS=LDFLAGS="				\
-				-mcrt=clib4		\
+				-mcrt=$(CLIB)		\
 							"
 NATIVE_CONFIGURE_ARGUMENTS=				\
 				--target=ppc-amigaos	\
@@ -68,7 +73,14 @@ NATIVE_CONFIGURE_ARGUMENTS=				\
 				--disable-gdb		\
 				--disable-sim		\
 				--disable-nls		\
+				--enable-shared=no	\
+				--with-python=no	\
 				--prefix=/gcc
+ifeq ($(CLIB),clib4)
+NATIVE_CONFIGURE_ARGUMENTS+=								\
+				--with-gmp=$(abspath ../native-build/root-cross/clib4)	\
+				--with-mpfr=$(abspath ../native-build/root-cross/clib4)
+endif
 endif
 endif
 ############################
@@ -90,6 +102,7 @@ native:
 	cd $(NATIVE_BUILD_DIR);			\
 		$(NATIVE_LDFLAGS)		\
 		$(NATIVE_CFLAGS)		\
+		$(NATIVE_CXXFLAGS)		\
 		$(REAL_SRC_DIR)/configure	\
 		$(NATIVE_CONFIGURE_ARGUMENTS)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)

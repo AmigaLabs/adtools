@@ -1,7 +1,7 @@
-From cf0edcb46b952956e7249b39fd62728cc2d1d591 Mon Sep 17 00:00:00 2001
+From 92486d79686470895104f522fa024ce7238dd004 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Tue, 9 Jun 2026 21:08:44 +0000
-Subject: [PATCH 1/2] amigaos 4 native and cross compiler changes
+Subject: [PATCH 1/3] amigaos 4 native and cross compiler changes
 
 ---
  config-ml.in                                  |    4 +-
@@ -64,7 +64,7 @@ Subject: [PATCH 1/2] amigaos 4 native and cross compiler changes
  libiberty/configure.ac                        |    7 +
  libiberty/lrealpath.c                         |    5 +-
  libiberty/make-relative-prefix.c              |   34 +-
- libiberty/make-temp-file.c                    |   13 +-
+ libiberty/make-temp-file.c                    |   13 +
  libiberty/pex-amigaos.c                       |  325 ++++++
  libiberty/setenv-amigaos.c                    |   74 ++
  libssp/ssp.c                                  |    7 +-
@@ -85,7 +85,7 @@ Subject: [PATCH 1/2] amigaos 4 native and cross compiler changes
  .../src/c++17/fast_float/fast_float.h         |    3 +-
  libstdc++-v3/src/c++17/fs_ops.cc              |   13 +-
  libstdc++-v3/src/c++17/fs_path.cc             |  100 +-
- 82 files changed, 4688 insertions(+), 71 deletions(-)
+ 81 files changed, 4680 insertions(+), 68 deletions(-)
  create mode 100644 gcc/config/amigaos-stdint.h
  create mode 100644 gcc/config/rs6000/amigaos-protos.h
  create mode 100644 gcc/config/rs6000/amigaos.c
@@ -229,7 +229,7 @@ index 1d9e10127ca57f61e6651964f409e2530ab6a308..474eef1fc2f329257986e0c87c3c3f2e
    -DDEFAULT_REAL_TARGET_MACHINE=\"$(real_target_noncanonical)\" \
    -DDEFAULT_TARGET_MACHINE=\"$(target_noncanonical)\" \
 diff --git a/gcc/c-family/c-attribs.cc b/gcc/c-family/c-attribs.cc
-index 67709912a114b15813c123679b7a44252f8cc4c6..4bc1baa4d6b8154d9d3ef01c3bdbbee8020a0c52 100644
+index 67709912a114b15813c123679b7a44252f8cc4c6..41f872774e705d1fcdbabfa9c4833bc5d0e85c53 100644
 --- a/gcc/c-family/c-attribs.cc
 +++ b/gcc/c-family/c-attribs.cc
 @@ -137,12 +137,13 @@ static tree handle_nonnull_attribute (tree *, tree, tree, int, bool *);
@@ -254,10 +254,10 @@ index 67709912a114b15813c123679b7a44252f8cc4c6..4bc1baa4d6b8154d9d3ef01c3bdbbee8
  			      handle_warn_unused_result_attribute,
  	                      attr_warn_unused_result_exclusions },
 +  { "libcall",                0, 0, false, true, true, false,
-+                              handle_libcall_attribute, NULL },
++			      handle_libcall_attribute, NULL },
 +  /* Similiar to libcall but doesn't imply linearvarargs. Can be handled as libcall here. */
 +  { "libcall2",               0, 0, false, true, true, false,
-+                              handle_libcall_attribute, NULL },
++			      handle_libcall_attribute, NULL },
    { "sentinel",               0, 1, false, true, true, false,
  			      handle_sentinel_attribute, NULL },
    /* For internal use (marking of builtins) only.  The name contains space
@@ -284,7 +284,7 @@ index 67709912a114b15813c123679b7a44252f8cc4c6..4bc1baa4d6b8154d9d3ef01c3bdbbee8
 +      && TREE_CODE (*node) != TYPE_DECL)
 +    {
 +      warning (OPT_Wattributes,"%qs attribute only applies to functions",
-+              IDENTIFIER_POINTER (name));
++	      IDENTIFIER_POINTER (name));
 +      *no_add_attrs = true;
 +    }
 +
@@ -374,7 +374,7 @@ index d660ff1d922a8857f8148b808e1cd2537041461e..bbb5d5cd1e85fcb88d9b84ae98370bd6
    global_sso = default_sso;
    c_register_pragma (0, "scalar_storage_order", 
 diff --git a/gcc/c/c-parser.cc b/gcc/c/c-parser.cc
-index 49c692974f508be7b21bfc8611f2c9376bc41131..362019998c61023d8be43a418a0a0ea5850dd824 100644
+index 49c692974f508be7b21bfc8611f2c9376bc41131..0a3eeb17d540c211ceca3315600840d303c15deb 100644
 --- a/gcc/c/c-parser.cc
 +++ b/gcc/c/c-parser.cc
 @@ -101,12 +101,67 @@ set_c_expr_source_range (c_expr *expr,
@@ -575,8 +575,8 @@ index 49c692974f508be7b21bfc8611f2c9376bc41131..362019998c61023d8be43a418a0a0ea5
 +     */
 +    bool old_flag_plugin_added = flag_plugin_added;
 +    register_callback ("amigaos-tagtype", PLUGIN_FINISH_DECL,
-+                       amigaos_tagtype_finish_decl_callback,
-+                       ctype);
++		       amigaos_tagtype_finish_decl_callback,
++		       ctype);
 +    flag_plugin_added = 1;
 +    c_parser_declaration_or_fndef(parser, false, false, true, false, true, NULL, nullptr);
 +    unregister_callback ("amigaos-tagtype", PLUGIN_FINISH_DECL);
@@ -595,7 +595,7 @@ index 49c692974f508be7b21bfc8611f2c9376bc41131..362019998c61023d8be43a418a0a0ea5
    c_parser_skip_to_pragma_eol (parser);
  
 diff --git a/gcc/c/c-typeck.cc b/gcc/c/c-typeck.cc
-index ac2fa55188f709a363708aa4a39aec461698f331..e50da1fea927fd600f7985c2d721a886664d52bf 100644
+index ac2fa55188f709a363708aa4a39aec461698f331..667f1b5ad553c838146ab6c57387d7ce12719ade 100644
 --- a/gcc/c/c-typeck.cc
 +++ b/gcc/c/c-typeck.cc
 @@ -3205,12 +3205,14 @@ build_function_call_vec (location_t loc, vec<location_t> arg_loc,
@@ -692,21 +692,21 @@ index ac2fa55188f709a363708aa4a39aec461698f331..e50da1fea927fd600f7985c2d721a886
 +       * The latter case usually happens on the first tag item.
 +       */
 +      if (checktags && (type == NULL_TREE || TREE_CODE(type) == INTEGER_TYPE))
-+        {
-+          extern tree amigaos_get_type_associated_tagtype(tree type);
++	{
++	  extern tree amigaos_get_type_associated_tagtype(tree type);
 +
-+          if (prev_tagtype)
-+            {
-+              type = prev_tagtype;
-+              prev_tagtype = NULL_TREE;
-+            }
-+          else
-+            {
-+              prev_tagtype = amigaos_get_type_associated_tagtype(val);
-+              if (!prev_tagtype)
-+                prev_tagtype = amigaos_get_type_associated_tagtype((*origtypes)[parmnum]);
-+            }
-+        }
++	  if (prev_tagtype)
++	    {
++	      type = prev_tagtype;
++	      prev_tagtype = NULL_TREE;
++	    }
++	  else
++	    {
++	      prev_tagtype = amigaos_get_type_associated_tagtype(val);
++	      if (!prev_tagtype)
++		prev_tagtype = amigaos_get_type_associated_tagtype((*origtypes)[parmnum]);
++	    }
++	}
 +
        if (type != NULL_TREE)
  	{
@@ -867,7 +867,7 @@ index 0000000000000000000000000000000000000000..66afbfd18a1a63a6ff2c8cf2c0ab2ca8
 +extern void amigaos_function_end_prologue (FILE *file);
 diff --git a/gcc/config/rs6000/amigaos.c b/gcc/config/rs6000/amigaos.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..f6decafacb4d8ce9119228beb6ac84b6bf8940a3
+index 0000000000000000000000000000000000000000..20467c84f0069c257a3b78b3eeb9417ace9d4669
 --- /dev/null
 +++ b/gcc/config/rs6000/amigaos.c
 @@ -0,0 +1,315 @@
@@ -1035,9 +1035,9 @@ index 0000000000000000000000000000000000000000..f6decafacb4d8ce9119228beb6ac84b6
 +amigaos_not_baserel_tree_p(tree decl)
 +{
 +  return(TREE_READONLY(decl)
-+         || TREE_CONSTANT(decl)
-+         || (DECL_ATTRIBUTES(decl)
-+             && lookup_attribute("force_no_baserel", DECL_ATTRIBUTES(decl))));
++	 || TREE_CONSTANT(decl)
++	 || (DECL_ATTRIBUTES(decl)
++	     && lookup_attribute("force_no_baserel", DECL_ATTRIBUTES(decl))));
 +}
 +
 +int
@@ -1053,15 +1053,15 @@ index 0000000000000000000000000000000000000000..f6decafacb4d8ce9119228beb6ac84b6
 +    if (decl)
 +    {
 +      if (SYMBOL_REF_FUNCTION_P(x) || amigaos_not_baserel_tree_p(decl))
-+        ret = 0;
++	ret = 0;
 +      else
-+        ret = 1;
++	ret = 1;
 +    }
 +  }
 +  else if (GET_CODE(x) == CONST
-+           && GET_CODE(XEXP(x, 0)) == PLUS
-+           && GET_CODE(XEXP(XEXP(x, 0), 0)) == SYMBOL_REF
-+           && GET_CODE(XEXP(XEXP(x, 0), 1)) == CONST_INT)
++	   && GET_CODE(XEXP(x, 0)) == PLUS
++	   && GET_CODE(XEXP(XEXP(x, 0), 0)) == SYMBOL_REF
++	   && GET_CODE(XEXP(XEXP(x, 0), 1)) == CONST_INT)
 +    ret = amigaos_baserel_operand(XEXP(XEXP(x, 0), 0));
 +  else if (GET_CODE(x) == LO_SUM)
 +    ret = amigaos_baserel_operand(XEXP(x, 1));
@@ -1173,7 +1173,7 @@ index 0000000000000000000000000000000000000000..f6decafacb4d8ce9119228beb6ac84b6
 +    {
 +      /* The void_type marks the end of a non-varargs function */
 +      if (TREE_VALUE(arglist) == void_type_node)
-+        is_varargs = false;
++	is_varargs = false;
 +
 +      arglist = TREE_CHAIN (arglist);
 +      arg++;
@@ -1188,7 +1188,7 @@ index 0000000000000000000000000000000000000000..f6decafacb4d8ce9119228beb6ac84b6
 +}
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..802d22903609042c3aef95233eb2344ef135b368
+index 0000000000000000000000000000000000000000..a24d3da29a0afa073056021ab200c4ba9df0806b
 --- /dev/null
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -0,0 +1,482 @@
@@ -1312,9 +1312,9 @@ index 0000000000000000000000000000000000000000..802d22903609042c3aef95233eb2344e
 +
 +/* Make most of the definitions from other compilers available */
 +#undef TARGET_OS_CPP_BUILTINS
-+#define TARGET_OS_CPP_BUILTINS()                \
-+  do                                            \
-+    {                                           \
++#define TARGET_OS_CPP_BUILTINS()		\
++  do					    \
++    {					   \
 +      builtin_define_std ("PPC");		\
 +      builtin_define_std ("powerpc");		\
 +      builtin_assert ("cpu=powerpc");		\
@@ -1328,36 +1328,36 @@ index 0000000000000000000000000000000000000000..802d22903609042c3aef95233eb2344e
 +      builtin_define_std ("amigaos4");		\
 +      builtin_assert ("system=amigaos");	\
 +      if (!amigaos_crt)			\
-+        {					\
-+          error ("no CRT specified");		\
-+        }					\
++	{					\
++	  error ("no CRT specified");		\
++	}					\
 +      else if (IS_MCRT("clib2") || IS_MCRT("clib2-ts")) \
-+        {					\
-+          builtin_define_std ("CLIB2");		\
-+          if (IS_MCRT("clib2-ts"))		\
-+            builtin_define ("__THREAD_SAFE");	\
-+        }					\
++	{					\
++	  builtin_define_std ("CLIB2");		\
++	  if (IS_MCRT("clib2-ts"))		\
++	    builtin_define ("__THREAD_SAFE");	\
++	}					\
 +      else if (IS_MCRT("clib4"))		\
-+        {					\
-+          builtin_define_std ("CLIB4");		\
-+          builtin_define ("CLIB4");		\
-+        }					\
++	{					\
++	  builtin_define_std ("CLIB4");		\
++	  builtin_define ("CLIB4");		\
++	}					\
 +      else if (IS_MCRT("ixemul"))		\
-+        {					\
-+          builtin_define_std ("ixemul");	\
-+          builtin_define_std ("IXEMUL");	\
-+        }					\
++	{					\
++	  builtin_define_std ("ixemul");	\
++	  builtin_define_std ("IXEMUL");	\
++	}					\
 +      else if (IS_MCRT("libnix"))		\
-+        {					\
-+          builtin_define_std ("libnix");	\
-+          builtin_define_std ("LIBNIX");	\
-+        }					\
++	{					\
++	  builtin_define_std ("libnix");	\
++	  builtin_define_std ("LIBNIX");	\
++	}					\
 +      else if (IS_MCRT("newlib"))		\
-+        {					\
-+          builtin_define_std ("NEWLIB");	\
-+        }					\
++	{					\
++	  builtin_define_std ("NEWLIB");	\
++	}					\
 +      TARGET_OS_SYSV_CPP_BUILTINS ();		\
-+    }                                           \
++    }					   \
 +  while (0)
 +
 +#undef CPP_SPEC
@@ -1414,13 +1414,13 @@ index 0000000000000000000000000000000000000000..802d22903609042c3aef95233eb2344e
 +
 +#define STARTFILE_CLIB2_SPEC "\
 +%(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
-+                 "%{!msoft-float:%(lib_subdir_type)}/crtbegin.o \
++		 "%{!msoft-float:%(lib_subdir_type)}/crtbegin.o \
 +%(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
-+                 "%{!msoft-float:%(lib_subdir_type)}/crt0.o"
++		 "%{!msoft-float:%(lib_subdir_type)}/crt0.o"
 +
 +#define ENDFILE_CLIB2_SPEC "\
 +%(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
-+                 "%{!msoft-float:%(lib_subdir_type)}/crtend.o"
++		 "%{!msoft-float:%(lib_subdir_type)}/crtend.o"
 +
 +/* clib4 */
 +
@@ -1633,13 +1633,13 @@ index 0000000000000000000000000000000000000000..802d22903609042c3aef95233eb2344e
 +};
 +
 +#define SUB3TARGET_OVERRIDE_OPTIONS  \
-+do                                   \
-+{                                    \
-+  if (TARGET_ALTIVEC)                \
-+  {                                  \
-+    rs6000_altivec_abi = 1;          \
++do				   \
++{				    \
++  if (TARGET_ALTIVEC)		\
++  {				  \
++    rs6000_altivec_abi = 1;	  \
 +    TARGET_ALTIVEC_VRSAVE = 1;       \
-+  }                                  \
++  }				  \
 +} while(0)
 +
 +#undef SUBTARGET_INIT_BUILTINS
@@ -3068,7 +3068,7 @@ index 0000000000000000000000000000000000000000..879758e4eb5594a79b8ee2d25564b19a
 +#include_next <host-config.h>
 diff --git a/libatomic/config/amigaos/lock.c b/libatomic/config/amigaos/lock.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..b589d226444d802121d8247702fadb39badf20de
+index 0000000000000000000000000000000000000000..9cdeeb96d974b66319c9509497acfe21e7d12925
 --- /dev/null
 +++ b/libatomic/config/amigaos/lock.c
 @@ -0,0 +1,136 @@
@@ -3184,7 +3184,7 @@ index 0000000000000000000000000000000000000000..b589d226444d802121d8247702fadb39
 +    {
 +      libat_lock (&locks[h]);
 +      if (++h == NLOCKS)
-+        h = 0;
++	h = 0;
 +      i += WATCH_SIZE;
 +    }
 +  while (i < n);
@@ -3203,7 +3203,7 @@ index 0000000000000000000000000000000000000000..b589d226444d802121d8247702fadb39
 +    {
 +      libat_unlock (&locks[h]);
 +      if (++h == NLOCKS)
-+        h = 0;
++	h = 0;
 +      i += WATCH_SIZE;
 +    }
 +  while (i < n);
@@ -3360,7 +3360,7 @@ index 0000000000000000000000000000000000000000..8e5830a421fa0cff0065f6937d5871da
 \ No newline at end of file
 diff --git a/libgcc/gthr-amigaos-native.c b/libgcc/gthr-amigaos-native.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd4550540274
+index 0000000000000000000000000000000000000000..e346d3e7abfb6efd295c3ac2f22156998f3eea02
 --- /dev/null
 +++ b/libgcc/gthr-amigaos-native.c
 @@ -0,0 +1,1022 @@
@@ -3641,15 +3641,15 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +      int new_num_key_entries_allocated = keystore->num_key_entries_allocated * 2 + 4;
 +
 +      if (!(new_keys = (struct key *)iexec->AllocVec (sizeof(*new_keys) * new_num_key_entries_allocated, 0)))
-+        {
-+          iexec->ReleaseSemaphore (&keystore->sem);
-+          return ENOMEM;
-+        }
++	{
++	  iexec->ReleaseSemaphore (&keystore->sem);
++	  return ENOMEM;
++	}
 +      if (keystore->keys)
-+        {
-+          memcpy (new_keys, keystore->keys, keystore->num_key_entries * sizeof(*new_keys));
-+          iexec->FreeVec (keystore->keys);
-+        }
++	{
++	  memcpy (new_keys, keystore->keys, keystore->num_key_entries * sizeof(*new_keys));
++	  iexec->FreeVec (keystore->keys);
++	}
 +      keystore->keys = new_keys;
 +      keystore->num_key_entries_allocated = new_num_key_entries_allocated;
 +    }
@@ -3689,7 +3689,7 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  while (entry)
 +    {
 +      if (entry->task == task)
-+          break;
++	  break;
 +      entry = entry->next;
 +    }
 +  return entry;
@@ -3728,10 +3728,10 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +    {
 +      /* Specific not found for this task, allocate a new entry */
 +      if (!(entry = (keyentry_t *)iexec->ItemPoolAlloc(keystore->keyentry_pool)))
-+        {
-+          iexec->ReleaseSemaphore (&keystore->sem);
-+          return ENOMEM;
-+        }
++	{
++	  iexec->ReleaseSemaphore (&keystore->sem);
++	  return ENOMEM;
++	}
 +      entry->task = this_task;
 +      /* entry->data will be set in the following */
 +      entry->next = keystore->keys[__key.id].first;
@@ -3795,10 +3795,10 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  if (iexec->AttemptSemaphore (&mx->u.i.sem))
 +    {
 +      if (!mx->u.i.recursive && mx->u.i.acquired)
-+        {
-+          iexec->ReleaseSemaphore (&mx->u.i.sem);
-+          return EBUSY;
-+        }
++	{
++	  iexec->ReleaseSemaphore (&mx->u.i.sem);
++	  return EBUSY;
++	}
 +      mx->u.i.acquired++;
 +      return 0;
 +    }
@@ -3937,13 +3937,13 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +      keyentry_t *key;
 +
 +      if (!(destroy = keystore->keys[i].destroy))
-+        continue;
++	continue;
 +
 +      if (!(key = find_keyentry (i, task)))
-+        continue;
++	continue;
 +
 +      if (key->data)
-+        destroy ((void *)key->data);
++	destroy ((void *)key->data);
 +    }
 +  iexec->ReleaseSemaphore (&keystore->sem);
 +
@@ -3974,16 +3974,16 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  threadentry->args = args;
 +
 +  threadentry->process = idos->CreateNewProcTags (
-+                NP_Entry, __gthread_entry,
-+                NP_Child, TRUE,
-+                NP_UserData, (int32)threadentry,
-+                NP_Input, idos->Input(),
-+                NP_Output, idos->Output(),
-+                NP_Error, idos->ErrorOutput(),
-+                NP_CloseInput,  FALSE,
-+                NP_CloseOutput, FALSE,
-+                NP_CloseError, FALSE,
-+                TAG_DONE);
++		NP_Entry, __gthread_entry,
++		NP_Child, TRUE,
++		NP_UserData, (int32)threadentry,
++		NP_Input, idos->Input(),
++		NP_Output, idos->Output(),
++		NP_Error, idos->ErrorOutput(),
++		NP_CloseInput,  FALSE,
++		NP_CloseOutput, FALSE,
++		NP_CloseError, FALSE,
++		TAG_DONE);
 +
 +  iexec->ObtainSemaphore (&threadstore->sem);
 +  threadentry->next = threadstore->threads;
@@ -4004,7 +4004,7 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  while (thr)
 +    {
 +      if (thr->process == process)
-+          break;
++	  break;
 +      thr = thr->next;
 +    }
 +  return thr;
@@ -4017,7 +4017,7 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  while (thr)
 +    {
 +      if (thr->id == id)
-+          break;
++	  break;
 +      thr = thr->next;
 +    }
 +  return thr;
@@ -4103,9 +4103,9 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  if (thr->timer_io)
 +    {
 +      if (thr->timer_io->Request.io_Device)
-+        {
-+          iexec->CloseDevice (&thr->timer_io->Request);
-+        }
++	{
++	  iexec->CloseDevice (&thr->timer_io->Request);
++	}
 +      iexec->FreeSysObject (ASOT_IOREQUEST, thr->timer_io);
 +      thr->timer_io = NULL;
 +    }
@@ -4141,16 +4141,16 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  if (!thr->timer_port)
 +    {
 +      if (!(thr->timer_port = iexec->CreateMsgPort ()))
-+        goto bailout;
++	goto bailout;
 +
 +      if (!(thr->timer_io = (struct TimeRequest *)iexec->AllocSysObjectTags (ASOT_IOREQUEST,
-+          ASOIOR_Size, sizeof(struct TimeRequest),
-+          ASOIOR_ReplyPort, thr->timer_port,
-+          TAG_END)))
-+        goto bailout;
++	  ASOIOR_Size, sizeof(struct TimeRequest),
++	  ASOIOR_ReplyPort, thr->timer_port,
++	  TAG_END)))
++	goto bailout;
 +
 +      if (iexec->OpenDevice(TIMERNAME, UNIT_MICROHZ, &thr->timer_io->Request, 0))
-+        goto bailout;
++	goto bailout;
 +    }
 +
 +  *thr_p = thr;
@@ -4175,13 +4175,13 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +  while (cur_thr)
 +    {
 +      if (cur_thr == thr)
-+        {
-+          if (!prev_thr)
-+            cond->u.i.first_in_cond_wait_list = cur_thr->next_in_cond_wait_list;
-+          else
-+            prev_thr->next_in_cond_wait_list = cur_thr->next_in_cond_wait_list;
-+          break;
-+        }
++	{
++	  if (!prev_thr)
++	    cond->u.i.first_in_cond_wait_list = cur_thr->next_in_cond_wait_list;
++	  else
++	    prev_thr->next_in_cond_wait_list = cur_thr->next_in_cond_wait_list;
++	  break;
++	}
 +
 +      prev_thr = cur_thr;
 +      cur_thr = cur_thr->next_in_cond_wait_list;
@@ -4309,8 +4309,8 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +
 +int
 +__gthread_cond_timedwait (__gthread_cond_t *__cond,
-+                          __gthread_mutex_t *mutex,
-+                          const __gthread_time_t *abs_timeout)
++			  __gthread_mutex_t *mutex,
++			  const __gthread_time_t *abs_timeout)
 +{
 +  __internal_gthread_cond_t *cond = (__internal_gthread_cond_t *)__cond;
 +  threadentry_t *self_thr;
@@ -4386,7 +4386,6 @@ index 0000000000000000000000000000000000000000..e5aa8c93a493cee1129602bdacffcd45
 +#ifdef __cplusplus
 +}
 +#endif
-\ No newline at end of file
 diff --git a/libgcc/gthr-amigaos-posix.c b/libgcc/gthr-amigaos-posix.c
 new file mode 100644
 index 0000000000000000000000000000000000000000..e3911780750d774aa4301454a23f7d8f3a122eb6
@@ -4777,7 +4776,7 @@ index 0000000000000000000000000000000000000000..e19dabfa993b331c651dcb467270f086
 \ No newline at end of file
 diff --git a/libgcc/gthr-amigaos.h b/libgcc/gthr-amigaos.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..795f1d6b66e7471570180f752fb866c6448b1e9f
+index 0000000000000000000000000000000000000000..fa137f482b76a36d23a65d336b6c611bb6e69019
 --- /dev/null
 +++ b/libgcc/gthr-amigaos.h
 @@ -0,0 +1,182 @@
@@ -4828,7 +4827,7 @@ index 0000000000000000000000000000000000000000..795f1d6b66e7471570180f752fb866c6
 +#endif
 +
 +#ifdef _LIBOBJC
-+ 
++
 +#ifndef UNUSED
 +#define UNUSED __attribute__((__unused__))
 +#define UNUSED_DEFINED
@@ -4845,7 +4844,7 @@ index 0000000000000000000000000000000000000000..795f1d6b66e7471570180f752fb866c6
 +{
 +  return 0;
 +}
-+ 
++
 +#ifndef UNUSED_DEFINED
 +#undef UNUSED
 +#endif
@@ -4919,12 +4918,12 @@ index 0000000000000000000000000000000000000000..795f1d6b66e7471570180f752fb866c6
 +
 +int
 +__gthread_cond_wait_recursive (__gthread_cond_t *cond,
-+                               __gthread_recursive_mutex_t *mutex);
++			       __gthread_recursive_mutex_t *mutex);
 +
 +int
 +__gthread_cond_timedwait (__gthread_cond_t *cond,
-+                            __gthread_mutex_t *mutex,
-+                            const __gthread_time_t *abs_timeout);
++			    __gthread_mutex_t *mutex,
++			    const __gthread_time_t *abs_timeout);
 +
 +int
 +__gthread_cond_destroy (__gthread_cond_t *__cond);
@@ -4954,7 +4953,7 @@ index 0000000000000000000000000000000000000000..795f1d6b66e7471570180f752fb866c6
 +
 +int
 +__gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t *m,
-+                                    const __gthread_time_t *abs_time);
++				    const __gthread_time_t *abs_time);
 +
 +#endif /* _LIBOBJC */
 +
@@ -4963,7 +4962,6 @@ index 0000000000000000000000000000000000000000..795f1d6b66e7471570180f752fb866c6
 +#endif
 +
 +#endif /* ! GCC_GTHR_AMIGAOS_H */
-\ No newline at end of file
 diff --git a/libgcc/gthr-posix.h b/libgcc/gthr-posix.h
 index aebcfdd9f4caa5378e4d0c54308e2c0a5761c17a..65f411811417c480eea5b7120aa7a24499d9f752 100644
 --- a/libgcc/gthr-posix.h
@@ -5375,7 +5373,7 @@ index 1b970e7a773af5e26df87706a9689b07e9a6a504..fc45a08cadffe5de98d5ae96aa5b9b1a
  
  static char *
 diff --git a/libiberty/make-temp-file.c b/libiberty/make-temp-file.c
-index 1d2f21d6c5cb2e14c66354b6bbfe62c362233b8a..dfb7b916ec56cad63081e3609730e59b8cbff18b 100644
+index 1d2f21d6c5cb2e14c66354b6bbfe62c362233b8a..70e6386df97ea50b41af9779dee85cadd86377b6 100644
 --- a/libiberty/make-temp-file.c
 +++ b/libiberty/make-temp-file.c
 @@ -55,12 +55,13 @@ Boston, MA 02110-1301, USA.  */
@@ -5408,25 +5406,24 @@ index 1d2f21d6c5cb2e14c66354b6bbfe62c362233b8a..dfb7b916ec56cad63081e3609730e59b
        base = try_dir (getenv ("TEMP"), base);
  #endif
        
-@@ -147,18 +151,21 @@ choose_tmpdir (void)
-       base = try_dir (tmp, base);
-       
-       /* If all else fails, use the current directory!  */
-       if (base == 0)
+@@ -151,14 +155,23 @@ choose_tmpdir (void)
  	base = ".";
        /* Append DIR_SEPARATOR to the directory we've chosen
--	 and return it.  */
-+	 and return it (skip if the path already ends with a separator).  */
+ 	 and return it.  */
        len = strlen (base);
        tmpdir = XNEWVEC (char, len + 2);
        strcpy (tmpdir, base);
--      tmpdir[len] = DIR_SEPARATOR;
--      tmpdir[len+1] = '\0';
++#ifdef __amigaos__
++      /* skip if the path already ends with a separator.  */
 +      if (!IS_DIR_SEPARATOR (tmpdir[len - 1]))
 +	{
 +	  tmpdir[len] = DIR_SEPARATOR;
-+	  tmpdir[len + 1] = '\0';
++	  tmpdir[len+1] = '\0';
 +	}
++#else
+       tmpdir[len] = DIR_SEPARATOR;
+       tmpdir[len+1] = '\0';
++#endif
        memoized_tmpdir = tmpdir;
  #else /* defined(_WIN32) && !defined(__CYGWIN__) */
        DWORD len;
@@ -5435,7 +5432,7 @@ index 1d2f21d6c5cb2e14c66354b6bbfe62c362233b8a..dfb7b916ec56cad63081e3609730e59b
        len = GetTempPath(0, NULL);
 diff --git a/libiberty/pex-amigaos.c b/libiberty/pex-amigaos.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c07499f402b1a
+index 0000000000000000000000000000000000000000..6945d604821ca193d3e31f164e5f1b70f4d5ac2c
 --- /dev/null
 +++ b/libiberty/pex-amigaos.c
 @@ -0,0 +1,325 @@
@@ -5559,7 +5556,7 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +static pid_t
 +pex_amiga_exec_child (struct pex_obj *obj, int flags ATTRIBUTE_UNUSED, const char *executable ATTRIBUTE_UNUSED,
 +		     char * const * argv, char * const * env ATTRIBUTE_UNUSED,
-+                     int in ATTRIBUTE_UNUSED, int out ATTRIBUTE_UNUSED, int errdes ATTRIBUTE_UNUSED,
++		     int in ATTRIBUTE_UNUSED, int out ATTRIBUTE_UNUSED, int errdes ATTRIBUTE_UNUSED,
 +		     int toclose ATTRIBUTE_UNUSED, const char **errmsg, int *err)
 +{
 +  int rc;
@@ -5591,21 +5588,21 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +    else
 +    {
 +      /* Check if there's a blank space in the argument. If so, we will
-+         need to add double quote characters. */
++	 need to add double quote characters. */
 +      for (j = 0 ; j < arglen ; j++)
 +      {
-+        c = argv[i][j];
++	c = argv[i][j];
 +
-+        if (isspace(c))
-+        {
-+          need_quote = 1;
-+          break;
-+        }
++	if (isspace(c))
++	{
++	  need_quote = 1;
++	  break;
++	}
 +      }
 +
 +      /* Make room for the double quote characters that we will have to add. */
 +      if(need_quote)
-+        len += 2;
++	len += 2;
 +    }
 +
 +    /* Check if there are " or * characters in the quoted string which
@@ -5614,11 +5611,11 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +    {
 +      for (j = 0 ; j < arglen ; j++)
 +      {
-+        c = argv[i][j];
++	c = argv[i][j];
 +
-+        /* We just might have to add an escape character in front of these two. */
-+        if (c == '\"' || c == '*')
-+	        len++;
++	/* We just might have to add an escape character in front of these two. */
++	if (c == '\"' || c == '*')
++		len++;
 +      }
 +    }
 +  }
@@ -5639,13 +5636,13 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +    {
 +      for (j = 0 ; j < arglen ; j++)
 +      {
-+        c = argv[i][j];
++	c = argv[i][j];
 +
-+        if (isspace(c))
-+        {
-+          need_quote = 1;
-+          break;
-+        }
++	if (isspace(c))
++	{
++	  need_quote = 1;
++	  break;
++	}
 +      }
 +    }
 +
@@ -5662,17 +5659,17 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +      c = argv[i][j];
 +
 +      /* If this is a " or * and the parameter is quoted, try to
-+         add an escape character in front of it. */
++	 add an escape character in front of it. */
 +      if((c == '\"' || c == '*') && (need_quote || already_have_quote))
 +	    {
-+        /* Careful, don't escape the first double
-+           quote character by mistake. */
-+        if(!already_have_quote || j > 0)
-+        {
-+          /* Don't add an escape character here if the previous character
-+             already was an escape character. */
-+          if(!escaped)
-+            (*s++) = '*';
++	/* Careful, don't escape the first double
++	   quote character by mistake. */
++	if(!already_have_quote || j > 0)
++	{
++	  /* Don't add an escape character here if the previous character
++	     already was an escape character. */
++	  if(!escaped)
++	    (*s++) = '*';
 +	      }
 +      }
 +
@@ -5680,9 +5677,9 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +
 +      /* Remember if the last character read was an escape character. */
 +      if (escaped)
-+        escaped = 0;
++	escaped = 0;
 +      else
-+        escaped = (c == __shell_escape_character && c != '*');
++	escaped = (c == __shell_escape_character && c != '*');
 +    }
 +
 +    if(need_quote)
@@ -5766,7 +5763,7 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +}
 diff --git a/libiberty/setenv-amigaos.c b/libiberty/setenv-amigaos.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..6ec12b89c740874d0b7a83f322f80d5cd6f7a05e
+index 0000000000000000000000000000000000000000..0d8b48b7c3a11d89739a01e55c918cc0d27095ef
 --- /dev/null
 +++ b/libiberty/setenv-amigaos.c
 @@ -0,0 +1,74 @@
@@ -5792,7 +5789,7 @@ index 0000000000000000000000000000000000000000..6ec12b89c740874d0b7a83f322f80d5c
 +   {
 +       if (FindVar(name, GVF_LOCAL_ONLY))
 +       {
-+           return 0;
++	   return 0;
 +       }
 +   }
 +
@@ -5819,16 +5816,16 @@ index 0000000000000000000000000000000000000000..6ec12b89c740874d0b7a83f322f80d5c
 +   {
 +       if (str[i] == '=')
 +       {
-+           char *name = (char*)AllocVec(i + 1, MEMF_ANY);
-+           if (name)
-+           {
-+               strncpy(name, str, i);
-+               name[i] = 0;
++	   char *name = (char*)AllocVec(i + 1, MEMF_ANY);
++	   if (name)
++	   {
++	       strncpy(name, str, i);
++	       name[i] = 0;
 +
-+               setenv(name, &str[i] + 1, 1);
-+               FreeVec(name);
-+               return;
-+           }
++	       setenv(name, &str[i] + 1, 1);
++	       FreeVec(name);
++	       return;
++	   }
 +       }
 +   }
 +}
@@ -5905,7 +5902,7 @@ copy from libstdc++-v3/config/os/generic/ctype_base.h
 copy to libstdc++-v3/config/os/amigaos/ctype_base.h
 diff --git a/libstdc++-v3/config/os/amigaos/ctype_configure_char.cc b/libstdc++-v3/config/os/amigaos/ctype_configure_char.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..6d30fa61ac00ac27b6f057972e9e2f8d9149e7f1
+index 0000000000000000000000000000000000000000..0e13314c4ea91c6e0c6101c6bf2f6c90636d4d07
 --- /dev/null
 +++ b/libstdc++-v3/config/os/amigaos/ctype_configure_char.cc
 @@ -0,0 +1,99 @@
@@ -5954,7 +5951,7 @@ index 0000000000000000000000000000000000000000..6d30fa61ac00ac27b6f057972e9e2f8d
 +  { return 0; }
 +
 +  ctype<char>::ctype(__c_locale, const mask* __table, bool __del,
-+          size_t __refs)
++	  size_t __refs)
 +  : facet(__refs), _M_del(__table != 0 && __del),
 +  _M_toupper(NULL), _M_tolower(NULL),
 +  _M_table(__table ? __table : classic_table())
@@ -6646,7 +6643,7 @@ index 5d50dc507fc1c72a302630bef746da5caeef0b51..2e449cabf4407d086bbf2c6382dad90f
      void operator()(void* p) const { ::free(p); }
    };
 diff --git a/libstdc++-v3/src/c++17/fs_path.cc b/libstdc++-v3/src/c++17/fs_path.cc
-index d65b5482e8b969b3609b278bf7fd82b5e25ce4ac..a66f92027fd572cc5100dc8e4e2e25edbf1d21de 100644
+index d65b5482e8b969b3609b278bf7fd82b5e25ce4ac..5ea22019ad312b3f5041f78e35a3bf658b628d10 100644
 --- a/libstdc++-v3/src/c++17/fs_path.cc
 +++ b/libstdc++-v3/src/c++17/fs_path.cc
 @@ -78,12 +78,38 @@ struct path::_Parser
@@ -6661,25 +6658,25 @@ index d65b5482e8b969b3609b278bf7fd82b5e25ce4ac..a66f92027fd572cc5100dc8e4e2e25ed
 +    // look for root name (:)
 +    if (input[0] == ':')
 +    {
-+        // got root directory
-+        root.first.str = input.substr(0, 1);
-+        root.first.type = _Type::_Root_dir;
-+        ++pos;
++	// got root directory
++	root.first.str = input.substr(0, 1);
++	root.first.type = _Type::_Root_dir;
++	++pos;
 +    }
 +    // look for volume/device designator
 +    else if (len > 1)
 +    {
-+        const auto despos = input.find_first_of(':', 1);
-+        if (despos != input.npos)
-+        {
-+            // got volume/device designator
-+            root.first.str = input.substr(0, despos);
-+            root.first.type = _Type::_Root_name;
++	const auto despos = input.find_first_of(':', 1);
++	if (despos != input.npos)
++	{
++	    // got volume/device designator
++	    root.first.str = input.substr(0, despos);
++	    root.first.type = _Type::_Root_name;
 +
-+            root.second.str = input.substr(despos, 1);
-+            root.second.type = _Type::_Root_dir;
-+            pos = despos + 1;
-+        }
++	    root.second.str = input.substr(despos, 1);
++	    root.second.type = _Type::_Root_dir;
++	    pos = despos + 1;
++	}
 +    }
 +#else
      // look for root name or root directory
@@ -6717,35 +6714,35 @@ index d65b5482e8b969b3609b278bf7fd82b5e25ce4ac..a66f92027fd572cc5100dc8e4e2e25ed
 +    pos = input.find_first_of(sep, pos);
 +    if (pos != input.npos)
 +    {
-+        const auto end = input.find_first_not_of(sep, pos);
-+        if (end == input.npos)
-+        {
-+            if (pos == last_pos)
-+                // "work:/[/...]" met, include these chars as is
-+                f.str = input.substr(last_pos, input.length() - last_pos);
-+            else
-+                // Remove last / as the path ends to one
-+                f.str = input.substr(last_pos, input.length() - 1 - last_pos);
-+        }
-+        else
-+        {
-+            if (pos == last_pos)
-+                // "work:/[/...]something" met, include these chars as is
-+                f.str = input.substr(last_pos, end - last_pos);
-+            else
-+                f.str = input.substr(last_pos, end - 1 - last_pos);
-+        }
-+        f.type = _Type::_Filename;
-+        pos = end;
++	const auto end = input.find_first_not_of(sep, pos);
++	if (end == input.npos)
++	{
++	    if (pos == last_pos)
++		// "work:/[/...]" met, include these chars as is
++		f.str = input.substr(last_pos, input.length() - last_pos);
++	    else
++		// Remove last / as the path ends to one
++		f.str = input.substr(last_pos, input.length() - 1 - last_pos);
++	}
++	else
++	{
++	    if (pos == last_pos)
++		// "work:/[/...]something" met, include these chars as is
++		f.str = input.substr(last_pos, end - last_pos);
++	    else
++		f.str = input.substr(last_pos, end - 1 - last_pos);
++	}
++	f.type = _Type::_Filename;
++	pos = end;
 +    }
 +    else if (last_type == _Type::_Filename || last_type == _Type::_Root_dir ||
-+            (last_pos == 0 && !input.empty()))
++	    (last_pos == 0 && !input.empty()))
 +    {
-+        if (last_pos < input.length())
-+        {
-+            f.str = input.substr(last_pos);
-+            f.type = _Type::_Filename;
-+        }
++	if (last_pos < input.length())
++	{
++	    f.str = input.substr(last_pos);
++	    f.type = _Type::_Filename;
++	}
 +    }
 +#else
  	pos = input.find_first_not_of(sep, pos);
@@ -6896,5 +6893,5 @@ index d65b5482e8b969b3609b278bf7fd82b5e25ce4ac..a66f92027fd572cc5100dc8e4e2e25ed
      }
    }
 -- 
-2.34.1
+2.47.3
 

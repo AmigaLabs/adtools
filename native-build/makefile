@@ -323,12 +323,33 @@ endif
 # Build and install the libraries
 #
 libraries-done: $(NATIVE_LIBRARY_DEPENDENCIES)
+# newlib
+	rm -Rf $(basename $(basename downloads/$(notdir $(GMP_ARCHIVE))))
+	rm -Rf $(basename $(basename downloads/$(notdir $(MPFR_ARCHIVE))))
+	rm -Rf $(basename $(basename downloads/$(notdir $(MPC_ARCHIVE))))
 	cd downloads && tar -xjf $(notdir $(GMP_ARCHIVE))
 	cd downloads && tar -xjf $(notdir $(MPFR_ARCHIVE))
 	cd downloads && tar -xzf $(notdir $(MPC_ARCHIVE))
 	cd $(basename $(basename downloads/$(notdir $(GMP_ARCHIVE)))) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
 	cd $(basename $(basename downloads/$(notdir $(MPFR_ARCHIVE)))) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX) -with-gmp=$(CROSS_PREFIX) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
 	cd $(basename $(basename downloads/$(notdir $(MPC_ARCHIVE)))) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX) --with-gmp=$(CROSS_PREFIX) --with-mpfr=$(CROSS_PREFIX) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
+# clib4
+	rm -Rf $(basename $(basename downloads/$(notdir $(GMP_ARCHIVE))))
+	rm -Rf $(basename $(basename downloads/$(notdir $(MPFR_ARCHIVE))))
+	rm -Rf $(basename $(basename downloads/$(notdir $(MPC_ARCHIVE))))
+	cd downloads && tar -xjf $(notdir $(GMP_ARCHIVE))
+	cd downloads && tar -xjf $(notdir $(MPFR_ARCHIVE))
+	cd downloads && tar -xzf $(notdir $(MPC_ARCHIVE))
+
+	cd $(basename $(basename downloads/$(notdir $(GMP_ARCHIVE)))) \
+		&& PATH="$(CROSS_PREFIX)/bin:$(PATH)" CFLAGS="-mcrt=clib4" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX)/clib4 --enable-shared=no \
+		&& PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
+	cd $(basename $(basename downloads/$(notdir $(MPFR_ARCHIVE)))) \
+		&& PATH="$(CROSS_PREFIX)/bin:$(PATH)" CFLAGS="-mcrt=clib4" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX)/clib4 -with-gmp=$(CROSS_PREFIX)/clib4 --enable-shared=no \
+	       	&& PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
+	cd $(basename $(basename downloads/$(notdir $(MPC_ARCHIVE)))) \
+		&& PATH="$(CROSS_PREFIX)/bin:$(PATH)" CFLAGS="-mcrt=clib4" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX)/clib4 --with-gmp=$(CROSS_PREFIX)/clib4 --with-mpfr=$(CROSS_PREFIX)/clib4 --enable-shared=no \
+		&& PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
 	touch $@
 
 #

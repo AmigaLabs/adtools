@@ -1,7 +1,7 @@
-From 2bc1fa6cebdae630c284cb1a213b9973df4a9be5 Mon Sep 17 00:00:00 2001
+From 76653a66de2ac191537f7196d9dc4dfac09cc6fd Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Tue, 24 Apr 2018 22:46:21 +0200
-Subject: [PATCH 19/31] Add _Static_warning().
+Subject: [PATCH 19/32] Add _Static_warning().
 
 This acts very similar to _Static_assert() but produces a warning
 rather than an compiler error.
@@ -157,5 +157,5 @@ index f2983b6102da7ebe34fb36b304d0620206df779a..70070b06214e314dd7447755350ab5fb
  				  /*maybe_range_for_decl*/NULL);
  }
 -- 
-2.34.1
+2.43.0
 
