@@ -1,7 +1,7 @@
-From 28e642baf0732c0f22bd16df96da90087e8b7253 Mon Sep 17 00:00:00 2001
+From 4397a19f8e50fd2adc8e75413c1ceacbd5bc5ac8 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Thu, 18 Jun 2026 21:30:45 +0000
-Subject: [PATCH 22/22] conditionally use setenv-amigaos only when host clib
+Subject: [PATCH 22/23] conditionally use setenv-amigaos only when host clib
  lacks unsetenv, and add atexit cleanup to restore env vars on exit
 
 ---
@@ -299,5 +299,5 @@ index 089d3cbcc6eb7d42d96e8dfb16d1b399cfe856b3..b9b464e7b8c1e1c1dbbbfcbdc22a7e1d
  	return lvar->lv_Value;
  }
 -- 
-2.34.1
+2.43.0
 

@@ -1,7 +1,7 @@
-From ef506525bf3973357b57f98cc3e0c652a1a159d6 Mon Sep 17 00:00:00 2001
+From d82055bbd8162ce99f4eee9f19f3106f06871212 Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Wed, 15 May 2024 23:56:46 +0100
-Subject: [PATCH 20/22] Allow option -pthread to link to libpthread
+Subject: [PATCH 20/23] Allow option -pthread to link to libpthread
 
 ---
  gcc/config/rs6000/amigaos.h   | 2 +-
@@ -45,5 +45,5 @@ index 93d74f10bea8c1b23c82a9650bb0c3c153464ba7..2c4dcf7c76e8195a6712a92a3b2a501c
  Target Driver
  Generated binary employs the dynamic linker for shared objects.
 -- 
-2.34.1
+2.43.0
 

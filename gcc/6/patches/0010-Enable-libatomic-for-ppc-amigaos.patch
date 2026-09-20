@@ -1,7 +1,7 @@
-From d7b25a19b23beb36e30b5b9e470ea302f9c06b52 Mon Sep 17 00:00:00 2001
+From 0a5769eac07929a139fdad99e5fac05de95d07f1 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Fri, 3 Mar 2017 08:52:48 +0100
-Subject: [PATCH 10/22] Enable libatomic for ppc-amigaos.
+Subject: [PATCH 10/23] Enable libatomic for ppc-amigaos.
 
 It is not really finished yet.
 ---
@@ -179,5 +179,5 @@ index eab2765d7fd2c4a66cece52bb7e005e93029e3ce..ced7a361bafa9e9916e68fcb3710875e
  	# If the target supports disabling interrupts, we can work in
  	# kernel-mode, given the system is not multi-processor.
 -- 
-2.34.1
+2.43.0
 
