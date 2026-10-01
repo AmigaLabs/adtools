@@ -19,10 +19,7 @@ CLIB2_SHA1?=1a42c693e03881f6f969c43ab36ce20d2569751d
 # Optional (DEFAULT 1a42c693e03881f6f969c43ab36ce20d2569751d)
 # Define CLIB2_SHA1 to be the value of the branch or commit to use for clib2
 # ===
-# This sha1 is from the latest development branch which has fixes
-# related to gcc13, but it is not yet merged into the main branch.
-CLIB4_SHA1?=128547a92b9e74dcdb1c4aaf9ede06d2045397c5
-# CLIB4_SHA1?=HEAD
+CLIB4_SHA1?=HEAD
 # Optional (DEFAULT HEAD)
 # Define CLIB4_SHA1 to be the value of the branch or commit to use for clib4
 #
