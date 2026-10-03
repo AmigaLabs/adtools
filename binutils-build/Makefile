@@ -45,7 +45,7 @@ else
 ifneq ($(BINUTILS_VERSION),2.40)
 $(error Unexpected binutils version)
 else
-CLIB ?= newlib
+CLIB ?= clib4
 CROSS_CFLAGS=CFLAGS="					\
 				-Wno-sign-compare	\
 							"
@@ -70,7 +70,6 @@ NATIVE_CONFIGURE_ARGUMENTS=				\
 				--target=ppc-amigaos	\
 				--host=ppc-amigaos	\
 				--disable-plugins	\
-				--disable-gdb		\
 				--disable-sim		\
 				--disable-nls		\
 				--enable-shared=no	\

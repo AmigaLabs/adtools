@@ -1,11 +1,10 @@
-From 1582276d76a30160ac69c7d3254e4f1f6268139b Mon Sep 17 00:00:00 2001
+From 7913f52959f63e874822da81242d91a4d7b81288 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Tue, 15 Sep 2026 20:21:30 +0200
-Subject: [PATCH 5/5] Make binutils 2.40 work with AmigaOS C libraries -
- workaround for binutils' fseek after EOF (causes error under CLIB4 and
- NEWLIB) - Some smaller improvements to the Amiga file path handling
+Subject: [PATCH 5/5] Make binutils 2.40 work with AmigaOS C libraries
 
-Signed-off-by: Josef Wegner <josef.wegner@outlook.com>
+- workaround for binutils' fseek after EOF (causes error under CLIB4 and NEWLIB)
+- Some smaller improvements to the Amiga file path handling
 ---
  bfd/cache.c                | 40 ++++++++++++++++++++++++++++++++++++++
  include/filenames.h        |  4 ++--
@@ -16,7 +15,7 @@ Signed-off-by: Josef Wegner <josef.wegner@outlook.com>
  6 files changed, 58 insertions(+), 10 deletions(-)
 
 diff --git a/bfd/cache.c b/bfd/cache.c
-index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..23636cbc3208178b4107475b56f56fcf863e4f97 100644
+index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..d67fd5cd07b694044ca258c30a902bffe46e3d33 100644
 --- a/bfd/cache.c
 +++ b/bfd/cache.c
 @@ -289,12 +289,52 @@ cache_btell (struct bfd *abfd)
@@ -43,26 +42,26 @@ index b64b9744c4b6e0aeda9c18a5b41de81e9293d9f1..23636cbc3208178b4107475b56f56fcf
 +      if (target > current)
 +	{
 +	  if (_bfd_real_fseek (f, 0, SEEK_END) == 0)
-+            {
-+              file_ptr end = _bfd_real_ftell (f);
-+              if (end < 0)
-+                return -1;
-+              if (target > end)
-+                {
-+                  file_ptr missing = target - end;
-+                  while (missing != 0)
-+                    {
-+                      file_ptr chunk = missing > (file_ptr) sizeof zeroes
-+                                       ? (file_ptr) sizeof zeroes : missing;
-+                      if (fwrite (zeroes, 1, chunk, f) != (size_t) chunk)
-+                        return -1;
-+                      missing -= chunk;
-+                    }
-+                  return 0;
-+                }
-+              if (_bfd_real_fseek (f, current, SEEK_SET) != 0)
-+                return -1;
-+            }
++	    {
++	      file_ptr end = _bfd_real_ftell (f);
++	      if (end < 0)
++		return -1;
++	      if (target > end)
++		{
++		  file_ptr missing = target - end;
++		  while (missing != 0)
++		    {
++		      file_ptr chunk = missing > (file_ptr) sizeof zeroes
++				       ? (file_ptr) sizeof zeroes : missing;
++		      if (fwrite (zeroes, 1, chunk, f) != (size_t) chunk)
++			return -1;
++		      missing -= chunk;
++		    }
++		  return 0;
++		}
++	      if (_bfd_real_fseek (f, current, SEEK_SET) != 0)
++		return -1;
++	    }
 +	}
 +    }
 +#endif

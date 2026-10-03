@@ -1,9 +1,9 @@
-From 25fab4333553f2bb49b44e72fb1a456f75eb1dd1 Mon Sep 17 00:00:00 2001
+From b626aef84ffc5e8861827d750700748b0d484704 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Sat, 20 Jun 2026 19:04:32 +0200
-Subject: [PATCH 3/5] Fixed warning: warning: template-id not allowed for
- constructor in C++20 [-Wtemplate-id-cdtor]
+Subject: [PATCH 3/5] Fixed warning:
 
+warning: template-id not allowed for constructor in C++20 [-Wtemplate-id-cdtor]
 ---
  gdb/ui-out.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
@@ -28,5 +28,5 @@ index 5390c23fe799bf58fa54dde742589ec1429cef7a..1140d559c5e220cc4d73a2caaa3abf05
  };
  
 -- 
-2.47.3
+2.43.0
 
