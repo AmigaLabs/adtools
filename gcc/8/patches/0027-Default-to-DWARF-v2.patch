@@ -1,4 +1,4 @@
-From da75ff8d80625afec4dfc05428dcb2eaed8e46c8 Mon Sep 17 00:00:00 2001
+From f488960619c616b2c593fc796ad42889ccb7ce22 Mon Sep 17 00:00:00 2001
 From: Marcus Comstedt <marcus@mc.pp.se>
 Date: Wed, 31 Jul 2019 22:10:48 +0200
 Subject: [PATCH 27/32] Default to DWARF v2

@@ -1,4 +1,4 @@
-From 9e37d6e4eb904aafaccfb52f3c17275c12b73fd1 Mon Sep 17 00:00:00 2001
+From 971c2e030aefdf4cb198324b47e9e3f246a3fc49 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Thu, 5 Apr 2018 19:56:45 +0200
 Subject: [PATCH 15/44] Define va_startlinear and va_getlinearva.

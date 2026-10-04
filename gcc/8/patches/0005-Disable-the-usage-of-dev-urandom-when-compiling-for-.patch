@@ -1,4 +1,4 @@
-From b76c0b74aa49a39f39f58cae5aa9b19d3e2517f4 Mon Sep 17 00:00:00 2001
+From 451ad8f4ef18ce0f5c2da740d64e6712cf02e844 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Wed, 2 Dec 2015 21:39:42 +0100
 Subject: [PATCH 05/32] Disable the usage of /dev/urandom when compiling for

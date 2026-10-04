@@ -1,4 +1,4 @@
-From 269c4f9eb9ee8f6b98e2acf05ee720f1b6a52b5c Mon Sep 17 00:00:00 2001
+From dd1d3a54bd2b517d5d4e0329adc101abc28429d4 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Thu, 18 Jun 2026 21:54:00 +0000
 Subject: [PATCH 31/32] conditionally use setenv-amigaos only when host clib

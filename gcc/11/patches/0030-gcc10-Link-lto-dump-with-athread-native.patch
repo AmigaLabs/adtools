@@ -1,4 +1,4 @@
-From 55d94325e37efe89b01cd8ba3d640239fc8749c6 Mon Sep 17 00:00:00 2001
+From 6e8a62cd388cb72c9d56dc8a59e032df23c33cd8 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Fri, 8 Jan 2021 01:02:33 +0100
 Subject: [PATCH 30/44] gcc10: Link lto-dump with -athread=native.

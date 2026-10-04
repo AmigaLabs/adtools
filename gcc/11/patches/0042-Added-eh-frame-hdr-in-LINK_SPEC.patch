@@ -1,4 +1,4 @@
-From 63ea2b106c37f38b9fd6d88fe061d6db2b104288 Mon Sep 17 00:00:00 2001
+From dafde9b808acd3a3ebc4a073089127a325016f95 Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Thu, 12 Mar 2026 19:31:33 +0000
 Subject: [PATCH 42/44] Added --eh-frame-hdr in LINK_SPEC

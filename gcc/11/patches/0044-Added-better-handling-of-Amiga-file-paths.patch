@@ -1,14 +1,14 @@
-From bda3b151ff364277ba5458c9bd83dad9a2e8b2a6 Mon Sep 17 00:00:00 2001
+From e7bbc3936083bd0bea0b531f1e5bfb7d651fdc16 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Sun, 20 Sep 2026 18:58:53 +0200
 Subject: [PATCH 44/44] Added better handling of Amiga file paths
 
 ---
  gcc/config.host                               |  2 +-
- gcc/config/rs6000/amigaos.h                   | 13 +++++----
+ gcc/config/rs6000/amigaos.h                   | 26 ++++++++++++-----
  .../xm-mingw32.h => rs6000/xm-amigaos.h}      | 29 +++++++++----------
  libiberty/make-temp-file.c                    | 16 +++++-----
- 4 files changed, 32 insertions(+), 28 deletions(-)
+ 4 files changed, 43 insertions(+), 30 deletions(-)
  copy gcc/config/{i386/xm-mingw32.h => rs6000/xm-amigaos.h} (52%)
 
 diff --git a/gcc/config.host b/gcc/config.host
@@ -31,7 +31,7 @@ index 508a3cec85c32729c8cbca1a8b62afcfce041f97..2cf785f5d9688f926195499917089614
      host_xmake_file="${host_xmake_file} rs6000/x-darwin"
      ;;
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index 298902b8caafdd07059bfc645b8be89ac1dc7011..8dab02f5a6961dcc3a4842407de6f6b8b3a763d4 100644
+index 298902b8caafdd07059bfc645b8be89ac1dc7011..fba3d3f065543e81e9730409bcf7eeea1f98d55f 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -167,14 +167,17 @@ ASM_OPT_ANY
@@ -54,7 +54,7 @@ index 298902b8caafdd07059bfc645b8be89ac1dc7011..8dab02f5a6961dcc3a4842407de6f6b8
  #endif
  
  #define LIB_SUBDIR_TYPE_SPEC "\
-@@ -208,13 +211,13 @@ ASM_OPT_ANY
+@@ -208,13 +211,14 @@ ASM_OPT_ANY
  -idirafter %(base_sdk)clib2/include -idirafter %(base_sdk)local/clib2/include"
  
  #define LIB_SUBDIR_CLIB2_SPEC "%{mcrt=clib2-ts:lib.threadsafe; :lib}%(lib_subdir_type)"
@@ -63,13 +63,14 @@ index 298902b8caafdd07059bfc645b8be89ac1dc7011..8dab02f5a6961dcc3a4842407de6f6b8
  -L%(base_sdk)clib2/%(lib_subdir_clib2) \
 --L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/%{mcrt=clib2-ts:clib2-ts; :clib2}/lib%(lib_subdir_type) \
 +-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/%{mcrt=clib2-ts:clib2-ts; :clib2}%(lib_subdir_type) \
++-L%(base_gcc)lib/%{mcrt=clib2-ts:clib2-ts; :clib2}%(lib_subdir_type) \
  -L%(base_sdk)local/clib2/%(lib_subdir_clib2)"
  
  #define STARTFILE_CLIB2_SPEC "\
  %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
                   "%{!msoft-float:%(lib_subdir_type)}/crtbegin.o \
  %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
-@@ -230,13 +233,13 @@ ASM_OPT_ANY
+@@ -230,13 +234,14 @@ ASM_OPT_ANY
  -idirafter %(base_sdk)clib4/include -idirafter %(base_sdk)local/clib4/include"
  
  #define LIB_SUBDIR_CLIB4_SPEC "lib%(lib_subdir_type)"
@@ -78,13 +79,14 @@ index 298902b8caafdd07059bfc645b8be89ac1dc7011..8dab02f5a6961dcc3a4842407de6f6b8
  -L%(base_sdk)clib4/%(lib_subdir_clib4) \
 --L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/clib4/lib%(lib_subdir_type) \
 +-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/clib4%(lib_subdir_type) \
++-L%(base_gcc)lib/clib4%(lib_subdir_type) \
  -L%(base_sdk)local/clib4/%(lib_subdir_clib4)"
  
  #define STARTFILE_CLIB4_SPEC "\
  %{shared: %(base_sdk)clib4/%(lib_subdir_clib4)/shcrtbegin.o} %{!shared: %(base_sdk)clib4/%(lib_subdir_clib4)/crtbegin.o} %{!shared: %(base_sdk)clib4/%(lib_subdir_clib4)/crt0.o}"
  
  #define ENDFILE_CLIB4_SPEC "\
-@@ -279,13 +282,13 @@ ASM_OPT_ANY
+@@ -279,13 +284,14 @@ ASM_OPT_ANY
  -idirafter %(base_sdk)newlib/include -idirafter %(base_sdk)local/newlib/include"
  
  #define LIB_SUBDIR_NEWLIB_SPEC "lib%(lib_subdir_type)"
@@ -93,12 +95,58 @@ index 298902b8caafdd07059bfc645b8be89ac1dc7011..8dab02f5a6961dcc3a4842407de6f6b8
  -L%(base_sdk)newlib/%(lib_subdir_newlib) \
 --L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/newlib/%(lib_subdir_newlib) \
 +-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)%(lib_subdir_type) \
++-L%(base_gcc)lib%(lib_subdir_type) \
  -L%(base_sdk)local/newlib/%(lib_subdir_newlib)"
  
  /* newlib startfile should work for all library flavours */
  #define STARTFILE_NEWLIB_SPEC "\
  %{shared: %(base_sdk)newlib/%(lib_subdir_newlib)/shcrtbegin.o} %{!shared: %(base_sdk)newlib/%(lib_subdir_newlib)/crtbegin.o}"
  
+@@ -335,14 +341,19 @@ mcrt=default|!mcrt=*: %(link_amiga_default); \
+ #define LINK_TEXT ""
+ #endif
+ 
+ #define LINK_SHLIB "\
+ %{shared:-shared -dy --defsym __dynld_version__=1} %{!shared: %{static:-static}} %{use-dynld: -dy}"
+  
++#define THREAD_MULTILIB_SPEC \
++"%{mcrt=clib2|mcrt=clib2-ts:/clib2;mcrt=clib4:/clib4;:}"
++
+ #define LINK_THREAD "\
+-%s%{athread=native:gthr-amigaos-native.o;athread=single:gthr-amigaos-single.o;athread=pthread:gthr-amigaos-pthread.o}"
++%{athread=native:%(base_gcc)lib/gcc/ppc-amigaos/%(version)%(thread_multilib)/gthr-amigaos-native.o; \
++athread=single:%(base_gcc)lib/gcc/ppc-amigaos/%(version)%(thread_multilib)/gthr-amigaos-single.o; \
++athread=pthread:%(base_gcc)lib/gcc/ppc-amigaos/%(version)%(thread_multilib)/gthr-amigaos-pthread.o}"
+ 
+ #undef STARTFILE_SPEC
+ #define STARTFILE_SPEC "\
+ %{mcrt=clib2|mcrt=clib2-ts: %(startfile_clib2); \
+ mcrt=clib4: %(startfile_clib4); \
+ mcrt=ixemul: %(startfile_ixemul); \
+@@ -409,12 +420,13 @@ mcrt=default|!mcrt=*: %(endfile_amiga_default); \
+   {"link_newlib", LINK_NEWLIB_SPEC}, \
+   {"startfile_newlib", STARTFILE_NEWLIB_SPEC}, \
+   {"endfile_newlib", ENDFILE_NEWLIB_SPEC}, \
+   /* used in link spec  */ \
+   {"link_text", LINK_TEXT}, \
+   {"link_shlib", LINK_SHLIB}, \
++  {"thread_multilib", THREAD_MULTILIB_SPEC}, \
+   {"link_thread", LINK_THREAD},
+ 
+ #undef DEFAULT_VTABLE_THUNKS
+ #ifndef USE_GNULIBC_1
+ #define DEFAULT_VTABLE_THUNKS 1
+ #endif
+@@ -489,7 +501,7 @@ do                                   \
+ //   || (((MODE) == SFmode) && (ALIGN) < 32)				\
+ //   || (((MODE) == DFmode || (MODE) == TFmode || (MODE) == DImode)	\
+ //       && (ALIGN) < 64))
+ */
+ 
+ /* This target uses the amigaos.opt file.  */
+-#define TARGET_USES_AMIGAOS_OPT 1
+\ No newline at end of file
++#define TARGET_USES_AMIGAOS_OPT 1
 diff --git a/gcc/config/i386/xm-mingw32.h b/gcc/config/rs6000/xm-amigaos.h
 similarity index 52%
 copy from gcc/config/i386/xm-mingw32.h

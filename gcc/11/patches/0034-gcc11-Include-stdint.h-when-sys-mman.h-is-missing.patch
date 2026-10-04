@@ -1,4 +1,4 @@
-From b51d21c833fa24b1513a55d07176f1ebd82b7a04 Mon Sep 17 00:00:00 2001
+From ff43a36b64157b34cd8b5935c8fc99d4a8b9f4cb Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Fri, 28 May 2021 16:21:55 +0200
 Subject: [PATCH 34/44] gcc11: Include stdint.h when sys/mman.h is missing.

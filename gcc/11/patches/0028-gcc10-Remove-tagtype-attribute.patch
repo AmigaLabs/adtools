@@ -1,4 +1,4 @@
-From 8f2beb3fa32efc701d971fd005353cd0239630b5 Mon Sep 17 00:00:00 2001
+From 7272b79e14a27509070db89bf5a6ddd2c159ff69 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Sat, 2 Jan 2021 22:05:59 +0100
 Subject: [PATCH 28/44] gcc10: Remove tagtype attribute.

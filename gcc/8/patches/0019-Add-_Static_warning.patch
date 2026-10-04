@@ -1,4 +1,4 @@
-From 76653a66de2ac191537f7196d9dc4dfac09cc6fd Mon Sep 17 00:00:00 2001
+From efd324270e5e911104c6306f51cbd2d99f58d664 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Tue, 24 Apr 2018 22:46:21 +0200
 Subject: [PATCH 19/32] Add _Static_warning().

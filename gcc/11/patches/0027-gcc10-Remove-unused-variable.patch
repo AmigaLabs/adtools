@@ -1,4 +1,4 @@
-From d87266bb10c94daadd7f60d1de8a0a35c83e28eb Mon Sep 17 00:00:00 2001
+From 2a72ca040f1ed7f30ee0517c10b65f86238811a8 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Sat, 2 Jan 2021 17:25:51 +0100
 Subject: [PATCH 27/44] gcc10: Remove unused variable.

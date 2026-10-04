@@ -1,4 +1,4 @@
-From a0a0e6816450aa9cd60b5ba434a508f9eef13683 Mon Sep 17 00:00:00 2001
+From 0f5123249f5d6728128d850efade1eb6542a761d Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Wed, 4 Apr 2018 23:50:48 +0200
 Subject: [PATCH 14/23] Add custom implementation of various env-related

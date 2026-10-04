@@ -1,4 +1,4 @@
-From 11d93d448061e4d8b2d58447467ea539a59c7f3e Mon Sep 17 00:00:00 2001
+From b1ecd206c844cf8f0127ca25a4ba99f5182004a0 Mon Sep 17 00:00:00 2001
 From: "ola.soder@axis.com" <ola.soder@axis.com>
 Date: Mon, 15 Mar 2021 15:55:11 +0100
 Subject: [PATCH 33/44] gcc10: Fix libstdc++v3 paths.

@@ -1,4 +1,4 @@
-From 852fb5932cd974e5958f79c8c3cbb1f6f03ef6d0 Mon Sep 17 00:00:00 2001
+From 3aeab12d4e35dd46a2cec3aa00982918ef95c754 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Fri, 22 Jan 2016 20:04:50 +0100
 Subject: [PATCH 08/44] Added libstc++ support for AmigaOS.

@@ -1,4 +1,4 @@
-From 70021c97d7f3c23d991d041fec669a7606f4c13f Mon Sep 17 00:00:00 2001
+From a0714e4e8a72f40f2f15cfeafe7352e63d8cfe53 Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Tue, 24 Apr 2018 06:29:13 +0200
 Subject: [PATCH 20/32] Add tagtype attribute that can be passed to enum

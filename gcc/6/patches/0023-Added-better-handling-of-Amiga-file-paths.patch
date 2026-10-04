@@ -1,14 +1,14 @@
-From 2554a7708c7b03fd220fb4ea6774fc233f8d1735 Mon Sep 17 00:00:00 2001
+From 9d51ff8ef3e73d2fa64f89e7c6c5e396596cbfa9 Mon Sep 17 00:00:00 2001
 From: Josef Wegner <josef.wegner@outlook.com>
 Date: Sun, 20 Sep 2026 19:37:59 +0200
 Subject: [PATCH 23/23] Added better handling of Amiga file paths
 
 ---
  gcc/config.host                               |  2 +-
- gcc/config/rs6000/amigaos.h                   | 13 +++++----
+ gcc/config/rs6000/amigaos.h                   | 16 ++++++----
  .../xm-mingw32.h => rs6000/xm-amigaos.h}      | 29 +++++++++----------
  libiberty/make-temp-file.c                    | 16 +++++-----
- 4 files changed, 32 insertions(+), 28 deletions(-)
+ 4 files changed, 35 insertions(+), 28 deletions(-)
  copy gcc/config/{i386/xm-mingw32.h => rs6000/xm-amigaos.h} (52%)
 
 diff --git a/gcc/config.host b/gcc/config.host
@@ -31,7 +31,7 @@ index 783a2ab15ff9d1551d06f707c0ffe53281fd7849..5c1011a3f815b460dc59a2049d3b2457
      ;;
    powerpc64-*-darwin*)
 diff --git a/gcc/config/rs6000/amigaos.h b/gcc/config/rs6000/amigaos.h
-index a212fbcd749337840cb529fb7d8d4f1e16f9ab2e..b7fcc7ebd45c0d7d5f63f0aa869fdf5489f7ab0c 100644
+index a212fbcd749337840cb529fb7d8d4f1e16f9ab2e..d678321662a1a04bf3c36a3e1a9af87b287bdf01 100644
 --- a/gcc/config/rs6000/amigaos.h
 +++ b/gcc/config/rs6000/amigaos.h
 @@ -142,14 +142,17 @@
@@ -54,7 +54,7 @@ index a212fbcd749337840cb529fb7d8d4f1e16f9ab2e..b7fcc7ebd45c0d7d5f63f0aa869fdf54
  #endif
  
  #define LIB_SUBDIR_TYPE_SPEC "\
-@@ -183,13 +186,13 @@
+@@ -183,13 +186,14 @@
  -idirafter %(base_sdk)clib2/include -idirafter %(base_sdk)local/clib2/include"
  
  #define LIB_SUBDIR_CLIB2_SPEC "%{mcrt=clib2-ts:lib.threadsafe; :lib}%(lib_subdir_type)"
@@ -63,13 +63,14 @@ index a212fbcd749337840cb529fb7d8d4f1e16f9ab2e..b7fcc7ebd45c0d7d5f63f0aa869fdf54
  -L%(base_sdk)clib2/%(lib_subdir_clib2) \
 --L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/%{mcrt=clib2-ts:clib2-ts; :clib2}/lib%(lib_subdir_type) \
 +-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/%{mcrt=clib2-ts:clib2-ts; :clib2}%(lib_subdir_type) \
++-L%(base_gcc)lib/%{mcrt=clib2-ts:clib2-ts; :clib2}%(lib_subdir_type) \
  -L%(base_sdk)local/clib2/%(lib_subdir_clib2)"
  
  #define STARTFILE_CLIB2_SPEC "\
  %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
                   "%{!msoft-float:%(lib_subdir_type)}/crtbegin.o \
  %(base_sdk)clib2/%{mcrt=clib2-ts:lib.threadsafe; :lib}" \
-@@ -205,13 +208,13 @@
+@@ -205,13 +209,14 @@
  -idirafter %(base_sdk)clib4/include -idirafter %(base_sdk)local/clib4/include"
  
  #define LIB_SUBDIR_CLIB4_SPEC "lib%(lib_subdir_type)"
@@ -78,13 +79,14 @@ index a212fbcd749337840cb529fb7d8d4f1e16f9ab2e..b7fcc7ebd45c0d7d5f63f0aa869fdf54
  -L%(base_sdk)clib4/%(lib_subdir_clib4) \
 --L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/clib4/lib%(lib_subdir_type) \
 +-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/clib4%(lib_subdir_type) \
++-L%(base_gcc)lib/clib4%(lib_subdir_type) \
  -L%(base_sdk)local/clib4/%(lib_subdir_clib4)"
  
  #define STARTFILE_CLIB4_SPEC "\
  %{shared: %(base_sdk)clib4/%(lib_subdir_clib4)/shcrtbegin.o} %{!shared: %(base_sdk)clib4/%(lib_subdir_clib4)/crtbegin.o} %{!shared: %(base_sdk)clib4/%(lib_subdir_clib4)/crt0.o}"
  
  #define ENDFILE_CLIB4_SPEC "\
-@@ -254,13 +257,13 @@
+@@ -254,13 +259,14 @@
  -idirafter %(base_sdk)newlib/include -idirafter %(base_sdk)local/newlib/include"
  
  #define LIB_SUBDIR_NEWLIB_SPEC "lib%(lib_subdir_type)"
@@ -93,6 +95,7 @@ index a212fbcd749337840cb529fb7d8d4f1e16f9ab2e..b7fcc7ebd45c0d7d5f63f0aa869fdf54
  -L%(base_sdk)newlib/%(lib_subdir_newlib) \
 --L%(base_gcc)lib/gcc/ppc-amigaos/%(version)/newlib/%(lib_subdir_newlib) \
 +-L%(base_gcc)lib/gcc/ppc-amigaos/%(version)%(lib_subdir_type) \
++-L%(base_gcc)lib%(lib_subdir_type) \
  -L%(base_sdk)local/newlib/%(lib_subdir_newlib)"
  
  /* newlib startfile should work for all library flavours */

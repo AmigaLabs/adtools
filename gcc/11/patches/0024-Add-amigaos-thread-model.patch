@@ -1,4 +1,4 @@
-From 0bb844a2902c9fdd01667409d40c28fe6b77cbcc Mon Sep 17 00:00:00 2001
+From 4604d24ce8ccd6da58948bc3f8513e96e7131c7e Mon Sep 17 00:00:00 2001
 From: Sebastian Bauer <mail@sebastianbauer.info>
 Date: Fri, 4 May 2018 18:22:24 +0200
 Subject: [PATCH 24/44] Add amigaos thread model.

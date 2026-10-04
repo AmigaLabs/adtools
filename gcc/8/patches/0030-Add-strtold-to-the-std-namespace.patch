@@ -1,4 +1,4 @@
-From 5d51f2d28a314b31bc28a3329d9ca2c2f70a1658 Mon Sep 17 00:00:00 2001
+From 94659a2417692f561700b380a261881d13c1b12b Mon Sep 17 00:00:00 2001
 From: rjd <3246251196ryan@gmail.com>
 Date: Wed, 20 Nov 2024 19:52:39 +0000
 Subject: [PATCH 30/32] Add strtold to the std namespace.
