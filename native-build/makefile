@@ -19,7 +19,8 @@ CLIB2_SHA1?=1a42c693e03881f6f969c43ab36ce20d2569751d
 # Optional (DEFAULT 1a42c693e03881f6f969c43ab36ce20d2569751d)
 # Define CLIB2_SHA1 to be the value of the branch or commit to use for clib2
 # ===
-CLIB4_SHA1?=HEAD
+CLIB4_SHA1?=30e487d28f9b3d12fc9e4adb641aeff84050de3b
+# CLIB4_SHA1?=HEAD
 # Optional (DEFAULT HEAD)
 # Define CLIB4_SHA1 to be the value of the branch or commit to use for clib4
 #
@@ -86,7 +87,7 @@ DIST_VERSION=$(shell date +%Y%m%d)-$(shell git rev-list --count HEAD)
 export glibcxx_cv_PTHREAD_COND_CLOCKWAIT=no
 
 # Set up the necessary variables for the CLIBs
-CLIB4_SUPPORT=$(filter 13 11 8 6,$(GCC_MAJOR_VERSION))
+CLIB4_SUPPORT=$(filter 15 13 11 8 6,$(GCC_MAJOR_VERSION))
 CLIB4_URL=https://github.com/AmigaLabs/clib4
 CLIB4_DIR=downloads/clib4/
 CLIB4_RELEASE_ARCHIVE_NAME=adtools-os4-clib4-$(DIST_VERSION).lha
@@ -269,7 +270,7 @@ endif
 clib2-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 # Build clib using xgcc that have just been built
 	$(MAKE) -C $(CLIB2_DIR) -f GNUmakefile.os4 \
-		CC="$(XGCC_CC)" \
+		CC="$(XGCC_CC) -Wno-error=int-conversion -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration" \
 		AR="$(XAR)" \
 		RANLIB="$(XRANLIB)"
 # Copy clib libs and includes
