@@ -50,7 +50,6 @@ CROSS_CFLAGS=CFLAGS="					\
 							"
 CROSS_CONFIGURE_ARGUMENTS=				\
 				--disable-plugins	\
-				--disable-gdb		\
 				--disable-sim		\
 				--target=ppc-amigaos	\
 				--prefix=$(PREFIX)
@@ -65,9 +64,9 @@ NATIVE_CONFIGURE_ARGUMENTS=				\
 				--target=ppc-amigaos	\
 				--host=ppc-amigaos	\
 				--disable-plugins	\
-				--disable-gdb		\
 				--disable-sim		\
 				--disable-nls		\
+				--with-python=no	\
 				--prefix=/gcc
 endif
 endif
