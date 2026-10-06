@@ -1,0 +1,143 @@
+From: Richard Gibbs <rich_gibbs@hotmail.com>
+Date: Thu, 10 Apr 2026 15:00:00 +0100
+Subject: [PATCH] Fix gthr-amigaos-native thread cleanup and I/O inheritance
+
+Fix two issues in the native AmigaOS thread implementation:
+
+1. Thread process cleanup on program exit:
+   Child processes created by __gthread_create via CreateNewProcTags
+   with NP_Child=TRUE were never joined or cleaned up when the main
+   program exited.  This caused orphan processes to linger indefinitely,
+   leaking memory and triggering "Parent process has tried to exit
+   before all children have" warnings from the AmigaOS shell.
+
+   Add a __attribute__((destructor)) function that waits for all
+   tracked threads to finish before the program exits.  A 5-second
+   per-thread timeout prevents hanging indefinitely if a thread is
+   blocked in a condition wait or long I/O operation.  After the
+   timeout, DOS's NP_Child mechanism provides a safety net -- it
+   suspends code unloading until the child exits naturally.
+
+   This affects all C++ programs using std::thread, std::async,
+   std::future, or any code that calls __gthread_create without
+   explicitly joining all threads before exit.
+
+2. I/O handle inheritance:
+   Child thread processes inherited the parent's Input(), Output(),
+   and ErrorOutput() file handles.  When the parent exited before
+   the child, the child still referenced the closed handles, causing
+   DOS "input fh buffer was changed" warnings.
+
+   Change to NP_Input=ZERO, NP_Output=ZERO, NP_Error=ZERO so child
+   threads use NIL: for I/O.  Thread worker functions should not
+   perform console I/O anyway.
+
+Affected versions: GCC 8, 9, 10, 11 (all with amigaos thread model).
+Not affected: GCC 6, 7 (thread model is single, no gthr-amigaos-native).
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+---
+ libgcc/gthr-amigaos-native.c | 70 ++++++++++++++++++++++++++++++++---
+ 1 file changed, 65 insertions(+), 5 deletions(-)
+
+--- a/libgcc/gthr-amigaos-native.c
++++ b/libgcc/gthr-amigaos-native.c
+@@ -194,6 +194,12 @@
+   return 0;
+ }
+
++void __gthread_once_unlock(__gthread_once_t *__once)
++{
++  __internal_gthread_once_t *once = (__internal_gthread_once_t *)__once;
++  __atomic_store_1(&once->u.i.started, 0, __ATOMIC_SEQ_CST);
++}
++
+ /******************************************************************************/
+
+ /* We keep the entries of each key organized as a single linked list */
+@@ -541,6 +547,67 @@
+   threadstore = NULL;
+ }
+
++/**
++ * Cleanup all threads created via __gthread_create before program exit.
++ *
++ * Without this, child processes created with NP_Child=TRUE linger
++ * indefinitely after the main program exits, leaking memory and
++ * causing "Parent process has tried to exit before all children have"
++ * warnings from the shell.
++ *
++ * This destructor runs during exit() and waits for all tracked threads
++ * to set their finished flag (indicating __gthread_entry has returned).
++ * Since NP_Child=TRUE was used, DOS will then properly reap the child
++ * processes when the parent exits.
++ *
++ * A timeout of 5 seconds per thread prevents hanging indefinitely if a
++ * thread is blocked in a condition wait or long I/O operation.  After
++ * the timeout, DOS's NP_Child mechanism provides a safety net -- it
++ * suspends code unloading until the child exits naturally.
++ */
++#define GTHREAD_CLEANUP_TIMEOUT_TICKS 250  /* 5 seconds at 50 ticks/sec */
++
++static void __attribute__((destructor))
++__gthread_cleanup (void)
++{
++  threadentry_t *thr;
++  struct Task *self;
++
++  if (!threadstore)
++    return;
++
++  /* Initialize libs if not already done */
++  __gthread_once (&libs_once, init_libs);
++  if (!idos)
++    return;
++
++  self = iexec->FindTask (NULL);
++
++  iexec->ObtainSemaphoreShared (&threadstore->sem);
++  for (thr = threadstore->threads; thr != NULL; thr = thr->next)
++    {
++      /* Skip the root thread entry (that's us) */
++      if (thr->process == (struct Process *)self)
++        continue;
++
++      /* Wait for child thread to finish, with a timeout to avoid
++         hanging forever if the thread is blocked in a condition
++         wait or long I/O operation. */
++      if (!thr->finished)
++        {
++          int ticks = 0;
++          iexec->ReleaseSemaphore (&threadstore->sem);
++          while (!thr->finished && ticks < GTHREAD_CLEANUP_TIMEOUT_TICKS)
++            {
++              idos->Delay (1);
++              ticks++;
++            }
++          iexec->ObtainSemaphoreShared (&threadstore->sem);
++        }
++    }
++  iexec->ReleaseSemaphore (&threadstore->sem);
++}
++
+ static int __gthread_entry(STRPTR args UNUSED, int32 length UNUSED, APTR execbase UNUSED)
+ {
+   struct Task *task;
+@@ -606,12 +673,12 @@
+                 NP_Entry, __gthread_entry,
+                 NP_Child, TRUE,
+                 NP_UserData, (int32)threadentry,
+-                NP_Input, idos->Input(),
+-                NP_Output, idos->Output(),
+-                NP_Error, idos->ErrorOutput(),
++                NP_Input, ZERO,
++                NP_Output, ZERO,
++                NP_Error, ZERO,
+                 NP_CloseInput,  FALSE,
+                 NP_CloseOutput, FALSE,
+-                NP_CloseError, FALSE,
++                NP_CloseError,  FALSE,
+                 TAG_DONE);
+
+   iexec->ObtainSemaphore (&threadstore->sem);
