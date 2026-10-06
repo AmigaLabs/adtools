@@ -100,6 +100,11 @@ CROSS_PREFIX?=$(ROOT_DIR)/root-cross
 # This assumes that cross prefix is absolute
 DESTDIR?=
 
+SPE_FLAG=
+ifeq ($(GCC_MAJOR_VERSION),6)
+SPE_FLAG=SPE=yes
+endif
+
 STRIPFLAGS=--strip-all --strip-unneeded-rel-relocs -R.comment
 
 all: gcc-native-done-$(GCC_VERSION)
@@ -149,9 +154,9 @@ ifneq ($(SDK_LOC),)
 else
 	wget "$(SDK_URL)" -O downloads/SDK_$(SDK_VERSION).lha
 endif
-	cd downloads && wget -N https://ftp.gnu.org/gnu/gmp/$(GMP_ARCHIVE)
-	cd downloads && wget -N https://ftp.gnu.org/gnu/mpfr/$(MPFR_ARCHIVE)
-	cd downloads && wget -N https://ftp.gnu.org/gnu/mpc/$(MPC_ARCHIVE)
+    cd downloads && wget -N https://mirrors.kernel.org/gnu/gmp/$(GMP_ARCHIVE)
+    cd downloads && wget -N https://mirrors.kernel.org/gnu/mpfr/$(MPFR_ARCHIVE)
+    cd downloads && wget -N https://mirrors.kernel.org/gnu/mpc/$(MPC_ARCHIVE)
 	touch $@
 
 #
@@ -258,10 +263,12 @@ clib4-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY) includes-done
 		AR="$(XAR)" \
 		RANLIB="$(XRANLIB)" \
 		STRIP=$(STRIP) \
+		$(SPE_FLAG) \
 		INSTALL_PREFIX=$(CROSS_PREFIX)/ppc-amigaos/SDK/clib4 \
 		SDK_INCLUDE=$(CROSS_PREFIX)/ppc-amigaos/SDK/include
 # Copy clib libs and includes
 	$(MAKE) -C $(CLIB4_DIR) -f GNUmakefile.os4 install \
+		$(SPE_FLAG) \
 		INSTALL_PREFIX=$(CROSS_PREFIX)/ppc-amigaos/SDK/clib4
 	cp $(CLIB4_DIR)/LICENSE* $(CROSS_PREFIX)/ppc-amigaos/SDK/clib4
 	touch $@
@@ -369,6 +376,7 @@ endif
 	cd coreutils-native-build ; \
 		$(realpath $(COREUTILS_SRC_DIR))/configure --prefix=/gcc --host=ppc-amigaos --disable-maintainer-mode \
 		PATH="$(CROSS_PREFIX)/bin:$(PATH)" \
+		CFLAGS="-g -O2 -std=gnu17" \
 		CPPFLAGS="-mcrt=clib2" \
 		LDFLAGS="-mcrt=clib2" \
 		LIBS="-lunix -lnet"
@@ -487,7 +495,7 @@ native-install: coreutils-native-done gcc-native-done-$(GCC_VERSION) ReadMe doc
 #	cp -R $(CROSS_PREFIX)/ppc-amigaos/SDK /gcc
 # Disabled, because we don't want to copy from CROSS_PREFIX here
 #	cp -Rf $(CROSS_PREFIX)/lib/gcc/ppc-amigaos /gcc/lib/gcc/
-	# Delete all but our target gcc libs
+# Delete all but our target gcc libs
 	find /gcc/lib/gcc/ppc-amigaos -mindepth 1 -maxdepth 1 -not -name $(GCC_VERSION) | xargs rm -Rf
 # Disabled, no longer required
 #	# Move lib archives (e.g., libgcc.a into the proper directory)
