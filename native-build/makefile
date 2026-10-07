@@ -154,9 +154,9 @@ ifneq ($(SDK_LOC),)
 else
 	wget "$(SDK_URL)" -O downloads/SDK_$(SDK_VERSION).lha
 endif
-    cd downloads && wget -N https://mirrors.kernel.org/gnu/gmp/$(GMP_ARCHIVE)
-    cd downloads && wget -N https://mirrors.kernel.org/gnu/mpfr/$(MPFR_ARCHIVE)
-    cd downloads && wget -N https://mirrors.kernel.org/gnu/mpc/$(MPC_ARCHIVE)
+	cd downloads && wget -N https://ftp.gnu.org/gnu/gmp/$(GMP_ARCHIVE)
+	cd downloads && wget -N https://ftp.gnu.org/gnu/mpfr/$(MPFR_ARCHIVE)
+	cd downloads && wget -N https://ftp.gnu.org/gnu/mpc/$(MPC_ARCHIVE)
 	touch $@
 
 #
