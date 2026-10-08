@@ -3,6 +3,10 @@ From: Georgios Sokianos <walkero@gmail.com>
 Date: Sun, 4 Oct 2026 20:53:13 +0000
 Subject: [PATCH] amigaos 4 native and cross compiler changes
 
+Includes GCC 15 native-build fixes for unavailable AmigaOS newlib
+fork/exec gcov wrappers and false detection of the missing fenv.h
+through an installed libstdc++ forwarding header.
+
 ---
  config-ml.in                                  |    4 +-
  config/gthr.m4                                |    1 +
@@ -58,6 +62,7 @@ Subject: [PATCH] amigaos 4 native and cross compiler changes
  libgcc/gthr-amigaos.h                         |  188 +++
  libgcc/gthr-posix.h                           |   12 +
  libgcc/libgcov.h                              |    2 +
+ libgcc/libgcov-interface.c                    |    3 +
  libiberty/Makefile.in                         |   25 +-
  libiberty/basename.c                          |   21 +-
  libiberty/configure                           |   66 ++
@@ -75,7 +80,7 @@ Subject: [PATCH] amigaos 4 native and cross compiler changes
  libstdc++-v3/config/os/amigaos/os_defines.h   |   53 +
  libstdc++-v3/configure                        |   57 +
  libstdc++-v3/configure.ac                     |    2 +
- libstdc++-v3/configure.host                   |    3 +
+ libstdc++-v3/configure.host                   |    7 +
  libstdc++-v3/crossconfig.m4                   |   32 +
  libstdc++-v3/include/Makefile.in              |    1 +
  libstdc++-v3/include/bits/basic_string.h      |    2 +
@@ -85,7 +90,7 @@ Subject: [PATCH] amigaos 4 native and cross compiler changes
  .../src/c++17/fast_float/fast_float.h         |    3 +-
  libstdc++-v3/src/c++17/fs_ops.cc              |   13 +-
  libstdc++-v3/src/c++17/fs_path.cc             |  100 +-
- 81 files changed, 4829 insertions(+), 68 deletions(-)
+ 82 files changed, 4836 insertions(+), 68 deletions(-)
  create mode 100644 gcc/config/amigaos-stdint.h
  create mode 100644 gcc/config/rs6000/amigaos-protos.h
  create mode 100644 gcc/config/rs6000/amigaos.cc
@@ -5532,13 +5537,13 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +#endif
 +
 +static int pex_amiga_open_read (struct pex_obj *, const char *, int);
-+static int pex_amiga_open_write (struct pex_obj *, const char *, int);
++static int pex_amiga_open_write (struct pex_obj *, const char *, int, int);
 +static pid_t pex_amiga_exec_child (struct pex_obj *, int, const char *,
 +				 char * const *, char * const *,
 +				 int, int, int, int,
 +				 const char **, int *);
 +static int pex_amiga_close (struct pex_obj *, int);
-+static int pex_amiga_wait (struct pex_obj *, long, int *, struct pex_time *,
++static pid_t pex_amiga_wait (struct pex_obj *, pid_t, int *, struct pex_time *,
 +			   int, const char **, int *);
 +static FILE *pex_amiga_fdopenr (struct pex_obj *, int, int);
 +static FILE *pex_amiga_fdopenw (struct pex_obj *, int, int);
@@ -5581,11 +5586,11 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +
 +static int
 +pex_amiga_open_write (struct pex_obj *obj ATTRIBUTE_UNUSED, const char *name,
-+		     int binary ATTRIBUTE_UNUSED)
++		     int binary ATTRIBUTE_UNUSED, int append)
 +{
 +  /* Note that we can't use O_EXCL here because gcc may have already
 +     created the temporary file via make_temp_file.  */
-+  return open (name, O_WRONLY | O_CREAT | O_TRUNC);
++  return open (name, O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC), 0666);
 +}
 +
 +/* Close a file.  */
@@ -5792,8 +5797,8 @@ index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c0749
 +   has already completed, and we just need to return the exit
 +   status.  */
 +
-+static int
-+pex_amiga_wait (struct pex_obj *obj, long pid, int *status,
++static pid_t
++pex_amiga_wait (struct pex_obj *obj, pid_t pid, int *status,
 +		struct pex_time *time, int done ATTRIBUTE_UNUSED,
 +		const char **errmsg ATTRIBUTE_UNUSED,
 +		int *err ATTRIBUTE_UNUSED)
@@ -6512,7 +6517,7 @@ diff --git a/libstdc++-v3/configure.host b/libstdc++-v3/configure.host
 index 253e5a9ad0dbe0698e3672cbee1c89eab8f2702d..70525d7bb407d95245857cadfb51becd09d64d3a 100644
 --- a/libstdc++-v3/configure.host
 +++ b/libstdc++-v3/configure.host
-@@ -223,12 +223,15 @@ case "${host_os}" in
+@@ -223,12 +223,19 @@ case "${host_os}" in
      tmake_file="os/aix/t-aix"
      ;;
    aix*)
@@ -6521,6 +6526,10 @@ index 253e5a9ad0dbe0698e3672cbee1c89eab8f2702d..70525d7bb407d95245857cadfb51becd
      ;;
 +  amigaos*)
 +    os_include_dir="os/amigaos"
++    if ${CXX} ${CPPFLAGS} ${CXXFLAGS} -dM -E -x c++ /dev/null \
++       | grep -q '__NEWLIB__'; then
++      ac_cv_header_fenv_h=no
++    fi
 +    ;;
    bsd*)
      # Plain BSD attempts to share FreeBSD files.
@@ -7045,6 +7054,23 @@ index ddbeaaed2f0ff16ed0f8fabf451e1d48e9465c88..2b1ed06d865f8ba8ebe220c22f087a9d
  	ret /= *a;
      }
    }
+diff --git a/libgcc/libgcov-interface.c b/libgcc/libgcov-interface.c
+--- a/libgcc/libgcov-interface.c
++++ b/libgcc/libgcov-interface.c
+@@ -171,6 +171,8 @@
+ 
+ #endif /* L_gcov_dump */
+ 
++#if !defined __amigaos4__ || !defined __NEWLIB__
++
+ #ifdef L_gcov_fork
+ /* A wrapper for the fork function.  We reset counters in the child
+    so that they are not counted twice.  */
+@@ -348,3 +350,4 @@
+ }
+ #endif
++#endif
+ #endif /* inhibit_libc */
 -- 
 2.53.0
 
