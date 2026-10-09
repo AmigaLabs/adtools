@@ -1,0 +1,99 @@
+Subject: [PATCH] Fix coreutils compilation errors raised by GCC 15
+
+These errors were raised while compiling coreutils for AmigaOS 4
+with GCC 15.
+
+GCC 15 defaults to GNU C23, where empty parameter lists mean no
+parameters. Declare the callbacks after YYSTYPE is defined and match
+the generated parser's callback arguments. Restore the lexer state
+argument lost during the Bison 3 conversion.
+
+Clib2 does not provide settimeofday or clock_settime. Return ENOSYS
+rather than referencing an undeclared and unavailable function.
+
+Match HOOKFUNC's APTR message parameter and convert it inside the
+callback. Do not return a value from the void clib2 exit hook.
+
+diff --git a/lib/getdate.y b/lib/getdate.y
+--- a/lib/getdate.y
++++ b/lib/getdate.y
+@@ -150,14 +150,17 @@
+ 
+ #define PC (* (parser_control *) parm)
+ 
+-static int yyerror ();
+-static int yylex ();
+-
+ %}
+ 
++%code {
++static int yyerror (parser_control *parm, char const *s);
++static int yylex (YYSTYPE *lvalp, parser_control *pc);
++}
++
+ /* We want a reentrant parser.  */
+ %pure-parser
+ %parse-param {parser_control *parm}
++%lex-param {parser_control *parm}
+ 
+ /* This grammar has 13 shift/reduce conflicts. */
+ %expect 13
+@@ -865,7 +868,7 @@
+ 
+ /* Do nothing if the parser reports an error.  */
+ static int
+-yyerror (char *s ATTRIBUTE_UNUSED)
++yyerror (parser_control *parm ATTRIBUTE_UNUSED, char const *s ATTRIBUTE_UNUSED)
+ {
+   return 0;
+ }
+
+diff --git a/lib/settime.c b/lib/settime.c
+--- a/lib/settime.c
++++ b/lib/settime.c
+@@ -24,10 +24,16 @@
+ #include "timespec.h"
++#include <errno.h>
+ 
+ /* Set the system time.  */
+ 
+ int
+ settime (struct timespec const *ts)
+ {
++#if defined __amigaos4__ && defined __CLIB2__
++  (void) ts;
++  errno = ENOSYS;
++  return -1;
++#else
+ #if defined CLOCK_REALTIME && HAVE_CLOCK_SETTIME
+   if (clock_settime (CLOCK_REALTIME, ts) == 0)
+     return 0;
+@@ -40,4 +46,5 @@
+     tv.tv_usec = ts->tv_nsec / 1000;
+     return settimeofday (&tv, 0);
+   }
++#endif
+ }
+
+diff --git a/lib/amigaos.c b/lib/amigaos.c
+--- a/lib/amigaos.c
++++ b/lib/amigaos.c
+@@ -121,7 +121,8 @@
+ uint32
+-copy_env(struct Hook *hook, APTR userdata, struct ScanVarsMsg *message)
++copy_env(struct Hook *hook, APTR userdata, APTR message_data)
+ {
++	struct ScanVarsMsg *message = message_data;
+   static uint32 env_size = 1;  // environ is null terminated
+ 
+   if ( strlen(message->sv_GDir) <= 4 )
+   {
+@@ -249,6 +250,6 @@
+ #else /* CLIB2  */
+ void __execve_exit(int return_code)
+ {
+-	return 0;
++	return;
+ }
+ 
+

@@ -19,7 +19,8 @@ CLIB2_SHA1?=1a42c693e03881f6f969c43ab36ce20d2569751d
 # Optional (DEFAULT 1a42c693e03881f6f969c43ab36ce20d2569751d)
 # Define CLIB2_SHA1 to be the value of the branch or commit to use for clib2
 # ===
-CLIB4_SHA1?=HEAD
+CLIB4_SHA1?=30e487d28f9b3d12fc9e4adb641aeff84050de3b
+# CLIB4_SHA1?=HEAD
 # Optional (DEFAULT HEAD)
 # Define CLIB4_SHA1 to be the value of the branch or commit to use for clib4
 #
@@ -86,7 +87,7 @@ DIST_VERSION=$(shell date +%Y%m%d)-$(shell git rev-list --count HEAD)
 export glibcxx_cv_PTHREAD_COND_CLOCKWAIT=no
 
 # Set up the necessary variables for the CLIBs
-CLIB4_SUPPORT=$(filter 13 11 8 6,$(GCC_MAJOR_VERSION))
+CLIB4_SUPPORT=$(filter 15 13 11 8 6,$(GCC_MAJOR_VERSION))
 CLIB4_URL=https://github.com/AmigaLabs/clib4
 CLIB4_DIR=downloads/clib4/
 CLIB4_RELEASE_ARCHIVE_NAME=adtools-os4-clib4-$(DIST_VERSION).lha
@@ -98,6 +99,11 @@ CLIB2_RELEASE_ARCHIVE_NAME=adtools-os4-clib2-$(DIST_VERSION).lha
 CROSS_PREFIX?=$(ROOT_DIR)/root-cross
 # This assumes that cross prefix is absolute
 DESTDIR?=
+
+SPE_FLAG=
+ifeq ($(GCC_MAJOR_VERSION),6)
+SPE_FLAG=SPE=yes
+endif
 
 STRIPFLAGS=--strip-all --strip-unneeded-rel-relocs -R.comment
 
@@ -257,10 +263,12 @@ clib4-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY) includes-done
 		AR="$(XAR)" \
 		RANLIB="$(XRANLIB)" \
 		STRIP=$(STRIP) \
+		$(SPE_FLAG) \
 		INSTALL_PREFIX=$(CROSS_PREFIX)/ppc-amigaos/SDK/clib4 \
 		SDK_INCLUDE=$(CROSS_PREFIX)/ppc-amigaos/SDK/include
 # Copy clib libs and includes
 	$(MAKE) -C $(CLIB4_DIR) -f GNUmakefile.os4 install \
+		$(SPE_FLAG) \
 		INSTALL_PREFIX=$(CROSS_PREFIX)/ppc-amigaos/SDK/clib4
 	cp $(CLIB4_DIR)/LICENSE* $(CROSS_PREFIX)/ppc-amigaos/SDK/clib4
 	touch $@
@@ -269,7 +277,7 @@ endif
 clib2-cross-done-$(GCC_VERSION): $(CLIB_CROSS_DONE_DEPENDENCY)
 # Build clib using xgcc that have just been built
 	$(MAKE) -C $(CLIB2_DIR) -f GNUmakefile.os4 \
-		CC="$(XGCC_CC)" \
+		CC="$(XGCC_CC) -Wno-error=int-conversion -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration" \
 		AR="$(XAR)" \
 		RANLIB="$(XRANLIB)"
 # Copy clib libs and includes
@@ -323,7 +331,7 @@ libraries-done: $(NATIVE_LIBRARY_DEPENDENCIES)
 	cd downloads && tar -xjf $(notdir $(GMP_ARCHIVE))
 	cd downloads && tar -xjf $(notdir $(MPFR_ARCHIVE))
 	cd downloads && tar -xzf $(notdir $(MPC_ARCHIVE))
-	cd $(basename $(basename downloads/$(notdir $(GMP_ARCHIVE)))) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
+	cd $(basename $(basename downloads/$(notdir $(GMP_ARCHIVE)))) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" CFLAGS="-O2 -std=gnu89" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
 	cd $(basename $(basename downloads/$(notdir $(MPFR_ARCHIVE)))) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX) -with-gmp=$(CROSS_PREFIX) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
 	cd $(basename $(basename downloads/$(notdir $(MPC_ARCHIVE)))) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" ./configure --host=ppc-amigaos --prefix=$(CROSS_PREFIX) --with-gmp=$(CROSS_PREFIX) --with-mpfr=$(CROSS_PREFIX) && PATH="$(CROSS_PREFIX)/bin:$(PATH)" make install
 	touch $@
@@ -368,6 +376,7 @@ endif
 	cd coreutils-native-build ; \
 		$(realpath $(COREUTILS_SRC_DIR))/configure --prefix=/gcc --host=ppc-amigaos --disable-maintainer-mode \
 		PATH="$(CROSS_PREFIX)/bin:$(PATH)" \
+		CFLAGS="-g -O2 -std=gnu17" \
 		CPPFLAGS="-mcrt=clib2" \
 		LDFLAGS="-mcrt=clib2" \
 		LIBS="-lunix -lnet"
@@ -486,7 +495,7 @@ native-install: coreutils-native-done gcc-native-done-$(GCC_VERSION) ReadMe doc
 #	cp -R $(CROSS_PREFIX)/ppc-amigaos/SDK /gcc
 # Disabled, because we don't want to copy from CROSS_PREFIX here
 #	cp -Rf $(CROSS_PREFIX)/lib/gcc/ppc-amigaos /gcc/lib/gcc/
-	# Delete all but our target gcc libs
+# Delete all but our target gcc libs
 	find /gcc/lib/gcc/ppc-amigaos -mindepth 1 -maxdepth 1 -not -name $(GCC_VERSION) | xargs rm -Rf
 # Disabled, no longer required
 #	# Move lib archives (e.g., libgcc.a into the proper directory)

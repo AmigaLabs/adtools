@@ -1,0 +1,42 @@
+Subject: [PATCH] Handle unavailable AmigaOS newlib process APIs
+
+GCC 15 compilation rejects implicit declarations of fork and pipe.
+The AmigaOS newlib SDK does not supply these functions. Report ENOSYS
+instead of emitting references to unavailable symbols.
+
+diff --git a/libiberty/pex-unix.c b/libiberty/pex-unix.c
+--- a/libiberty/pex-unix.c
++++ b/libiberty/pex-unix.c
+@@ -594,6 +594,11 @@
+ 		     int toclose, const char **errmsg, int *err)
+ {
++#if defined __amigaos4__ && defined __NEWLIB__ && !defined HAVE_FORK && !defined HAVE_VFORK
++  *err = ENOSYS;
++  *errmsg = "fork";
++  return (pid_t) -1;
++#else
+   pid_t pid;
+ 
+   /* We declare these to be volatile to avoid warnings from gcc about
+      them being clobbered by vfork.  */
+@@ -721,6 +726,7 @@
+       return pid;
+     }
++#endif
+ }
+ #endif /* SPAWN */
+ 
+ /* Wait for a child process to complete.  */
+@@ -752,6 +758,12 @@
+ 	       int binary ATTRIBUTE_UNUSED)
+ {
++#if defined __amigaos4__ && defined __NEWLIB__
++  (void) p;
++  errno = ENOSYS;
++  return -1;
++#else
+   return pipe (p);
++#endif
+ }
+ 
+ /* Get a FILE pointer to read from a file descriptor.  */
