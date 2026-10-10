@@ -1,0 +1,35 @@
+From ed0c72545b50e34e5dd0cd911aca1535daa0542d Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:27:50 +0000
+Subject: [PATCH] freading: port to AmigaOS clib2
+
+clib2's FILE struct is a documented-stable public ABI (see stdio.h)
+exposing flags/num_read_bytes/num_write_bytes counts, but not the
+pointer-based read/write state other branches here rely on.  Treat
+the stream as reading if it isn't writable at all, or if it currently
+has unread buffered bytes -- mirrors the existing glibc branch's
+logic (_IO_NO_WRITES, or an active read buffer).
+---
+ lib/freading.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/lib/freading.c b/lib/freading.c
+index 0c361ae21f..2e63806750 100644
+--- a/lib/freading.c
++++ b/lib/freading.c
+@@ -40,6 +40,12 @@ freading (FILE *fp)
+   return (fp_->_flags & __SRD) != 0;
+ # elif defined __EMX__               /* emx+gcc */
+   return (fp->_flags & _IOREAD) != 0;
++# elif defined __CLIB2__             /* AmigaOS clib2 */
++  /* clib2's FILE struct only exposes counts, not pointers: treat the
++     stream as reading if it isn't writable at all (plain "r" mode), or
++     if it currently has unread buffered bytes.  Mirrors the glibc
++     branch above (_IO_NO_WRITES, or an active read buffer).  */
++  return (!(fp->flags & __FILE_WRITABLE) || fp->num_read_bytes != 0);
+ # elif defined __minix               /* Minix */
+   return (fp->_flags & _IOREADING) != 0;
+ # elif defined _IOERR                /* AIX, HP-UX, IRIX, OSF/1, Solaris, OpenServer, mingw, MSVC, NonStop Kernel */
+-- 
+2.53.0
+

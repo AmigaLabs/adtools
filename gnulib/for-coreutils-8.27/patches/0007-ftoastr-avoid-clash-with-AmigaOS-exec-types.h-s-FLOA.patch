@@ -1,0 +1,32 @@
+From f367e3691eff32076545f6e07aa69433e1da8627 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:25:46 +0000
+Subject: [PATCH] ftoastr: avoid clash with AmigaOS exec/types.h's FLOAT macro
+
+Same issue as the DOUBLE clash already fixed in c-strtod.c: AmigaOS
+SDK's <exec/types.h> defines FLOAT to float32, which collides with
+this file's own FLOAT macro under -Werror:
+
+lib/ftoastr.c:47: error: "FLOAT" redefined [-Werror]
+---
+ lib/ftoastr.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/lib/ftoastr.c b/lib/ftoastr.c
+index ef861e2237..45268c975e 100644
+--- a/lib/ftoastr.c
++++ b/lib/ftoastr.c
+@@ -33,6 +33,10 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
++/* AmigaOS's <exec/types.h> already defines FLOAT (to float32); undef
++   it first so it doesn't clash with the one defined here. */
++#undef FLOAT
++
+ #if LENGTH == 3
+ # define FLOAT long double
+ # define FLOAT_DIG LDBL_DIG
+-- 
+2.53.0
+

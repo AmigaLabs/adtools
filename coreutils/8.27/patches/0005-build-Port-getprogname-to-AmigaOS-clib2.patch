@@ -1,0 +1,37 @@
+Subject: [PATCH] build: port getprogname() to AmigaOS clib2
+
+getprogname.c has no AmigaOS branch, so it falls through to the
+generic "#error" case:
+
+lib/getprogname.c:181:4: error: "getprogname module not ported to this OS"
+
+AmigaOS/clib2 has no native equivalent of program_invocation_name,
+getexecname(), __argv or __progname.  coreutils' own main() functions
+already set progname.h's program_name global directly from argv[0]
+(see 0001-build-Changes-for-AmigaOS4-compile.patch), so fall back to
+that instead.
+
+--- a/lib/getprogname.c
++++ b/lib/getprogname.c
+@@ -52,6 +52,7 @@
+ #endif
+ 
+ #include "dirname.h"
++#include "progname.h"
+ 
+ #ifndef HAVE_GETPROGNAME             /* not Mac OS X, FreeBSD, NetBSD, OpenBSD >= 5.4, Cygwin */
+ char const *
+@@ -177,6 +178,11 @@
+         }
+     }
+   return NULL;
++# elif defined __CLIB2__                                     /* AmigaOS */
++  /* No native API for this.  coreutils' own main() always sets
++     progname.h's program_name from argv[0] directly (see the
++     AmigaOS build patches), so fall back to that.  */
++  return program_name ? last_component (program_name) : "?";
+ # else
+ #  error "getprogname module not ported to this OS"
+ # endif
+-- 
+2.43.0

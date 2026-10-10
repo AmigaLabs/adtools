@@ -1,0 +1,36 @@
+From b53270b38cb206738e5d1bcb056384a5b7a33d83 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:12:20 +0000
+Subject: [PATCH] c-strtod: avoid clash with AmigaOS exec/types.h's DOUBLE
+ macro
+
+AmigaOS SDK's <exec/types.h> defines DOUBLE to float64.  c-strtod.c's
+own DOUBLE macro (expanding to double/long double) then redefines it,
+which GCC flags as an error under -Werror:
+
+lib/c-strtod.c:35: error: "DOUBLE" redefined [-Werror]
+
+Undef it first so our local definition wins, matching how this file
+already undefs its own macros before use.
+---
+ lib/c-strtod.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/lib/c-strtod.c b/lib/c-strtod.c
+index 1511ab5640..a4a7931066 100644
+--- a/lib/c-strtod.c
++++ b/lib/c-strtod.c
+@@ -26,6 +26,10 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++/* AmigaOS's <exec/types.h> already defines DOUBLE (to float64); undef
++   it first so it doesn't clash with the one defined here. */
++#undef DOUBLE
++
+ #if LONG
+ # define C_STRTOD c_strtold
+ # define DOUBLE long double
+-- 
+2.53.0
+

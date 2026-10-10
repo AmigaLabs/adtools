@@ -1,0 +1,28 @@
+From dbb1c18961e4c96412246c060f363c0dc3ef032e Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:52:42 +0000
+Subject: [PATCH] fpending: port to AmigaOS clib2
+
+clib2's FILE struct (see stdio.h) exposes num_write_bytes as the
+count of bytes copied to the buffer but not yet written back -
+exactly what __fpending() wants.
+---
+ lib/fpending.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/lib/fpending.c b/lib/fpending.c
+index c9b7786685..0a78ed426c 100644
+--- a/lib/fpending.c
++++ b/lib/fpending.c
+@@ -53,6 +53,8 @@ __fpending (FILE *fp)
+   return fp->wp - fp->buf;
+ #elif defined __VMS                  /* VMS */
+   return (*fp)->_ptr - (*fp)->_base;
++#elif defined __CLIB2__              /* AmigaOS clib2 */
++  return fp->num_write_bytes;
+ #else
+ # error "Please port gnulib fpending.c to your platform!"
+   return 1;
+-- 
+2.53.0
+

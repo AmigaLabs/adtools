@@ -1,0 +1,71 @@
+From 07ea7c2f24c563365daaa5e15fda81b965ebc0f1 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:29:14 +0000
+Subject: [PATCH] freadahead, freadptr, freadseek: port to AmigaOS clib2
+
+Same clib2 FILE fields as the freading.c port: num_write_bytes != 0
+means the stream is currently buffering unflushed writes (so no bytes
+are read-ahead); otherwise num_read_bytes is the count of buffered,
+unread bytes starting at buffer + position.  freadptrinc advances
+position and shrinks num_read_bytes by the same amount, mirroring the
+other platform branches.
+---
+ lib/freadahead.c | 6 ++++++
+ lib/freadptr.c   | 9 +++++++++
+ lib/freadseek.c  | 3 +++
+ 3 files changed, 18 insertions(+)
+
+diff --git a/lib/freadahead.c b/lib/freadahead.c
+index 6820317ecc..76c5dd38de 100644
+--- a/lib/freadahead.c
++++ b/lib/freadahead.c
+@@ -49,6 +49,12 @@ freadahead (FILE *fp)
+   /* equivalent to
+      (fp->_ungetc_count == 0 ? fp->_rcount : fp->_ungetc_count - fp->_rcount) */
+   return (fp->_rcount > 0 ? fp->_rcount : fp->_ungetc_count - fp->_rcount);
++#elif defined __CLIB2__             /* AmigaOS clib2 */
++  /* clib2 exposes only counts, no pointers.  num_write_bytes != 0 means
++     the stream is currently buffering unflushed writes.  */
++  if (fp->num_write_bytes != 0)
++    return 0;
++  return fp->num_read_bytes;
+ #elif defined __minix               /* Minix */
+   if ((fp_->_flags & _IOWRITING) != 0)
+     return 0;
+diff --git a/lib/freadptr.c b/lib/freadptr.c
+index 8832beef78..47812a6151 100644
+--- a/lib/freadptr.c
++++ b/lib/freadptr.c
+@@ -57,6 +57,15 @@ freadptr (FILE *fp, size_t *sizep)
+     abort ();
+   *sizep = fp->_rcount;
+   return fp->_ptr;
++#elif defined __CLIB2__             /* AmigaOS clib2 */
++  /* Keep in sync with freadahead.c.  */
++  if (fp->num_write_bytes != 0)
++    return NULL;
++  size = fp->num_read_bytes;
++  if (size == 0)
++    return NULL;
++  *sizep = size;
++  return (const char *) (fp->buffer + fp->position);
+ #elif defined __minix               /* Minix */
+   if ((fp_->_flags & _IOWRITING) != 0)
+     return NULL;
+diff --git a/lib/freadseek.c b/lib/freadseek.c
+index 7fcbadc61d..3e96a260dc 100644
+--- a/lib/freadseek.c
++++ b/lib/freadseek.c
+@@ -45,6 +45,9 @@ freadptrinc (FILE *fp, size_t increment)
+ #elif defined __EMX__               /* emx+gcc */
+   fp->_ptr += increment;
+   fp->_rcount -= increment;
++#elif defined __CLIB2__             /* AmigaOS clib2 */
++  fp->position += increment;
++  fp->num_read_bytes -= increment;
+ #elif defined __minix               /* Minix */
+   fp_->_ptr += increment;
+   fp_->_count -= increment;
+-- 
+2.53.0
+

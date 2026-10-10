@@ -1,0 +1,37 @@
+From d4908720ea73087c4e4216a95eec70c09f53046e Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:51:35 +0000
+Subject: [PATCH] utimens: pacify GCC 11 -Wstringop-overflow in update_timespec
+
+GCC 11's -Wstringop-overflow heuristic for parameters spelled as
+T *array[N] assumes the caller must pass a pointer to N elements of
+T*, even though 'struct timespec *ts[2]' decays to the exact same
+type as 'struct timespec **ts'.  The callers here
+(update_timespec (&st, &ts), where ts is itself 'struct timespec *')
+intentionally pass a pointer-to-pointer, not a 2-element array:
+
+lib/utimens.c:296:17: error: 'update_timespec' accessing 8 bytes in a
+  region of size 4 [-Werror=stringop-overflow=]
+
+Respell the parameter as struct timespec **ts (identical type, no
+behavior change) to avoid the heuristic.
+---
+ lib/utimens.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/utimens.c b/lib/utimens.c
+index 3643668c3a..45dd0b7ca0 100644
+--- a/lib/utimens.c
++++ b/lib/utimens.c
+@@ -128,7 +128,7 @@ validate_timespec (struct timespec timespec[2])
+    (nothing further beyond the prior collection of STATBUF is
+    necessary); otherwise return false.  */
+ static bool
+-update_timespec (struct stat const *statbuf, struct timespec *ts[2])
++update_timespec (struct stat const *statbuf, struct timespec **ts)
+ {
+   struct timespec *timespec = *ts;
+   if (timespec[0].tv_nsec == UTIME_OMIT
+-- 
+2.53.0
+

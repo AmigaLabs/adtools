@@ -1,0 +1,51 @@
+From 19dedd11fc08151fe473275aca39d9e95e97b785 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:34:37 +0000
+Subject: [PATCH] parse-datetime: fix -Wformat mismatches for AmigaOS's time_t
+
+On this target time_t (and the parser's long_time_t) is unsigned long,
+not long, so debug-only %ld format specifiers applied to
+pc->seconds.tv_sec and pc->rel.seconds mismatch under -Werror=format:
+
+parse-datetime.y:435:23: error: format '%ld' expects argument of type 'long int', but argument 5 has type 'time_t' {aka 'long unsigned int'} [-Werror=format=]
+
+Cast the affected debug-print arguments to (long), matching what the
+format string already expects on every other platform.
+---
+ lib/parse-datetime.y | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/lib/parse-datetime.y b/lib/parse-datetime.y
+index 6af4f2945b..bea032a5f1 100644
+--- a/lib/parse-datetime.y
++++ b/lib/parse-datetime.y
+@@ -433,7 +433,7 @@ debug_print_current_time (const char* item, parser_control *pc)
+       if (space)
+         fputc (' ',stderr);
+       fprintf (stderr,"%02ld:%02ld:%02ld",
+-              pc->hour, pc->minutes, pc->seconds.tv_sec);
++              pc->hour, pc->minutes, (long) pc->seconds.tv_sec);
+       if (pc->seconds.tv_nsec!=0)
+         fprintf (stderr,"%09ld", pc->seconds.tv_nsec);
+       if (pc->meridian==MERpm)
+@@ -492,7 +492,7 @@ debug_print_current_time (const char* item, parser_control *pc)
+     {
+       if (space)
+         fputc (' ',stderr);
+-      fprintf (stderr,_("number of seconds: %ld"), pc->seconds.tv_sec);
++      fprintf (stderr,_("number of seconds: %ld"), (long) pc->seconds.tv_sec);
+     }
+ 
+   fputc ('\n', stderr);
+@@ -525,7 +525,7 @@ debug_print_relative_time (const char* item, const parser_control *pc)
+       {                                                 \
+         if (space)                                      \
+           fputc (' ',stderr);                           \
+-        fprintf (stderr,"%+ld %s", pc->rel.x, name);    \
++        fprintf (stderr,"%+ld %s", (long) pc->rel.x, name);    \
+         space = 1;                                      \
+       }                                                 \
+   } while (0)
+-- 
+2.53.0
+

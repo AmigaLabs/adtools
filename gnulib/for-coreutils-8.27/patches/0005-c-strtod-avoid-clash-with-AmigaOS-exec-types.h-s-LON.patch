@@ -1,0 +1,79 @@
+From 110aee4a64570548f94e0be809295c9857a30ec3 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:14:28 +0000
+Subject: [PATCH] c-strtod: avoid clash with AmigaOS exec/types.h's LONG
+ typedef
+
+AmigaOS's <exec/types.h> (pulled in transitively via <stdlib.h>) has
+"typedef int32 LONG;".  c-strtold.c does "#define LONG 1" before
+including this file, so that typedef becomes "typedef int32 1;":
+
+lib/c-strtold.c:1:14: error: expected identifier or '(' before numeric constant
+    1 | #define LONG 1
+
+Capture LONG's value into a private C_STRTOD_LONG macro and undef LONG
+itself before the system-header cascade, same pattern already used for
+the DOUBLE clash in this file.
+---
+ lib/c-strtod.c | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/lib/c-strtod.c b/lib/c-strtod.c
+index a4a7931066..afe725e119 100644
+--- a/lib/c-strtod.c
++++ b/lib/c-strtod.c
+@@ -19,6 +19,17 @@
+ 
+ #include <config.h>
+ 
++/* AmigaOS's <exec/types.h> has "typedef int32 LONG;", pulled in below
++   via <stdlib.h>.  Capture our caller's LONG (0 or 1) into a private
++   macro and undef LONG itself, so that typedef isn't corrupted into
++   "typedef int32 1;" by the time we get there. */
++#ifdef LONG
++# define C_STRTOD_LONG LONG
++# undef LONG
++#else
++# define C_STRTOD_LONG 0
++#endif
++
+ #include "c-strtod.h"
+ 
+ #include <errno.h>
+@@ -30,7 +41,7 @@
+    it first so it doesn't clash with the one defined here. */
+ #undef DOUBLE
+ 
+-#if LONG
++#if C_STRTOD_LONG
+ # define C_STRTOD c_strtold
+ # define DOUBLE long double
+ # define STRTOD_L strtold_l
+@@ -41,13 +52,13 @@
+ #endif
+ 
+ /* c_strtold falls back on strtod if strtold doesn't conform to C99.  */
+-#if LONG && HAVE_C99_STRTOLD
++#if C_STRTOD_LONG && HAVE_C99_STRTOLD
+ # define STRTOD strtold
+ #else
+ # define STRTOD strtod
+ #endif
+ 
+-#if defined LC_ALL_MASK && (LONG ? HAVE_STRTOLD_L : HAVE_STRTOD_L)
++#if defined LC_ALL_MASK && (C_STRTOD_LONG ? HAVE_STRTOLD_L : HAVE_STRTOD_L)
+ 
+ /* Cache for the C locale object.
+    Marked volatile so that different threads see the same value
+@@ -71,7 +82,7 @@ C_STRTOD (char const *nptr, char **endptr)
+ {
+   DOUBLE r;
+ 
+-#if defined LC_ALL_MASK && (LONG ? HAVE_STRTOLD_L : HAVE_STRTOD_L)
++#if defined LC_ALL_MASK && (C_STRTOD_LONG ? HAVE_STRTOLD_L : HAVE_STRTOD_L)
+ 
+   locale_t locale = c_locale ();
+   if (!locale)
+-- 
+2.53.0
+

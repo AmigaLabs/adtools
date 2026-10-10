@@ -1,0 +1,33 @@
+From 5d899b6a9c7cc6bba7478a0bfad8c3bb3196db93 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:07:04 +0000
+Subject: [PATCH] acl-internal.h: remove _GL_ATTRIBUTE_CONST on void function
+
+Otherwise, it provokes this from GCC 9+ (seen here with GCC 11):
+lib/acl-internal.h:300:3: error: 'const' attribute on function
+returning 'void' [-Werror=attributes]
+
+Cherry-picked from upstream gnulib commit ed78f0e059.
+---
+ lib/acl-internal.h | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/lib/acl-internal.h b/lib/acl-internal.h
+index e7bda0eade..0bd318c00e 100644
+--- a/lib/acl-internal.h
++++ b/lib/acl-internal.h
+@@ -293,10 +293,6 @@ struct permission_context {
+ 
+ int get_permissions (const char *, int, mode_t, struct permission_context *);
+ int set_permissions (struct permission_context *, const char *, int);
+-void free_permission_context (struct permission_context *)
+-#if ! (defined USE_ACL && (HAVE_ACL_GET_FILE || defined GETACL))
+-    _GL_ATTRIBUTE_CONST
+-#endif
+-  ;
++void free_permission_context (struct permission_context *);
+ 
+ _GL_INLINE_HEADER_END
+-- 
+2.53.0
+

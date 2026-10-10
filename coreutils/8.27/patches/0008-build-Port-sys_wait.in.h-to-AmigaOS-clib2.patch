@@ -1,0 +1,29 @@
+Subject: [PATCH] build: port sys_wait.in.h to AmigaOS clib2 (no native sys/wait.h)
+
+clib2 provides no sys/wait.h at all (only clib4 and newlib do), so
+gnulib's generated wrapper's #include_next fails:
+
+lib/sys/wait.h:28:16: fatal error: sys/wait.h: No such file or directory
+
+Treat it the same as native Windows, which also lacks one: skip the
+include_next and rely on this file's own WIFEXITED/WEXITSTATUS/etc.
+fallback definitions (already guarded with #ifndef).
+
+--- a/lib/sys_wait.in.h
++++ b/lib/sys_wait.in.h
+@@ -22,8 +22,11 @@
+ #endif
+ @PRAGMA_COLUMNS@
+ 
+-/* The include_next requires a split double-inclusion guard.  */
+-#if !((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
++/* The include_next requires a split double-inclusion guard.
++   AmigaOS (clib2) has no native <sys/wait.h> at all, same situation
++   as native Windows. */
++#if !((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__) \
++    && !defined __CLIB2__
+ # @INCLUDE_NEXT@ @NEXT_SYS_WAIT_H@
+ #endif
+ 
+-- 
+2.43.0

@@ -1,0 +1,30 @@
+From 62aa122da2c120946d98491997ba11c577544679 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:53:58 +0000
+Subject: [PATCH] fpurge: port to AmigaOS clib2
+
+Reset the buffer to empty by zeroing clib2's position/num_read_bytes/
+num_write_bytes fields.
+---
+ lib/fpurge.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/lib/fpurge.c b/lib/fpurge.c
+index 8e892f2520..32d913af02 100644
+--- a/lib/fpurge.c
++++ b/lib/fpurge.c
+@@ -139,6 +139,11 @@ fpurge (FILE *fp)
+ # elif defined EPLAN9               /* Plan9 */
+   fp->rp = fp->wp = fp->lp = fp->buf;
+   return 0;
++# elif defined __CLIB2__            /* AmigaOS clib2 */
++  fp->position = 0;
++  fp->num_read_bytes = 0;
++  fp->num_write_bytes = 0;
++  return 0;
+ # else
+ #  error "Please port gnulib fpurge.c to your platform! Look at the definitions of fflush, setvbuf and ungetc on your system, then report this to bug-gnulib."
+ # endif
+-- 
+2.53.0
+

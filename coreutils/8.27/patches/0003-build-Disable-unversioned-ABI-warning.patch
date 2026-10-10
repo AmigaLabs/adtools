@@ -1,0 +1,51 @@
+Subject: [PATCH] build: Disable unversioned ABI warning, -Wchkp and -Wsuggest-attribute=const
+
+GCC 11 diagnoses bare -Wabi because the default ABI has nothing to warn
+about.  With -Werror this prevents even make-prime-list from compiling.
+Exclude it from the optional warning set without disabling -Werror.
+
+-Wchkp is also no longer supported by ppc-amigaos-gcc; gnulib's manywarn
+probe doesn't reject it (the compiler only emits a driver warning, not
+an error), so it ends up enabled and prints
+"warning: switch '-Wchkp' is no longer supported" on every compile.
+Disable it the same way.
+
+-Wsuggest-attribute=const is advisory and depends on which branches of
+a function dead-code-eliminate on a given platform; on this target it
+fires on lib/physmem.c's physmem_total/physmem_available (which reduce
+to a single fallback return here, since none of their recognized memory
+APIs exist on AmigaOS):
+
+lib/physmem.c:85:1: error: function might be candidate for attribute 'const' [-Werror=suggest-attribute=const]
+
+Disable it rather than patch every function gnulib reduces differently
+per platform.
+
+Update generated configure as well for builds that do not run Autoconf.
+
+--- a/configure.ac
++++ b/configure.ac
+@@ -114,6 +114,9 @@
+   # This, $nw, is the list of warnings we disable.
+   nw="$nw -Wdeclaration-after-statement" # too useful to forbid
+   nw="$nw -Waggregate-return"       # anachronistic
++  nw="$nw -Wabi"
++  nw="$nw -Wchkp"                   # no longer supported by ppc-amigaos-gcc
++  nw="$nw -Wsuggest-attribute=const" # too platform-dependent (lib/physmem.c)
+   nw="$nw -Wlong-long"              # C90 is anachronistic (lib/gethrxtime.h)
+   nw="$nw -Wc++-compat"             # We don't care about C++ compilers
+   nw="$nw -Wundef"                  # Warns on '#if GNULIB_FOO' etc in gnulib
+--- a/configure
++++ b/configure
+@@ -64376,6 +64376,9 @@
+   # This, $nw, is the list of warnings we disable.
+   nw="$nw -Wdeclaration-after-statement" # too useful to forbid
+   nw="$nw -Waggregate-return"       # anachronistic
++  nw="$nw -Wabi"
++  nw="$nw -Wchkp"                   # no longer supported by ppc-amigaos-gcc
++  nw="$nw -Wsuggest-attribute=const" # too platform-dependent (lib/physmem.c)
+   nw="$nw -Wlong-long"              # C90 is anachronistic (lib/gethrxtime.h)
+   nw="$nw -Wc++-compat"             # We don't care about C++ compilers
+   nw="$nw -Wundef"                  # Warns on '#if GNULIB_FOO' etc in gnulib
+-- 
+2.43.0

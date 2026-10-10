@@ -1,0 +1,46 @@
+From 93102a36ee44ae31042d7aae0a135c08a8b59f5f Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:41:45 +0000
+Subject: [PATCH] printf-frexp, frexp: avoid clash with AmigaOS exec/types.h's
+ DOUBLE macro
+
+Same issue as the DOUBLE clash already fixed in c-strtod.c and
+ftoastr.c.
+---
+ lib/frexp.c        | 4 ++++
+ lib/printf-frexp.c | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/lib/frexp.c b/lib/frexp.c
+index 1662844999..f3b05820b4 100644
+--- a/lib/frexp.c
++++ b/lib/frexp.c
+@@ -32,6 +32,10 @@
+ # include "isnand-nolibm.h"
+ #endif
+ 
++/* AmigaOS's <exec/types.h> already defines DOUBLE (to float64); undef
++   it first so it doesn't clash with the one defined here. */
++#undef DOUBLE
++
+ /* This file assumes FLT_RADIX = 2.  If FLT_RADIX is a power of 2 greater
+    than 2, or not even a power of 2, some rounding errors can occur, so that
+    then the returned mantissa is only guaranteed to be <= 1.0, not < 1.0.  */
+diff --git a/lib/printf-frexp.c b/lib/printf-frexp.c
+index 48fecaa4cf..84c0a502c3 100644
+--- a/lib/printf-frexp.c
++++ b/lib/printf-frexp.c
+@@ -31,6 +31,10 @@
+ # include "fpucw.h"
+ #endif
+ 
++/* AmigaOS's <exec/types.h> already defines DOUBLE (to float64); undef
++   it first so it doesn't clash with the one defined here. */
++#undef DOUBLE
++
+ /* This file assumes FLT_RADIX = 2.  If FLT_RADIX is a power of 2 greater
+    than 2, or not even a power of 2, some rounding errors can occur, so that
+    then the returned mantissa is only guaranteed to be <= 2.0, not < 2.0.  */
+-- 
+2.53.0
+

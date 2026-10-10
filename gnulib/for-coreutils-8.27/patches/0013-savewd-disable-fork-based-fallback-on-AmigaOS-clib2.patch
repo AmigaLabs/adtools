@@ -1,0 +1,62 @@
+From dd247335e5ba592accf5e9a9cbdfa63e7f862a97 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:49:40 +0000
+Subject: [PATCH] savewd: disable fork()-based fallback on AmigaOS clib2
+
+clib2 has neither fork() nor waitpid():
+
+lib/savewd.c:73:27: error: implicit declaration of function 'fork'
+lib/savewd.c:207:20: error: implicit declaration of function 'waitpid'
+
+This fallback only triggers when opening "." with O_SEARCH fails
+(e.g. EACCES/ESTALE); the common path (FD_STATE, using the fd from
+open_safer) is unaffected.  On this platform, treat that failure as a
+hard error instead of attempting an unsupported fork-based fallback.
+---
+ lib/savewd.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/lib/savewd.c b/lib/savewd.c
+index 138f865782..ae619417d3 100644
+--- a/lib/savewd.c
++++ b/lib/savewd.c
+@@ -67,6 +67,10 @@ savewd_save (struct savewd *wd)
+     case FORKING_STATE:
+       if (wd->val.child < 0)
+         {
++#ifdef __CLIB2__ /* AmigaOS has neither fork() nor waitpid() */
++          wd->state = ERROR_STATE;
++          wd->val.errnum = errno;
++#else
+           /* "Save" the initial working directory by forking a new
+              subprocess that will attempt all the work from the chdir
+              until until the next savewd_restore.  */
+@@ -78,6 +82,7 @@ savewd_save (struct savewd *wd)
+               wd->state = ERROR_STATE;
+               wd->val.errnum = errno;
+             }
++#endif
+         }
+       break;
+ 
+@@ -197,6 +202,9 @@ savewd_restore (struct savewd *wd, int status)
+     case FORKING_STATE:
+       /* "Restore" the working directory by waiting for the subprocess
+          to finish.  */
++#ifdef __CLIB2__ /* AmigaOS: savewd_save never enters FORKING_STATE */
++      assure (false);
++#else
+       {
+         pid_t child = wd->val.child;
+         if (child == 0)
+@@ -212,6 +220,7 @@ savewd_restore (struct savewd *wd, int status)
+             return WEXITSTATUS (child_status);
+           }
+       }
++#endif
+       break;
+ 
+     default:
+-- 
+2.53.0
+

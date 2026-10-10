@@ -1,0 +1,89 @@
+From c57c8e78153eb987c2c6f559267ce1356e3839d1 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:24:49 +0000
+Subject: [PATCH] careadlinkat: pacify GCC 9-11 -Wreturn-local-addr false
+ positive
+
+GCC's -Wreturn-local-addr incorrectly flags careadlinkat: the stack
+buffer is only ever used as scratch space (copied into a
+heap-allocated buffer before the function returns), never returned
+itself, but older GCC's escape analysis can't prove that within a
+single function.  See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=93644
+
+Backport (minimal, without the idx.h/minmax.h modules used by the
+current upstream version) of upstream's actual fix: split the stack
+buffer's owning frame (careadlinkat) from the logic that uses it
+(readlink_stk), and mark the latter noinline so GCC cannot merge the
+two frames back together and reintroduce the false positive.
+---
+ lib/careadlinkat.c | 36 +++++++++++++++++++++++++++++++-----
+ 1 file changed, 31 insertions(+), 5 deletions(-)
+
+diff --git a/lib/careadlinkat.c b/lib/careadlinkat.c
+index 455e00efe0..4e8d1d0bfe 100644
+--- a/lib/careadlinkat.c
++++ b/lib/careadlinkat.c
+@@ -60,17 +60,28 @@
+    If successful, return the buffer address; otherwise return NULL and
+    set errno.  */
+ 
+-char *
+-careadlinkat (int fd, char const *filename,
++enum { STACK_BUF_SIZE = 1024 };
++
++/* Do the real work for careadlinkat (see below), with STACK_BUF as
++   temporary storage.
++
++   This is kept in its own function, separate from careadlinkat, so
++   that GCC's -Wreturn-local-addr (seen with GCC 9-11) cannot confuse
++   STACK_BUF's lifetime with the caller's frame: STACK_BUF lives in
++   careadlinkat below and is never itself returned, only data derived
++   from it (heap-allocated or the caller's own BUFFER).  See:
++   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=93644 */
++static char * __attribute__ ((__noinline__))
++readlink_stk (int fd, char const *filename,
+               char *buffer, size_t buffer_size,
+               struct allocator const *alloc,
+-              ssize_t (*preadlinkat) (int, char const *, char *, size_t))
++              ssize_t (*preadlinkat) (int, char const *, char *, size_t),
++              char stack_buf[STACK_BUF_SIZE])
+ {
+   char *buf;
+   size_t buf_size;
+   size_t buf_size_max =
+     SSIZE_MAX < SIZE_MAX ? (size_t) SSIZE_MAX + 1 : SIZE_MAX;
+-  char stack_buf[1024];
+ 
+   if (! alloc)
+     alloc = &stdlib_allocator;
+@@ -82,7 +93,7 @@ careadlinkat (int fd, char const *filename,
+          single small malloc() instead of a big malloc() followed by a
+          shrinking realloc().  */
+       buffer = stack_buf;
+-      buffer_size = sizeof stack_buf;
++      buffer_size = STACK_BUF_SIZE;
+     }
+ 
+   buf = buffer;
+@@ -158,3 +169,18 @@ careadlinkat (int fd, char const *filename,
+   errno = ENOMEM;
+   return NULL;
+ }
++
++char *
++careadlinkat (int fd, char const *filename,
++              char *buffer, size_t buffer_size,
++              struct allocator const *alloc,
++              ssize_t (*preadlinkat) (int, char const *, char *, size_t))
++{
++  /* Allocate the initial buffer on the stack.  This way, in the
++     common case of a symlink of small size, we get away with a
++     single small malloc() instead of a big malloc() followed by a
++     shrinking realloc().  */
++  char stack_buf[STACK_BUF_SIZE];
++  return readlink_stk (fd, filename, buffer, buffer_size, alloc,
++                       preadlinkat, stack_buf);
++}
+-- 
+2.53.0
+

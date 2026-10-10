@@ -1,0 +1,33 @@
+From 398038486cc160e3b0060d50178f26ec3a7353f7 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:44:10 +0000
+Subject: [PATCH] randread: skip getppid() on AmigaOS
+
+AmigaOS clib2 has no getppid():
+
+gl/lib/randread.c:179:26: error: implicit declaration of function 'getppid' [-Werror=implicit-function-declaration]
+
+It's only used as one of several best-effort entropy sources for the
+/dev/urandom-less fallback path (gettimeofday, getpid, getuid, getgid
+still contribute), so simply skip it on this platform.
+---
+ gl/lib/randread.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/gl/lib/randread.c b/gl/lib/randread.c
+index 9c70a1875..e9bc22814 100644
+--- a/gl/lib/randread.c
++++ b/gl/lib/randread.c
+@@ -176,7 +176,9 @@ get_nonce (void *buffer, size_t bufsize, size_t bytes_bound)
+     }
+   ISAAC_SEED (struct timeval, gettimeofday (&v, NULL));
+   ISAAC_SEED (pid_t, v = getpid ());
++#ifndef __CLIB2__ /* AmigaOS has no getppid() */
+   ISAAC_SEED (pid_t, v = getppid ());
++#endif
+   ISAAC_SEED (uid_t, v = getuid ());
+   ISAAC_SEED (uid_t, v = getgid ());
+ 
+-- 
+2.53.0
+

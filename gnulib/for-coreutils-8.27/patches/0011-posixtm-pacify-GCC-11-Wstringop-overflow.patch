@@ -1,0 +1,50 @@
+From 6ba0b005f984c0560d25bf59f1f2975f461b59ae Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Sat, 10 Oct 2026 13:40:19 +0000
+Subject: [PATCH] posixtm: pacify GCC 11 -Wstringop-overflow
+
+GCC 11 can't prove 'strcpy (b - 2, "59")' (b from stpcpy's return)
+stays within buf's bounds, since b's distance from buf depends on
+strlen(s), which the compiler can't see statically:
+
+lib/posixtm.c:220:9: error: '__builtin_memcpy' writing 3 bytes into a
+  region of size 0 overflows the destination [-Werror=stringop-overflow=]
+
+Upstream's eventual fix (07be6b7455) restructures posixtime() with a
+retry loop and newer idx.h/intprops.h/verify.h gnulib modules not
+present in this coreutils snapshot.  Minimal equivalent here: build
+the "...59" buffer with explicit, statically-bounded offsets instead
+of pointer arithmetic from stpcpy's result, which also happens to
+reject the previously-unchecked case of s longer than the buffer.
+---
+ lib/posixtm.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/lib/posixtm.c b/lib/posixtm.c
+index b2441ed7ec..90eece8523 100644
+--- a/lib/posixtm.c
++++ b/lib/posixtm.c
+@@ -213,11 +213,17 @@ posixtime (time_t *p, const char *s, unsigned int syntax_bits)
+         return false;
+ 
+       {
+-        /* Allow times like 01:35:60 or 23:59:60.  */
++        /* Allow times like 01:35:60 or 23:59:60.  Build "...59" in a
++           fixed-size buffer using explicit, statically-bounded offsets
++           (rather than stpcpy + pointer arithmetic from its result),
++           which GCC 11 cannot otherwise prove stays in bounds. */
+         time_t dummy;
++        size_t s_len = strlen (s);
+         char buf[16];
+-        char *b = stpcpy (buf, s);
+-        strcpy (b - 2, "59");
++        if (s_len < 2 || s_len >= sizeof buf)
++          return false;
++        memcpy (buf, s, s_len + 1);
++        memcpy (buf + s_len - 2, "59", 2);
+         if (!posixtime (&dummy, buf, syntax_bits))
+           return false;
+       }
+-- 
+2.53.0
+

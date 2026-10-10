@@ -1,0 +1,28 @@
+Subject: [PATCH] build: avoid clash with AmigaOS exec/types.h's STATIC macro
+
+AmigaOS's <exec/types.h> unconditionally defines STATIC to "static".
+localcharset.c uses an undefined STATIC as an opt-in: callers can
+define it to "static" before compiling this file to make
+locale_charset() file-local instead of exported.  Nobody in this tree
+does that, so the AmigaOS SDK's STATIC macro leaks in by accident,
+making the definition disagree with the non-static extern declaration
+in localcharset.h:
+
+lib/localcharset.c:393:1: error: static declaration of 'locale_charset' follows non-static declaration
+
+--- a/lib/localcharset.c
++++ b/lib/localcharset.c
+@@ -386,6 +386,11 @@
+    If the canonical name cannot be determined, the result is a non-canonical
+    name.  */
+ 
++/* AmigaOS's <exec/types.h> defines STATIC to "static" (unconditionally,
++   for unrelated purposes); undef it here so it doesn't accidentally
++   trigger the opt-in "#ifdef STATIC" below. */
++#undef STATIC
++
+ #ifdef STATIC
+ STATIC
+ #endif
+-- 
+2.43.0
