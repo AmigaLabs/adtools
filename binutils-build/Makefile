@@ -15,6 +15,10 @@ CROSS_BUILD_DIR=cross-$(BINUTILS_VERSION)
 NATIVE_BUILD_DIR=cross-$(BINUTILS_VERSION)
 PREFIX=/usr/local/amiga
 REAL_SRC_DIR=$(realpath $(SRC_DIR))
+EXTRA_CXXFLAGS :=
+EXTRA_LDFLAGS :=
+EXTRA_CONFIGURE_ARGUMENTS :=
+
 
 ############################
 ### BEGIN: SETUP OPTIONS ###
@@ -45,6 +49,13 @@ else
 ifneq ($(BINUTILS_VERSION),2.40)
 $(error Unexpected binutils version)
 else
+CLIB ?= clib4
+ifeq ($(CLIB),clib4)
+	EXTRA_CXXFLAGS += -athread=native
+	EXTRA_LDFLAGS += -pthread
+	EXTRA_CONFIGURE_ARGUMENTS = --with-gmp=$(abspath ../native-build/root-cross/clib4) --with-mpfr=$(abspath ../native-build/root-cross/clib4)
+endif
+
 CROSS_CFLAGS=CFLAGS="					\
 				-Wno-sign-compare	\
 							"
@@ -53,22 +64,30 @@ CROSS_CONFIGURE_ARGUMENTS=				\
 				--disable-gdb		\
 				--disable-sim		\
 				--target=ppc-amigaos	\
+				--with-python=no	\
 				--prefix=$(PREFIX)
 NATIVE_CFLAGS=CFLAGS="					\
-				-mcrt=clib4		\
+				-mcrt=$(CLIB)		\
 				-Wno-sign-compare	\
 							"
+NATIVE_CXXFLAGS=CXXFLAGS="				\
+				-mcrt=$(CLIB)		\
+				$(EXTRA_CXXFLAGS)	\
+							"
 NATIVE_LDFLAGS=LDFLAGS="				\
-				-mcrt=clib4		\
+				-mcrt=$(CLIB)		\
+				$(EXTRA_LDFLAGS)	\
 							"
 NATIVE_CONFIGURE_ARGUMENTS=				\
 				--target=ppc-amigaos	\
 				--host=ppc-amigaos	\
 				--disable-plugins	\
-				--disable-gdb		\
 				--disable-sim		\
 				--disable-nls		\
-				--prefix=/gcc
+				--enable-shared=no	\
+				--with-python=no	\
+				--prefix=/gcc		\
+				$(EXTRA_CONFIGURE_ARGUMENTS)
 endif
 endif
 ############################
@@ -90,6 +109,7 @@ native:
 	cd $(NATIVE_BUILD_DIR);			\
 		$(NATIVE_LDFLAGS)		\
 		$(NATIVE_CFLAGS)		\
+		$(NATIVE_CXXFLAGS)		\
 		$(REAL_SRC_DIR)/configure	\
 		$(NATIVE_CONFIGURE_ARGUMENTS)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)

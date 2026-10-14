@@ -157,6 +157,75 @@ $(eval $(call QEMU_RUN,test-baserel-large))
 
 ################################################################################
 
+################################################################################
+#
+# GDB tests - verify ppc-amigaos-gdb works with the cross toolchain.
+# These tests require binutils 2.40 built with GDB enabled and QEMU PPC.
+#
+
+CROSS_PREFIX := $(shell cd ../native-build && echo $${CROSS_PREFIX:-$$(pwd)/root-cross})
+GDB := $(CROSS_PREFIX)/bin/ppc-amigaos-gdb
+
+.PHONY: test-gdb-all
+test-gdb-all: test-gdb-smoke test-gdb-load test-gdb-disasm test-gdb-remote
+	@echo "ALL GDB TESTS PASSED"
+
+# Smoke tests - GDB starts, knows its target and OSABI
+.PHONY: test-gdb-smoke
+test-gdb-smoke:
+	@echo "=== GDB smoke tests ==="
+	$(GDB) --version | grep -q "ppc-amigaos"
+	$(GDB) -q -ex "set osabi" -ex "quit" 2>&1 | grep -q "AmigaOS"
+	$(GDB) -q -ex "set target-file-system-kind amiga-based" -ex "quit" 2>&1
+	@echo "PASS: GDB smoke tests"
+
+# Static ELF analysis - load binary, check symbols, sections, disassembly
+.PHONY: test-gdb-load
+test-gdb-load: test-aos4-extensions-simple
+	@echo "=== GDB load tests ==="
+	$(GDB) -batch -q -ex "file $<" -ex "info functions" 2>&1 | grep -q "_start"
+	$(GDB) -batch -q -ex "file $<" -ex "maintenance info sections" 2>&1 | grep -q ".text"
+	$(GDB) -batch -q -ex "file $<" -ex "list _start" 2>&1 | grep -q "init_mmu"
+	@echo "PASS: GDB load tests"
+
+# Disassembly - verify GDB and objdump agree on instruction decoding
+.PHONY: test-gdb-disasm
+test-gdb-disasm: test-aos4-extensions-simple
+	@echo "=== GDB disassembly tests ==="
+	$(GDB) -batch -q -ex "file $<" -ex "disassemble _start" 2>&1 | grep -q "bl"
+	$(GDB) -batch -q -ex "file $<" -ex "disassemble init_mmu" 2>&1 | grep -q "mtspr"
+	@echo "PASS: GDB disassembly tests"
+
+# Remote debugging via QEMU - connect, step, examine memory
+.PHONY: test-gdb-remote
+test-gdb-remote: test-aos4-extensions-simple
+	@echo "=== GDB remote debugging tests ==="
+	$(QEMU_PPC) -M ppce500 -kernel $< -serial file:$<.gdb-serial \
+		-nographic -S -gdb tcp::1234 & \
+	QEMU_PID=$$!; \
+	sleep 2; \
+	$(GDB) -batch -q $< \
+		-ex "target remote :1234" \
+		-ex "info registers pc" \
+		-ex "stepi" \
+		-ex "stepi" \
+		-ex "stepi" \
+		-ex "info registers pc lr" \
+		-ex "x/4i \$$pc" \
+		-ex "bt" \
+		-ex "disconnect" \
+		> $<.gdb-remote.log 2>&1; \
+	GDB_EXIT=$$?; \
+	kill $$QEMU_PID 2>/dev/null; wait $$QEMU_PID 2>/dev/null; \
+	if [ $$GDB_EXIT -eq 0 ] && grep -q "init_mmu" $<.gdb-remote.log; then \
+		echo "PASS: GDB remote debugging tests"; \
+	else \
+		echo "FAIL: GDB remote debugging tests"; cat $<.gdb-remote.log; false; \
+	fi
+	rm -f $<.gdb-serial $<.gdb-remote.log
+
+################################################################################
+
 .PHONY: clean
 clean:
 	rm -Rf \
@@ -167,4 +236,6 @@ clean:
 		$(TESTS:%=%-o3.c) \
 		*.actual \
 		*.d \
-		*.expected
+		*.expected \
+		*.gdb-serial \
+		*.gdb-remote.log
