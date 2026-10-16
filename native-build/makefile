@@ -19,7 +19,7 @@ CLIB2_SHA1?=1a42c693e03881f6f969c43ab36ce20d2569751d
 # Optional (DEFAULT 1a42c693e03881f6f969c43ab36ce20d2569751d)
 # Define CLIB2_SHA1 to be the value of the branch or commit to use for clib2
 # ===
-CLIB4_SHA1?=30e487d28f9b3d12fc9e4adb641aeff84050de3b
+CLIB4_SHA1?=ba20075e6b17cde4f4d30232582a899544df0530
 # CLIB4_SHA1?=HEAD
 # Optional (DEFAULT HEAD)
 # Define CLIB4_SHA1 to be the value of the branch or commit to use for clib4
