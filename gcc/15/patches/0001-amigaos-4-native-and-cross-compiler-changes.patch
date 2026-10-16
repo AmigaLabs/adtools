@@ -1,12 +1,11 @@
-From b06000458498495d0c89c665cf394e5ab76d65d1 Mon Sep 17 00:00:00 2001
+From 7d914d781dbe05aa28c83920133fb8670903df3d Mon Sep 17 00:00:00 2001
 From: Georgios Sokianos <walkero@gmail.com>
 Date: Sun, 4 Oct 2026 20:53:13 +0000
-Subject: [PATCH] amigaos 4 native and cross compiler changes
+Subject: [PATCH 1/2] amigaos 4 native and cross compiler changes
 
 Includes GCC 15 native-build fixes for unavailable AmigaOS newlib
 fork/exec gcov wrappers and false detection of the missing fenv.h
 through an installed libstdc++ forwarding header.
-
 ---
  config-ml.in                                  |    4 +-
  config/gthr.m4                                |    1 +
@@ -61,8 +60,8 @@ through an installed libstdc++ forwarding header.
  libgcc/gthr-amigaos-single.c                  |  141 +++
  libgcc/gthr-amigaos.h                         |  188 +++
  libgcc/gthr-posix.h                           |   12 +
- libgcc/libgcov.h                              |    2 +
  libgcc/libgcov-interface.c                    |    3 +
+ libgcc/libgcov.h                              |    2 +
  libiberty/Makefile.in                         |   25 +-
  libiberty/basename.c                          |   21 +-
  libiberty/configure                           |   66 ++
@@ -5035,6 +5034,34 @@ index eeb84f32d8fec7540b8a5793a5d074e95ef5b762..303572c138fef6bb500062b5ff6968e6
  __gthread_once (__gthread_once_t *__once, void (*__func) (void))
  {
    if (__gthread_active_p ())
+diff --git a/libgcc/libgcov-interface.c b/libgcc/libgcov-interface.c
+index b8bd9b07bfe31b548a7bb7a7538698e54031f54f..ec99ba703c55e32f3094bee31c55c7b4bf64f8fb 100644
+--- a/libgcc/libgcov-interface.c
++++ b/libgcc/libgcov-interface.c
+@@ -171,12 +171,14 @@ __gcov_dump (void)
+ 
+   __gcov_unlock ();
+ }
+ 
+ #endif /* L_gcov_dump */
+ 
++#if !defined __amigaos4__ || !defined __NEWLIB__
++
+ #ifdef L_gcov_fork
+ /* A wrapper for the fork function.  We reset counters in the child
+    so that they are not counted twice.  */
+ 
+ pid_t
+ __gcov_fork (void)
+@@ -344,7 +346,8 @@ __gcov_execve (const char *path, char *const argv[], char *const envp[])
+   int ret = execve (path, argv, envp);
+   /* We reach this code only when execv fails, reset counter then here.  */
+   __gcov_reset ();
+   return ret;
+ }
+ #endif
++#endif
+ #endif /* inhibit_libc */
 diff --git a/libgcc/libgcov.h b/libgcc/libgcov.h
 index 3d7d52afd080b37219c2120b8a7951ca5d2de8c3..a0a74fdceb33ffedd99ad032fd5aaea2abad6644 100644
 --- a/libgcc/libgcov.h
@@ -5484,7 +5511,7 @@ index 01aa8cc70f7a13dd75909488336fdae6f8aef9f6..41b6cf0e5c2b66a8937ee697ad20c8bc
        len = GetTempPath(0, NULL);
 diff --git a/libiberty/pex-amigaos.c b/libiberty/pex-amigaos.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..0c61a108764c8501f8a2e9552c7c07499f402b1a
+index 0000000000000000000000000000000000000000..5c99d2c21e65c0d2b9f4c82424aaa28aa26a4e6d
 --- /dev/null
 +++ b/libiberty/pex-amigaos.c
 @@ -0,0 +1,325 @@
@@ -6514,7 +6541,7 @@ index 5f6914834175c0e32fbd2e357a07121ac7bd9a9f..d6d72e79eaaeb4a39b9016f224d50ea9
  dnl which can all be called multiple times as needed, plus one (different)
  dnl AC_OUTPUT macro.  This one lists the files to be created:
 diff --git a/libstdc++-v3/configure.host b/libstdc++-v3/configure.host
-index 253e5a9ad0dbe0698e3672cbee1c89eab8f2702d..70525d7bb407d95245857cadfb51becd09d64d3a 100644
+index 253e5a9ad0dbe0698e3672cbee1c89eab8f2702d..8b400e6e94b6e32c9f207e1f442c80b28d3b8df0 100644
 --- a/libstdc++-v3/configure.host
 +++ b/libstdc++-v3/configure.host
 @@ -223,12 +223,19 @@ case "${host_os}" in
@@ -7054,23 +7081,6 @@ index ddbeaaed2f0ff16ed0f8fabf451e1d48e9465c88..2b1ed06d865f8ba8ebe220c22f087a9d
  	ret /= *a;
      }
    }
-diff --git a/libgcc/libgcov-interface.c b/libgcc/libgcov-interface.c
---- a/libgcc/libgcov-interface.c
-+++ b/libgcc/libgcov-interface.c
-@@ -171,6 +171,8 @@
- 
- #endif /* L_gcov_dump */
- 
-+#if !defined __amigaos4__ || !defined __NEWLIB__
-+
- #ifdef L_gcov_fork
- /* A wrapper for the fork function.  We reset counters in the child
-    so that they are not counted twice.  */
-@@ -348,3 +350,4 @@
- }
- #endif
-+#endif
- #endif /* inhibit_libc */
 -- 
 2.53.0
 

@@ -1,0 +1,69 @@
+From 1c89537e4a8f57222aa449cabe4dc70bd2399375 Mon Sep 17 00:00:00 2001
+From: Georgios Sokianos <walkero@gmail.com>
+Date: Wed, 14 Oct 2026 19:45:05 +0000
+Subject: [PATCH 2/2] clib4 support fixes
+
+---
+ gcc/config/rs6000/t-amigaos    | 6 +++---
+ libgcc/config/rs6000/t-amigaos | 2 +-
+ libiberty/Makefile.in          | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/gcc/config/rs6000/t-amigaos b/gcc/config/rs6000/t-amigaos
+index e4881d26e914f83ec91be1c1b3f914e10c0b7916..70d8281ee2ef2839708864c05d04032277ebd5ec 100644
+--- a/gcc/config/rs6000/t-amigaos
++++ b/gcc/config/rs6000/t-amigaos
+@@ -9,12 +9,12 @@ LIMITS_H_TEST = true
+ 
+ # Override defaults.
+ # FIXME: This is only correct when building a native version natively.
+ NATIVE_SYSTEM_HEADER_DIR=/gcc/include
+ #OTHER_FIXINCLUDES_DIRS=${gcc_tooldir}/include
+ 
+-# Build the libraries for both newlib and clib2
++# Build the libraries for both newlib, clib2 and clib4 
+ # We do not build soft float flavours as none of the
+ # libs support soft floats
+-MULTILIB_OPTIONS = mcrt=newlib/mcrt=clib2
+-MULTILIB_DIRNAMES = newlib clib2
++MULTILIB_OPTIONS = mcrt=newlib/mcrt=clib2/mcrt=clib4
++MULTILIB_DIRNAMES = newlib clib2 clib4
+ #MULTILIB_REUSE = =mcrt=newlib
+diff --git a/libgcc/config/rs6000/t-amigaos b/libgcc/config/rs6000/t-amigaos
+index cd1c1b5dab13c3fe274d9d67bf3bb328108ef454..fa9d22e72161436c81f6a9f687ddaa752f01a966 100644
+--- a/libgcc/config/rs6000/t-amigaos
++++ b/libgcc/config/rs6000/t-amigaos
+@@ -41,10 +41,10 @@ SHLIB_LINK = $(GCC_FOR_TARGET) -shared $(SHLIB_OBJS) -nodefaultlibs $(LIBGCC2_CF
+ # Install the shared libgcc library, but ensure that the name is libgcc.so
+ SHLIB_INSTALL = \
+ 	$(mkinstalldirs) $(DESTDIR)$(inst_libdir); \
+ 	$(INSTALL_DATA) $(SHLIB_DIR)/$(SHLIB_SONAME) \
+ 	  $(DESTDIR)$(inst_libdir)/libgcc$(SHLIB_EXT);
+ 
+-EXTRA_PARTS += gthr-amigaos-native.o gthr-amigaos-single.o
++EXTRA_PARTS += gthr-amigaos-native.o gthr-amigaos-single.o gthr-amigaos-pthread.o
+ 
+ gthr-amigaos-%.o: $(srcdir)/gthr-amigaos-%.c $(srcdir)/gthr-amigaos.h
+ 	$(gcc_compile) -c $<
+diff --git a/libiberty/Makefile.in b/libiberty/Makefile.in
+index 280b3c9847d161982e2cecac2e61279cb28a88e2..029cb40ac70e092cf7ddf0b3b3a3054617ce9296 100644
+--- a/libiberty/Makefile.in
++++ b/libiberty/Makefile.in
+@@ -217,13 +217,13 @@ CONFIGURED_OFILES = ./asprintf.$(objext) ./atexit.$(objext)		\
+ 	./memcpy.$(objext) ./memmem.$(objext) ./memmove.$(objext)	\
+ 	 ./mempcpy.$(objext) ./memset.$(objext) ./mkstemps.$(objext)	\
+ 	./pex-amigaos.$(objext) ./pex-djgpp.$(objext) ./pex-msdos.$(objext)			\
+ 	 ./pex-unix.$(objext) ./pex-win32.$(objext)			\
+ 	 ./putenv.$(objext)						\
+ 	./random.$(objext) ./rename.$(objext) ./rindex.$(objext)	\
+-	./setenv.$(objext) 						\
++	./setenv.$(objext) ./setenv-amigaos.$(objext)			\
+ 	 ./setproctitle.$(objext)					\
+ 	 ./sigsetmask.$(objext) ./snprintf.$(objext)			\
+ 	 ./stpcpy.$(objext) ./stpncpy.$(objext) ./strcasecmp.$(objext)	\
+ 	 ./strchr.$(objext) ./strdup.$(objext) ./strncasecmp.$(objext)	\
+ 	 ./strncmp.$(objext) ./strndup.$(objext) ./strnlen.$(objext)	\
+ 	 ./strrchr.$(objext) ./strstr.$(objext) ./strtod.$(objext)	\
+-- 
+2.53.0
+
